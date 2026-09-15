@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-
 const etapes = [
   "Contactez d'abord le service client de votre opérateur et conservez la référence du dossier.",
   "Si aucune réponse satisfaisante n'est apportée sous 30 jours, saisissez l'ARPT via ce formulaire.",
@@ -40,11 +39,15 @@ export default function Reclamations() {
           <aside className="space-y-8 lg:pr-6">
             <div className="border-b border-border pb-8">
               <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-                <Info className="size-5 text-primary" aria-hidden /> Avant de saisir l'Autorité
+                <Info className="size-5 text-primary" aria-hidden /> Avant de
+                saisir l'Autorité
               </h2>
               <ol className="mt-4 space-y-4">
                 {etapes.map((e, i) => (
-                  <li key={e} className="flex gap-3 text-sm text-muted-foreground">
+                  <li
+                    key={e}
+                    className="flex gap-3 text-sm text-muted-foreground"
+                  >
                     <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
                       {i + 1}
                     </span>
@@ -55,9 +58,12 @@ export default function Reclamations() {
             </div>
 
             <div className="border-b border-border pb-8">
-              <h2 className="font-heading text-lg font-semibold">Droits des consommateurs</h2>
+              <h2 className="font-heading text-lg font-semibold">
+                Droits des consommateurs
+              </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Guide officiel des droits et recours des usagers des services de télécommunications.
+                Guide officiel des droits et recours des usagers des services de
+                télécommunications.
               </p>
               <Button variant="outline" size="sm" className="mt-4">
                 <FileDown className="size-4" aria-hidden /> Télécharger le guide
@@ -68,10 +74,16 @@ export default function Reclamations() {
           <div className="rounded-xl border border-border bg-card p-6 sm:p-7">
             {envoye ? (
               <div className="py-10 text-center">
-                <CheckCircle2 className="mx-auto size-12 text-success" aria-hidden />
-                <h2 className="mt-4 font-heading text-xl font-semibold">Réclamation enregistrée</h2>
+                <CheckCircle2
+                  className="mx-auto size-12 text-success"
+                  aria-hidden
+                />
+                <h2 className="mt-4 font-heading text-xl font-semibold">
+                  Réclamation enregistrée
+                </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Une référence de suivi vous a été adressée par courriel. L'instruction débute sous 48 heures ouvrées.
+                  Une référence de suivi vous a été adressée par courriel.
+                  L'instruction débute sous 48 heures ouvrées.
                 </p>
                 <Button asChild className="mt-6">
                   <Link href="/portail">Suivre mon dossier</Link>
@@ -86,7 +98,9 @@ export default function Reclamations() {
                   toast.success("Votre réclamation a bien été déposée.");
                 }}
               >
-                <h2 className="font-heading text-xl font-semibold">Formulaire de réclamation</h2>
+                <h2 className="font-heading text-xl font-semibold">
+                  Formulaire de réclamation
+                </h2>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="grid gap-2">
@@ -103,7 +117,12 @@ export default function Reclamations() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="tel">Téléphone</Label>
-                    <Input id="tel" type="tel" maxLength={20} placeholder="+224 …" />
+                    <Input
+                      id="tel"
+                      type="tel"
+                      maxLength={20}
+                      placeholder="+224 …"
+                    />
                   </div>
                 </div>
 
@@ -115,9 +134,13 @@ export default function Reclamations() {
                         <SelectValue placeholder="Sélectionner…" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="QUALITE">Qualité de service</SelectItem>
+                        <SelectItem value="QUALITE">
+                          Qualité de service
+                        </SelectItem>
                         <SelectItem value="FACTURATION">Facturation</SelectItem>
-                        <SelectItem value="RESEAU">Réseau / couverture</SelectItem>
+                        <SelectItem value="RESEAU">
+                          Réseau / couverture
+                        </SelectItem>
                         <SelectItem value="AUTRE">Autre</SelectItem>
                       </SelectContent>
                     </Select>
@@ -151,11 +174,22 @@ export default function Reclamations() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="pieces">Pièces justificatives (facultatif)</Label>
-                  <Input id="pieces" type="file" multiple accept=".pdf,.jpg,.png" />
+                  <Label htmlFor="pieces">
+                    Pièces justificatives (facultatif)
+                  </Label>
+                  <Input
+                    id="pieces"
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.png"
+                  />
                 </div>
 
-                <Button type="submit" size="lg" className="mt-1 justify-self-start">
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-1 justify-self-start"
+                >
                   Déposer ma réclamation
                 </Button>
               </form>
@@ -166,4 +200,3 @@ export default function Reclamations() {
     </>
   );
 }
-

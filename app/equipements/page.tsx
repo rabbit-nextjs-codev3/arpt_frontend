@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { StatutBadge } from "@/components/site/StatutBadge";
 import { equipements, formaterDate } from "@/data/mock";
 
-
 export default function Equipements() {
   const [recherche, setRecherche] = useState("");
 
@@ -33,7 +32,10 @@ export default function Equipements() {
       <section className="section-y">
         <div className="container-content">
           <div className="relative w-full md:max-w-md">
-            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Search
+              className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
             <Input
               value={recherche}
               onChange={(e) => setRecherche(e.target.value)}
@@ -57,13 +59,20 @@ export default function Equipements() {
               </thead>
               <tbody className="divide-y divide-border">
                 {resultats.map((e) => (
-                  <tr key={e.id} className="transition-colors hover:bg-muted/60">
-                    <td className="px-5 py-4 font-mono text-xs text-primary">{e.code}</td>
+                  <tr
+                    key={e.id}
+                    className="transition-colors hover:bg-muted/60"
+                  >
+                    <td className="px-5 py-4 font-mono text-xs text-primary">
+                      {e.code}
+                    </td>
                     <td className="px-5 py-4 font-medium">{e.nom}</td>
                     <td className="px-5 py-4 text-muted-foreground">
                       {e.marque} · {e.modele}
                     </td>
-                    <td className="px-5 py-4 text-muted-foreground">{e.categorie}</td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {e.categorie}
+                    </td>
                     <td className="px-5 py-4">
                       <StatutBadge statut={e.statut} />
                     </td>
@@ -74,7 +83,10 @@ export default function Equipements() {
                 ))}
                 {resultats.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
+                    <td
+                      colSpan={6}
+                      className="px-5 py-10 text-center text-muted-foreground"
+                    >
                       Aucun équipement trouvé.
                     </td>
                   </tr>
@@ -87,4 +99,3 @@ export default function Equipements() {
     </>
   );
 }
-

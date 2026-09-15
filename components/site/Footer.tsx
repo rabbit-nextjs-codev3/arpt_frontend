@@ -38,27 +38,38 @@ export function Footer() {
         <div>
           <p className="font-heading text-xl font-bold">ARPT Guinée</p>
           <p className="mt-3 text-sm leading-relaxed opacity-85">
-            Autorité de Régulation des Postes et Télécommunications de la République de Guinée. Garante d'un
-            secteur ouvert, concurrentiel et protecteur des usagers.
+            Autorité de Régulation des Postes et Télécommunications de la
+            République de Guinée. Garante d'un secteur ouvert, concurrentiel et
+            protecteur des usagers.
           </p>
         </div>
 
         {colonnes.map((col) => (
           <div key={col.titre}>
-            <p className="font-heading text-sm font-semibold tracking-wide uppercase opacity-80">{col.titre}</p>
+            <p className="font-heading text-sm font-semibold tracking-wide uppercase opacity-80">
+              {col.titre}
+            </p>
             <ul className="mt-4 space-y-2.5 text-sm">
               {col.liens.map((l) => (
                 <li key={l.to + l.label}>
-                  {l.to === "/portail" ? <AuthTrigger className="text-left opacity-85 transition-opacity hover:opacity-100">{l.label}</AuthTrigger> : <Link href={l.to} className="opacity-85 transition-opacity hover:opacity-100">
-                    {l.label}
-                  </Link>}
+                  {l.to === "/portail" ? (
+                    <AuthTrigger className="text-left opacity-85 transition-opacity hover:opacity-100">
+                      {l.label}
+                    </AuthTrigger>
+                  ) : (
+                    <Link
+                      href={l.to}
+                      className="opacity-85 transition-opacity hover:opacity-100"
+                    >
+                      {l.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
-
     </footer>
   );
 }

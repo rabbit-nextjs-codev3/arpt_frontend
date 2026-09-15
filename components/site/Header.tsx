@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Menu, X, ShieldCheck, LayoutDashboard, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthTrigger } from "@/components/site/AuthModal";
+import Image from "next/image";
 
 const liens = [
   { to: "/", label: "Accueil" },
@@ -27,22 +28,29 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-
       <div className="container-content flex items-center justify-between gap-4 py-3">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-institution text-primary-foreground">
-            <ShieldCheck className="size-6" aria-hidden />
-          </span>
-          <span className="min-w-0">
-            <span className="block font-heading text-lg leading-none font-bold tracking-tight">ARPT</span>
-            <span className="block truncate text-[0.7rem] text-muted-foreground">
-              Autorité de Régulation des Postes et Télécommunications
-            </span>
-          </span>
-        </Link>
+  <span className="min-w-0">
+    <span className="relative block h-8 w-8 shrink-0 sm:h-9 sm:w-9 md:h-10 md:w-10">
+      <Image
+        src="/images/arpt/new-logo.png"
+        alt="ARPT logo"
+        fill
+        sizes="(min-width: 768px) 40px, 32px"
+        className="object-contain"
+        priority
+      />
+    </span>
+  </span>
+</Link>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden md:inline-flex"
+          >
             <AuthTrigger>
               <UserRound className="size-4" aria-hidden /> Se connecter
             </AuthTrigger>

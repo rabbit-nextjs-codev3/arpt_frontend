@@ -6,7 +6,6 @@ import { PageHero } from "@/components/site/PageHero";
 import { Button } from "@/components/ui/button";
 import { services } from "@/data/mock";
 
-
 export default function Services() {
   return (
     <>
@@ -19,9 +18,14 @@ export default function Services() {
       <section className="section-y">
         <div className="container-content grid gap-x-16 gap-y-12 lg:grid-cols-2">
           {services.map((s) => (
-            <article key={s.id} className="flex flex-col border-t border-border pt-7">
+            <article
+              key={s.id}
+              className="flex flex-col border-t border-border pt-7"
+            >
               <h2 className="font-heading text-xl font-semibold">{s.nom}</h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.description}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {s.description}
+              </p>
 
               <dl className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="flex items-start gap-2 py-1 text-sm">
@@ -36,11 +40,16 @@ export default function Services() {
                 </div>
               </dl>
 
-              <p className="mt-6 font-heading text-sm font-semibold">Pièces à fournir</p>
+              <p className="mt-6 font-heading text-sm font-semibold">
+                Pièces à fournir
+              </p>
               <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                 {s.documents.map((d) => (
                   <li key={d} className="flex items-start gap-2">
-                    <FileCheck2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                    <FileCheck2
+                      className="mt-0.5 size-4 shrink-0 text-success"
+                      aria-hidden
+                    />
                     {d}
                   </li>
                 ))}
@@ -56,4 +65,3 @@ export default function Services() {
     </>
   );
 }
-

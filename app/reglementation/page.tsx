@@ -8,8 +8,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formaterDate, reglementations } from "@/data/mock";
 
-
-const categories = ["Toutes", "Loi", "Décret", "Arrêté", "Décision", "Directive"];
+const categories = [
+  "Toutes",
+  "Loi",
+  "Décret",
+  "Arrêté",
+  "Décision",
+  "Directive",
+];
 
 export default function Reglementation() {
   const [categorie, setCategorie] = useState("Toutes");
@@ -37,7 +43,10 @@ export default function Reglementation() {
         <div className="container-content">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
-              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Search
+                className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
               <Input
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
@@ -66,28 +75,38 @@ export default function Reglementation() {
 
           <div className="mt-8 border-y border-border">
             <ul className="divide-y divide-border">
-              {resultats.map((r) => (
-                <li key={r.id} className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              {resultats.map((policy) => (
+                <li
+                  key={policy.id}
+                  className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                >
                   <div className="min-w-0">
-                    <p className="font-medium">{r.nom}</p>
+                    <p className="font-medium">{policy.nom}</p>
                     <p className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="rounded-full bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
-                        {r.categorie}
+                        {policy.categorie}
                       </span>
-                      <span>{formaterDate(r.date)}</span>
+                      <span>{formaterDate(policy.date)}</span>
                       <span className="inline-flex items-center gap-1">
-                        <Eye className="size-3.5" aria-hidden /> {r.vues.toLocaleString("fr-FR")} vues
+                        <Eye className="size-3.5" aria-hidden />{" "}
+                        {policy.vues.toLocaleString("fr-FR")} vues
                       </span>
-                      <span>{r.format}</span>
+                      <span>{policy.format}</span>
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" className="justify-self-start sm:justify-self-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="justify-self-start sm:justify-self-end"
+                  >
                     <Download className="size-4" aria-hidden /> Télécharger
                   </Button>
                 </li>
               ))}
               {resultats.length === 0 && (
-                <li className="p-8 text-center text-sm text-muted-foreground">Aucun texte ne correspond à votre recherche.</li>
+                <li className="p-8 text-center text-sm text-muted-foreground">
+                  Aucun texte ne correspond à votre recherche.
+                </li>
               )}
             </ul>
           </div>
@@ -96,4 +115,3 @@ export default function Reglementation() {
     </>
   );
 }
-

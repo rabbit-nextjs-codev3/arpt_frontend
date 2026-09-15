@@ -31,12 +31,42 @@ import {
 } from "@/data/mock";
 
 const raccourcis = [
-  { to: "/services", label: "Démarches et services", icon: FileText, texte: "Licences, homologations, fréquences" },
-  { to: "/equipements", label: "Équipements homologués", icon: Radio, texte: "Vérifier un terminal agréé" },
-  { to: "/appels-offres", label: "Appels d'offres", icon: Gavel, texte: "Consulter les marchés en cours" },
-  { to: "/carrieres", label: "Carrières", icon: Briefcase, texte: "Rejoindre l'Autorité" },
-  { to: "/reclamations", label: "Réclamations", icon: MessageSquareWarning, texte: "Signaler un litige opérateur" },
-  { to: "/statistiques", label: "Observatoire", icon: BarChart3, texte: "Chiffres clés du secteur" },
+  {
+    to: "/services",
+    label: "Démarches et services",
+    icon: FileText,
+    texte: "Licences, homologations, fréquences",
+  },
+  {
+    to: "/equipements",
+    label: "Équipements homologués",
+    icon: Radio,
+    texte: "Vérifier un terminal agréé",
+  },
+  {
+    to: "/appels-offres",
+    label: "Appels d'offres",
+    icon: Gavel,
+    texte: "Consulter les marchés en cours",
+  },
+  {
+    to: "/carrieres",
+    label: "Carrières",
+    icon: Briefcase,
+    texte: "Rejoindre l'Autorité",
+  },
+  {
+    to: "/reclamations",
+    label: "Réclamations",
+    icon: MessageSquareWarning,
+    texte: "Signaler un litige opérateur",
+  },
+  {
+    to: "/statistiques",
+    label: "Observatoire",
+    icon: BarChart3,
+    texte: "Chiffres clés du secteur",
+  },
 ] as const;
 
 export default function Accueil() {
@@ -54,7 +84,10 @@ export default function Accueil() {
           sizes="100vw"
           className="absolute inset-0 size-full object-cover opacity-25"
         />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-institution" aria-hidden />
+        <div
+          className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-institution"
+          aria-hidden
+        />
         <div className="relative container-content py-20 md:py-28">
           <p className="font-heading text-xs font-semibold tracking-[0.18em] uppercase opacity-85">
             République de Guinée
@@ -63,13 +96,15 @@ export default function Accueil() {
             Réguler pour un secteur numérique fiable et accessible à tous
           </h1>
           <p className="mt-6 max-w-2xl text-balance text-lg leading-relaxed opacity-90">
-            L'ARPT encadre les marchés des postes et des télécommunications, protège les usagers et accompagne
-            les opérateurs dans leurs démarches administratives.
+            L'ARPT encadre les marchés des postes et des télécommunications,
+            protège les usagers et accompagne les opérateurs dans leurs
+            démarches administratives.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Button asChild size="lg" variant="secondary">
               <Link href="/services">
-                Découvrir nos services <ArrowRight className="size-4" aria-hidden />
+                Découvrir nos services{" "}
+                <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
             <Button
@@ -103,10 +138,17 @@ export default function Accueil() {
                   <r.icon className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0">
-                  <span className="block font-heading font-semibold">{r.label}</span>
-                  <span className="mt-1 block text-sm text-muted-foreground">{r.texte}</span>
+                  <span className="block font-heading font-semibold">
+                    {r.label}
+                  </span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    {r.texte}
+                  </span>
                 </span>
-                <ArrowUpRight className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+                <ArrowUpRight
+                  className="ml-auto size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-hidden
+                />
               </Link>
             ))}
           </div>
@@ -130,8 +172,12 @@ export default function Accueil() {
             {services.slice(0, 6).map((s) => (
               <article key={s.id} className="border-t-2 border-primary/30 pt-5">
                 <h3 className="font-heading text-lg font-semibold">{s.nom}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.description}</p>
-                <p className="mt-4 text-xs font-medium text-primary">Délai : {s.delai}</p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  {s.description}
+                </p>
+                <p className="mt-4 text-xs font-medium text-primary">
+                  Délai : {s.delai}
+                </p>
               </article>
             ))}
           </div>
@@ -143,7 +189,10 @@ export default function Accueil() {
         <div className="container-content grid gap-12 lg:grid-cols-[1.4fr_1fr]">
           <div>
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <SectionTitle surtitre="Actualités" titre="Dernières publications" />
+              <SectionTitle
+                surtitre="Actualités"
+                titre="Dernières publications"
+              />
               <Button asChild variant="ghost">
                 <Link href="/actualites">
                   Voir tout <ArrowRight className="size-4" aria-hidden />
@@ -153,7 +202,10 @@ export default function Accueil() {
             <div className="mt-8 grid gap-6 sm:grid-cols-2">
               {actualites.slice(0, 4).map((a) => (
                 <Card key={a.id} className="overflow-hidden py-0">
-                  <Link href={`/actualites/${a.id}`} className="group flex h-full flex-col">
+                  <Link
+                    href={`/actualites/${a.id}`}
+                    className="group flex h-full flex-col"
+                  >
                     <div className="relative aspect-[16/9] overflow-hidden bg-muted">
                       <Image
                         src={a.image}
@@ -169,7 +221,8 @@ export default function Accueil() {
                           {a.categorie}
                         </Badge>
                         <span className="inline-flex items-center gap-1.5">
-                          <CalendarDays className="size-3.5" aria-hidden /> {formaterDate(a.date)}
+                          <CalendarDays className="size-3.5" aria-hidden />{" "}
+                          {formaterDate(a.date)}
                         </span>
                       </div>
                       <h3 className="mt-3 text-balance font-heading text-base font-semibold leading-snug transition-colors group-hover:text-primary">
@@ -187,17 +240,29 @@ export default function Accueil() {
 
           <aside className="space-y-10">
             <div>
-              <h3 className="font-heading font-semibold">Communiqués officiels</h3>
+              <h3 className="font-heading font-semibold">
+                Communiqués officiels
+              </h3>
               <Card className="mt-5">
                 <CardContent className="p-0">
                   {communiques.map((c, i) => (
                     <div key={c.id}>
                       {i > 0 && <Separator />}
-                      <Link href="/actualites" className="flex items-start gap-2.5 p-4 hover:bg-accent/30">
-                        <FileText className="mt-0.5 size-4 shrink-0 text-gold" aria-hidden />
+                      <Link
+                        href="/actualites"
+                        className="flex items-start gap-2.5 p-4 hover:bg-accent/30"
+                      >
+                        <FileText
+                          className="mt-0.5 size-4 shrink-0 text-gold"
+                          aria-hidden
+                        />
                         <span className="min-w-0">
-                          <span className="block text-sm font-medium">{c.titre}</span>
-                          <span className="mt-1 block text-xs text-muted-foreground">{formaterDate(c.date)}</span>
+                          <span className="block text-sm font-medium">
+                            {c.titre}
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {formaterDate(c.date)}
+                          </span>
                         </span>
                       </Link>
                     </div>
@@ -207,7 +272,9 @@ export default function Accueil() {
             </div>
 
             <div>
-              <h3 className="font-heading font-semibold">Textes les plus consultés</h3>
+              <h3 className="font-heading font-semibold">
+                Textes les plus consultés
+              </h3>
               <ul className="mt-5 space-y-3">
                 {reglementations
                   .filter((r) => r.populaire)
@@ -217,7 +284,10 @@ export default function Accueil() {
                         href="/reglementation"
                         className="group flex items-start gap-3 text-sm hover:text-primary"
                       >
-                        <Download className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                        <Download
+                          className="mt-0.5 size-4 shrink-0 text-primary"
+                          aria-hidden
+                        />
                         <span className="group-hover:underline">{r.nom}</span>
                       </Link>
                     </li>
@@ -236,8 +306,13 @@ export default function Accueil() {
         <div className="container-content grid gap-8 lg:grid-cols-2">
           <div>
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-heading text-xl font-semibold">Appels d'offres en cours</h3>
-              <span className="text-sm text-muted-foreground">{offresOuvertes.length} ouvert{offresOuvertes.length > 1 ? "s" : ""}</span>
+              <h3 className="font-heading text-xl font-semibold">
+                Appels d'offres en cours
+              </h3>
+              <span className="text-sm text-muted-foreground">
+                {offresOuvertes.length} ouvert
+                {offresOuvertes.length > 1 ? "s" : ""}
+              </span>
             </div>
             <Card className="mt-6">
               <CardContent className="p-0">
@@ -246,9 +321,13 @@ export default function Accueil() {
                     {i > 0 && <Separator />}
                     <div className="flex items-start justify-between gap-4 p-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-primary">{a.code}</p>
+                        <p className="text-xs font-semibold text-primary">
+                          {a.code}
+                        </p>
                         <p className="mt-1 font-medium">{a.nom}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Clôture le {formaterDate(a.limite)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Clôture le {formaterDate(a.limite)}
+                        </p>
                       </div>
                       <StatutBadge statut={a.statut} />
                     </div>
@@ -262,7 +341,9 @@ export default function Accueil() {
           </div>
 
           <div>
-            <h3 className="font-heading text-xl font-semibold">Consultations publiques</h3>
+            <h3 className="font-heading text-xl font-semibold">
+              Consultations publiques
+            </h3>
             <Card className="mt-6">
               <CardContent className="p-0">
                 {consultations.slice(0, 3).map((c, i) => (

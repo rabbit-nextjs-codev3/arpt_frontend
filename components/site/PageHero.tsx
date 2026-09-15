@@ -64,7 +64,9 @@ export function SectionTitle({
         {titre}
       </h2>
       {description && (
-        <p className="mt-3 leading-relaxed text-muted-foreground">{description}</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">
+          {description}
+        </p>
       )}
     </div>
   );

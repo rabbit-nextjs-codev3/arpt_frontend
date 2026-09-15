@@ -16,7 +16,13 @@ const styles: Record<Statut, string> = {
   INTERDIT: "bg-destructive/12 text-destructive",
 };
 
-export function StatutBadge({ statut, className }: { statut: Statut; className?: string }) {
+export function StatutBadge({
+  statut,
+  className,
+}: {
+  statut: Statut;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
