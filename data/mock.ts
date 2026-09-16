@@ -26,27 +26,23 @@ export const members = [
   {
     name: "M. Adama Condé",
     role: "Directeur général adjoint",
-    image: "/images/arpt/adama-conde.jpg"
-
-    },
+    image: "/images/arpt/adama-conde.jpg",
+  },
   {
     name: "M. Djiba Diakite",
     role: "Membre du conseil d'administration",
-    image: "/images/arpt/djiba-arpt.jpeg"
-
-    },
+    image: "/images/arpt/djiba-arpt.jpeg",
+  },
   {
     name: "M. Mohamed Sacko",
     role: "Member",
-    image: "/images/arpt/mohamed.jpeg"
-
-    },
+    image: "/images/arpt/mohamed.jpeg",
+  },
   {
     name: "M. Moussa Kaba",
     role: "Member",
-    image: "/images/arpt/kabaci.jpeg"
-
-    },
+    image: "/images/arpt/kabaci.jpeg",
+  },
   {
     name: "M. Fany Zeze  Camara",
     role: "Member",
