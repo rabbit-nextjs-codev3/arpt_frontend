@@ -301,6 +301,7 @@ export const equipements = [
     statut: "HOMOLOGUE" as const,
     numero: "HOM/2026/0142",
     validite: "2028-04-30",
+    image: "/images/equipements/router.webp",
   },
   {
     id: 2,
@@ -312,6 +313,7 @@ export const equipements = [
     statut: "EN_COURS" as const,
     numero: null,
     validite: null,
+    image: "/images/equipements/terminal.jpg",
   },
   {
     id: 3,
@@ -323,6 +325,7 @@ export const equipements = [
     statut: "INTERDIT" as const,
     numero: null,
     validite: null,
+    image: "/images/equipements/brouilleur.jpg",
   },
   {
     id: 4,
@@ -334,6 +337,7 @@ export const equipements = [
     statut: "HOMOLOGUE" as const,
     numero: "HOM/2026/0163",
     validite: "2029-01-15",
+    image: null,
   },
   {
     id: 5,
@@ -345,6 +349,31 @@ export const equipements = [
     statut: "HOMOLOGUE" as const,
     numero: "HOM/2026/0170",
     validite: "2030-06-01",
+    image: "/images/equipements/stationBase.jpg",
+  },
+  {
+    id: 6,
+    code: "EQ-2026-0171",
+    nom: "Samsung Galaxy S26 Ultra",
+    marque: "Samsung",
+    modele: "Galaxy S26 Ultra",
+    categorie: "Terminaux mobiles",
+    statut: "EN_COURS" as const,
+    numero: null,
+    validite: null,
+    image: "/images/equipements/s26.jpg",
+  },
+  {
+    id: 7,
+    code: "EQ-2026-0172",
+    nom: "iPhone 16 Pro",
+    marque: "Apple",
+    modele: "iPhone 16 Pro",
+    categorie: "Terminaux mobiles",
+    statut: "EN_COURS" as const,
+    numero: null,
+    validite: null,
+    image: "/images/equipements/I16.webp",
   },
 ];
 

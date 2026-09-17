@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { EquipmentCarousel } from "@/components/site/EquipmentCarousel";
 import { PageHero } from "@/components/site/PageHero";
 import { Input } from "@/components/ui/input";
 import { StatutBadge } from "@/components/site/StatutBadge";
@@ -93,6 +94,10 @@ export default function Equipements() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-14">
+            <EquipmentCarousel />
           </div>
         </div>
       </section>
