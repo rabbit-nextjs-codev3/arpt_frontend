@@ -14,6 +14,8 @@ const styles: Record<Statut, string> = {
   ANNULE: "bg-destructive/12 text-destructive",
   HOMOLOGUE: "bg-success/15 text-success",
   INTERDIT: "bg-destructive/12 text-destructive",
+  ACCEPTE: "bg-success/15 text-success",
+  REFUSE: "bg-destructive/12 text-destructive",
 };
 
 export function StatutBadge({ statut, className }: { statut: Statut; className?: string }) {

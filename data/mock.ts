@@ -15,7 +15,9 @@ export type Statut =
   | "HOMOLOGUE"
   | "INTERDIT"
   | "OUVERTE"
-  | "CLOTUREE";
+  | "CLOTUREE"
+  | "ACCEPTE"
+  | "REFUSE";
 
 
 export const members = [
@@ -72,6 +74,8 @@ export const libelleStatut: Record<Statut, string> = {
   INTERDIT: "Interdit",
   OUVERTE: "Ouverte",
   CLOTUREE: "Clôturée",
+  ACCEPTE: "Accepté",
+  REFUSE: "Refusé",
 };
 
 export const contactArpt = {
