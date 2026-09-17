@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth, ApiError } from "@/lib/auth";
 
 const AuthContext = createContext<(() => void) | null>(null);
 
@@ -63,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               <TabsTrigger value="signin" className="h-10 rounded-lg">Connexion</TabsTrigger>
               <TabsTrigger value="signup" className="h-10 rounded-lg">Inscription</TabsTrigger>
             </TabsList>
-            <TabsContent value="signin"><AuthForm mode="signin" /></TabsContent>
-            <TabsContent value="signup"><AuthForm mode="signup" /></TabsContent>
+            <TabsContent value="signin"><AuthForm mode="signin" onSuccess={() => setOpen(false)} /></TabsContent>
+            <TabsContent value="signup"><AuthForm mode="signup" onSuccess={() => setOpen(false)} /></TabsContent>
           </Tabs>
           <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="size-3.5" aria-hidden />Votre espace personnel ARPT Guinée</p>
         </div>}
@@ -85,14 +86,15 @@ function PasswordField({ id, label, confirm = false, signup = false }: { id: str
   </div>;
 }
 
-function AuthForm({ mode }: { mode: "signin" | "signup" }) {
+function AuthForm({ mode, onSuccess }: { mode: "signin" | "signup"; onSuccess: () => void }) {
   const signup = mode === "signup";
   const id = useId();
+  const { login, register } = useAuth();
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     if (signup && data.get("password") !== data.get("confirmation")) {
@@ -101,20 +103,34 @@ function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       return;
     }
     setError("");
-    // UI prototype only: never transmit, persist, or log credentials.
-    setFeedback(signup ? "Ce formulaire est une démonstration. Aucun compte n’a été créé. L’inscription sera disponible après l’activation du service d’authentification." : "Ce formulaire est une démonstration. Aucune connexion n’a été effectuée. Le service d’authentification n’est pas encore activé.");
-    event.currentTarget.reset();
-    requestAnimationFrame(() => feedbackRef.current?.focus());
+    setSubmitting(true);
+    try {
+      if (signup) {
+        await register(
+          String(data.get("name")),
+          String(data.get("email")),
+          String(data.get("password")),
+          String(data.get("confirmation")),
+        );
+      } else {
+        await login(String(data.get("email")), String(data.get("password")), "public");
+      }
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      requestAnimationFrame(() => errorRef.current?.focus());
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  return <form onSubmit={submit} className="grid items-start gap-x-5 gap-y-4 sm:grid-cols-2" onChange={() => { setError(""); setFeedback(""); }}>
+  return <form onSubmit={submit} className="grid items-start gap-x-5 gap-y-4 sm:grid-cols-2" onChange={() => setError("")}>
     {signup && <div className="grid gap-2"><Label htmlFor={`${id}-name`}>Nom complet</Label><Input id={`${id}-name`} name="name" autoComplete="name" required maxLength={120} placeholder="Prénom et nom" className="h-12 rounded-lg bg-card shadow-none" /></div>}
     <div className="grid gap-2"><Label htmlFor={`${id}-email`}>Adresse e-mail</Label><Input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} placeholder="vous@exemple.com" className="h-12 rounded-lg bg-card shadow-none" /></div>
     <PasswordField id={`${id}-password`} label="Mot de passe" signup={signup} />
     {signup && <PasswordField id={`${id}-confirm`} label="Confirmer le mot de passe" signup confirm />}
-    {error && <p role="alert" className="text-sm text-destructive sm:col-span-2">{error}</p>}
-    {feedback && <p ref={feedbackRef} tabIndex={-1} role="status" className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm leading-6 text-primary sm:col-span-2">{feedback}</p>}
-    <Button type="submit" className="mt-1 h-12 w-full rounded-lg text-sm font-semibold sm:col-span-2">{signup ? "Créer mon compte" : "Se connecter"}<ArrowRight className="size-4" aria-hidden /></Button>
+    {error && <p ref={errorRef} tabIndex={-1} role="alert" className="text-sm text-destructive sm:col-span-2">{error}</p>}
+    <Button type="submit" disabled={submitting} className="mt-1 h-12 w-full rounded-lg text-sm font-semibold sm:col-span-2">{submitting ? "Veuillez patienter…" : signup ? "Créer mon compte" : "Se connecter"}<ArrowRight className="size-4" aria-hidden /></Button>
     <p className="text-center text-xs leading-5 text-muted-foreground sm:col-span-2">{signup ? "Créez votre compte pour retrouver vos démarches au même endroit." : "Retrouvez vos dossiers et poursuivez vos démarches."}</p>
   </form>;
 }

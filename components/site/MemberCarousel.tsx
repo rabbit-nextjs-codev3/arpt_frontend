@@ -6,10 +6,14 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { members } from "@/data/mock";
 
+interface Member {
+    name: string;
+    role: string;
+    image: string;
+}
 
-export function MemberCarousel() {
+export function MemberCarousel({ members }: { members: Member[] }) {
     const [viewportRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4800, stopOnInteraction: false })]);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -24,6 +28,10 @@ export function MemberCarousel() {
             emblaApi.off("select", onSelect);
         };
     }, [emblaApi, onSelect]);
+
+    if (members.length === 0) {
+        return <p className="text-sm text-muted-foreground">Aucun membre à afficher pour l'instant.</p>;
+    }
 
     return (
         <div className="relative">

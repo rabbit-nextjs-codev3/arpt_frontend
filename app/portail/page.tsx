@@ -1,27 +1,80 @@
-﻿"use client";
+"use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Bell, Briefcase, FileSignature, MessageSquareWarning, UserRound } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { StatutBadge } from "@/components/site/StatutBadge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formaterDate, mesCandidatures, mesReclamations, mesSoumissions, notifications } from "@/data/mock";
+import { formaterDate } from "@/data/mock";
+import { useAuth } from "@/lib/auth";
+import { useApiList, useApiOne } from "@/lib/hooks";
 
+interface Claim {
+  id: number;
+  claimType: string;
+  concernedOperator: string;
+  status: "NOUVEAU" | "EN_COURS" | "RESOLU" | "REJETE";
+  createdAt: string;
+}
 
-const resume = [
-  { libelle: "Réclamations", valeur: mesReclamations.length, icon: MessageSquareWarning },
-  { libelle: "Candidatures", valeur: mesCandidatures.length, icon: Briefcase },
-  { libelle: "Soumissions", valeur: mesSoumissions.length, icon: FileSignature },
-  { libelle: "Notifications", valeur: notifications.filter((n) => !n.lu).length, icon: Bell },
-];
+interface Candidature {
+  id: number;
+  status: "EN_COURS" | "ACCEPTE" | "REFUSE";
+  submittedAt: string;
+  career: { name: string };
+}
+
+interface Submission {
+  id: number;
+  status: "EN_COURS" | "ACCEPTE" | "REFUSE";
+  submittedAt: string;
+  tendersCall: { code: string; name: string };
+}
+
+interface Notification {
+  id: number;
+  title: string;
+  isRead: boolean;
+  createdAt: string;
+}
 
 export default function Portail() {
+  const { user } = useAuth();
+  const { data: reclamations } = useApiOne<Claim[]>(user ? "/claims/me" : null);
+  const { data: candidatures } = useApiOne<Candidature[]>(user ? "/candidatures/me" : null);
+  const { data: soumissions } = useApiOne<Submission[]>(user ? "/submissions/me" : null);
+  const { data: notifications } = useApiList<Notification>(user ? "/notifications?pageSize=50" : null);
+
+  const mesReclamations = reclamations ?? [];
+  const mesCandidatures = candidatures ?? [];
+  const mesSoumissions = soumissions ?? [];
+
+  const resume = [
+    { libelle: "Réclamations", valeur: mesReclamations.length, icon: MessageSquareWarning },
+    { libelle: "Candidatures", valeur: mesCandidatures.length, icon: Briefcase },
+    { libelle: "Soumissions", valeur: mesSoumissions.length, icon: FileSignature },
+    { libelle: "Notifications", valeur: notifications.filter((n) => !n.isRead).length, icon: Bell },
+  ];
+
+  if (!user) {
+    return (
+      <div className="container-content section-y text-center text-sm text-muted-foreground">
+        Connectez-vous pour accéder à votre portail usager.
+      </div>
+    );
+  }
+
   return (
     <>
-      <PageHero surtitre="Espace personnel" titre="Portail usager" description="Bienvenue, Mamadou Diallo. Retrouvez ici l'ensemble de vos dossiers en cours auprès de l'Autorité.">
+      <PageHero
+        surtitre="Espace personnel"
+        titre="Portail usager"
+        description={`Bienvenue, ${user.fullname}. Retrouvez ici l'ensemble de vos dossiers en cours auprès de l'Autorité.`}
+      >
         <div className="inline-flex items-center gap-3 rounded-full bg-primary-foreground/10 px-4 py-2 text-sm">
-          <UserRound className="size-4" aria-hidden /> mamadou.diallo@exemple.gn
+          <UserRound className="size-4" aria-hidden /> {user.email}
         </div>
       </PageHero>
 
@@ -52,7 +105,13 @@ export default function Portail() {
             <TabsContent value="reclamations" className="mt-6">
               <Tableau
                 colonnes={["Référence", "Nature", "Opérateur", "Date", "Statut"]}
-                lignes={mesReclamations.map((r) => [r.id, r.type, r.operateur, formaterDate(r.date), <StatutBadge key={r.id} statut={r.statut} />])}
+                lignes={mesReclamations.map((r) => [
+                  `REC-${r.id}`,
+                  r.claimType,
+                  r.concernedOperator,
+                  formaterDate(r.createdAt),
+                  <StatutBadge key={r.id} statut={r.status} />,
+                ])}
                 vide="Aucune réclamation déposée."
                 action={{ to: "/reclamations", label: "Déposer une réclamation" }}
               />
@@ -61,7 +120,12 @@ export default function Portail() {
             <TabsContent value="candidatures" className="mt-6">
               <Tableau
                 colonnes={["Référence", "Poste", "Date", "Statut"]}
-                lignes={mesCandidatures.map((c) => [c.id, c.poste, formaterDate(c.date), <StatutBadge key={c.id} statut={c.statut} />])}
+                lignes={mesCandidatures.map((c) => [
+                  `CAND-${c.id}`,
+                  c.career.name,
+                  formaterDate(c.submittedAt),
+                  <StatutBadge key={c.id} statut={c.status} />,
+                ])}
                 vide="Aucune candidature en cours."
                 action={{ to: "/carrieres", label: "Voir les offres" }}
               />
@@ -70,7 +134,12 @@ export default function Portail() {
             <TabsContent value="soumissions" className="mt-6">
               <Tableau
                 colonnes={["Référence", "Appel d'offres", "Date", "Statut"]}
-                lignes={mesSoumissions.map((s) => [s.id, s.appel, formaterDate(s.date), <StatutBadge key={s.id} statut={s.statut} />])}
+                lignes={mesSoumissions.map((s) => [
+                  `SUB-${s.id}`,
+                  s.tendersCall.name,
+                  formaterDate(s.submittedAt),
+                  <StatutBadge key={s.id} statut={s.status} />,
+                ])}
                 vide="Aucune soumission enregistrée."
                 action={{ to: "/appels-offres", label: "Voir les appels d'offres" }}
               />
@@ -80,13 +149,16 @@ export default function Portail() {
               <ul className="divide-y divide-border border-y border-border">
                 {notifications.map((n) => (
                   <li key={n.id} className="flex items-start gap-4 p-5">
-                    <span className={n.lu ? "mt-1.5 size-2 shrink-0 rounded-full bg-border" : "mt-1.5 size-2 shrink-0 rounded-full bg-primary"} />
+                    <span className={n.isRead ? "mt-1.5 size-2 shrink-0 rounded-full bg-border" : "mt-1.5 size-2 shrink-0 rounded-full bg-primary"} />
                     <div className="min-w-0">
-                      <p className={n.lu ? "text-sm text-muted-foreground" : "text-sm font-medium"}>{n.titre}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{formaterDate(n.date)}</p>
+                      <p className={n.isRead ? "text-sm text-muted-foreground" : "text-sm font-medium"}>{n.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formaterDate(n.createdAt)}</p>
                     </div>
                   </li>
                 ))}
+                {notifications.length === 0 && (
+                  <li className="p-8 text-center text-sm text-muted-foreground">Aucune notification.</li>
+                )}
               </ul>
             </TabsContent>
           </Tabs>
@@ -103,7 +175,7 @@ function Tableau({
   action,
 }: {
   colonnes: string[];
-  lignes: React.ReactNode[][];
+  lignes: ReactNode[][];
   vide: string;
   action: { to: string; label: string };
 }) {
@@ -148,4 +220,3 @@ function Tableau({
     </div>
   );
 }
-

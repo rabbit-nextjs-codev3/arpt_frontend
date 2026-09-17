@@ -1,28 +1,67 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useState } from "react";
-import { Download, Eye, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Eye, Search } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formaterDate, reglementations } from "@/data/mock";
+import { formaterDate } from "@/data/mock";
+import { api, ApiError, type PaginatedResult } from "@/lib/api";
 
-
-const categories = ["Toutes", "Loi", "Décret", "Arrêté", "Décision", "Directive"];
+interface Reglementation {
+  id: number;
+  uid: string;
+  name: string;
+  description: string;
+  category: string;
+  format: string;
+  isPopular: boolean;
+  dateUpload: string;
+  views: number;
+  fileUrl: string;
+}
 
 export default function Reglementation() {
   const [categorie, setCategorie] = useState("Toutes");
   const [recherche, setRecherche] = useState("");
+  const [textes, setTextes] = useState<Reglementation[]>([]);
+  const [chargement, setChargement] = useState(true);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  useEffect(() => {
+    let annule = false;
+    setChargement(true);
+    api
+      .get<PaginatedResult<Reglementation>>("/regulations?lang=fr&pageSize=100")
+      .then((res) => {
+        if (!annule) setTextes(res.results);
+      })
+      .catch((err: unknown) => {
+        if (!annule) setErreur(err instanceof ApiError ? err.message : "Impossible de charger les textes.");
+      })
+      .finally(() => {
+        if (!annule) setChargement(false);
+      });
+    return () => {
+      annule = true;
+    };
+  }, []);
+
+  const categories = useMemo(
+    () => ["Toutes", ...Array.from(new Set(textes.map((t) => t.category)))],
+    [textes],
+  );
 
   const resultats = useMemo(
     () =>
-      reglementations.filter(
+      textes.filter(
         (r) =>
-          (categorie === "Toutes" || r.categorie === categorie) &&
-          r.nom.toLowerCase().includes(recherche.toLowerCase()),
+          (categorie === "Toutes" || r.category === categorie) &&
+          r.name.toLowerCase().includes(recherche.toLowerCase()),
       ),
-    [categorie, recherche],
+    [textes, categorie, recherche],
   );
 
   return (
@@ -65,35 +104,47 @@ export default function Reglementation() {
           </div>
 
           <div className="mt-8 border-y border-border">
-            <ul className="divide-y divide-border">
-              {resultats.map((r) => (
-                <li key={r.id} className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                  <div className="min-w-0">
-                    <p className="font-medium">{r.nom}</p>
-                    <p className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span className="rounded-full bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
-                        {r.categorie}
-                      </span>
-                      <span>{formaterDate(r.date)}</span>
-                      <span className="inline-flex items-center gap-1">
-                        <Eye className="size-3.5" aria-hidden /> {r.vues.toLocaleString("fr-FR")} vues
-                      </span>
-                      <span>{r.format}</span>
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" className="justify-self-start sm:justify-self-end">
-                    <Download className="size-4" aria-hidden /> Télécharger
-                  </Button>
-                </li>
-              ))}
-              {resultats.length === 0 && (
-                <li className="p-8 text-center text-sm text-muted-foreground">Aucun texte ne correspond à votre recherche.</li>
-              )}
-            </ul>
+            {chargement && (
+              <p className="p-8 text-center text-sm text-muted-foreground">Chargement des textes…</p>
+            )}
+            {erreur && !chargement && (
+              <p className="p-8 text-center text-sm text-destructive">{erreur}</p>
+            )}
+            {!chargement && !erreur && (
+              <ul className="divide-y divide-border">
+                {resultats.map((r) => (
+                  <li key={r.uid} className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <p className="font-medium">{r.name}</p>
+                      {r.description && (
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{r.description}</p>
+                      )}
+                      <p className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span className="rounded-full bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
+                          {r.category}
+                        </span>
+                        <span>{formaterDate(r.dateUpload)}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="size-3.5" aria-hidden /> {r.views.toLocaleString("fr-FR")} vues
+                        </span>
+                        <span>{r.format}</span>
+                      </p>
+                    </div>
+                    <Button asChild variant="outline" size="sm" className="justify-self-start sm:justify-self-end">
+                      <Link href={`/reglementation/${r.uid}`}>
+                        Voir plus <ArrowRight className="size-4" aria-hidden />
+                      </Link>
+                    </Button>
+                  </li>
+                ))}
+                {resultats.length === 0 && (
+                  <li className="p-8 text-center text-sm text-muted-foreground">Aucun texte ne correspond à votre recherche.</li>
+                )}
+              </ul>
+            )}
           </div>
         </div>
       </section>
     </>
   );
 }
-

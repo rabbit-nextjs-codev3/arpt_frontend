@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { 
   Clock, Mail, MapPin, Phone, CheckCircle2, ArrowUpRight, Navigation, 
-  User, MessageSquare, Loader2, ClipboardList, ShieldCheck
+  User, MessageSquare, Loader2, ClipboardList
 } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Button } from "@/components/ui/button";
@@ -18,18 +18,19 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { contactArpt } from "@/data/mock";
+import { api, ApiError } from "@/lib/api";
+import { useApiOne } from "@/lib/hooks";
 
-const coordonnees = [
-  { icon: MapPin, libelle: "Adresse", valeur: contactArpt.adresse },
-  { icon: Phone, libelle: "Téléphone", valeur: contactArpt.telephone },
-  { icon: Mail, libelle: "Courriel", valeur: contactArpt.email },
-  { icon: Clock, libelle: "Horaires", valeur: contactArpt.horaires },
-];
+interface SiteConfigPublic {
+  contactInfo: { address?: { fr?: string }; phone?: string; email?: string; hours?: { fr?: string } };
+}
 
-const mapQuery = encodeURIComponent("ARPT, Centre Directionnel de Koloma, Conakry, Guinée");
-const mapUrl = `https://www.google.com/maps?q=${mapQuery}&z=16&output=embed`;
-const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`;
+const CONTACT_DEFAUT = {
+  adresse: "Immeuble ARPT, Centre Directionnel de Koloma, Conakry, République de Guinée",
+  telephone: "+224 669 221 000",
+  email: "contact@arpt.gov.gn",
+  horaires: "Lundi – Vendredi, 08h00 – 17h00",
+};
 
 // 6 common tech regulatory complaints
 const motifReclamations = [
@@ -42,8 +43,25 @@ const motifReclamations = [
 ];
 
 export default function Contact() {
+  const { data: config } = useApiOne<SiteConfigPublic>("/site-config");
+  const contactArpt = {
+    adresse: config?.contactInfo?.address?.fr || CONTACT_DEFAUT.adresse,
+    telephone: config?.contactInfo?.phone || CONTACT_DEFAUT.telephone,
+    email: config?.contactInfo?.email || CONTACT_DEFAUT.email,
+    horaires: config?.contactInfo?.hours?.fr || CONTACT_DEFAUT.horaires,
+  };
+  const coordonnees = [
+    { icon: MapPin, libelle: "Adresse", valeur: contactArpt.adresse },
+    { icon: Phone, libelle: "Téléphone", valeur: contactArpt.telephone },
+    { icon: Mail, libelle: "Courriel", valeur: contactArpt.email },
+    { icon: Clock, libelle: "Horaires", valeur: contactArpt.horaires },
+  ];
+  const mapQuery = encodeURIComponent(contactArpt.adresse);
+  const mapUrl = `https://www.google.com/maps?q=${mapQuery}&z=16&output=embed`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`;
   const [envoye, setEnvoye] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [erreur, setErreur] = useState("");
   const [formData, setFormData] = useState({
     nom: "",
     email: "",
@@ -62,15 +80,25 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setErreur("");
     setIsSubmitting(true);
-    
-    // Simulate network request (replace with your actual API call)
-    // console.log("Submitting:", formData);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    setEnvoye(true);
-    toast.success("Votre réclamation a bien été envoyée.");
+
+    const motif = motifReclamations.find((m) => m.value === formData.objet)?.label ?? formData.objet;
+
+    try {
+      await api.post("/contact", {
+        name: formData.nom,
+        email: formData.email,
+        subject: motif,
+        message: formData.message,
+      });
+      setEnvoye(true);
+      toast.success("Votre message a bien été envoyé.");
+    } catch (err) {
+      setErreur(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -128,8 +156,7 @@ export default function Contact() {
               })}
             </div>
 
-            <div className="flex gap-3 border-t border-border bg-surface px-6 py-5">
-              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
+            <div className="border-t border-border bg-surface px-6 py-5">
               <p className="text-xs leading-5 text-muted-foreground">
                 Vos informations sont utilisées uniquement pour traiter votre demande.
               </p>
@@ -180,7 +207,7 @@ export default function Contact() {
                         className="h-11 bg-background pl-10 transition-all focus-visible:border-primary focus-visible:ring-primary/20" 
                         required 
                         maxLength={120} 
-                        placeholder="Ex. : Jean Dupont" 
+                        placeholder="Ex. : Fanta DIALLO" 
                       />
                     </div>
                   </div>
@@ -198,7 +225,7 @@ export default function Contact() {
                         className="h-11 bg-background pl-10 transition-all focus-visible:border-primary focus-visible:ring-primary/20" 
                         required 
                         maxLength={255} 
-                        placeholder="jean@exemple.com" 
+                        placeholder="fanta@exemple.com" 
                       />
                     </div>
                   </div>
@@ -246,6 +273,12 @@ export default function Contact() {
                     {formData.message.length}/2000 caractères
                   </p>
                 </div>
+
+                {erreur && (
+                  <p className="text-sm text-destructive sm:col-span-2" role="alert">
+                    {erreur}
+                  </p>
+                )}
 
                 <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs leading-5 text-muted-foreground">

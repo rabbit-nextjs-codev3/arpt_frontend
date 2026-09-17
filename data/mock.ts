@@ -348,6 +348,8 @@ export const appelsOffres = [
     id: 1,
     code: "AO-2026-014",
     nom: "Fourniture d'un système de supervision du spectre radioélectrique",
+    description:
+      "Acquisition et installation d'un système de mesure et de surveillance du spectre couvrant les huit régions administratives, incluant la formation des équipes techniques. Le marché comprend également la maintenance corrective et évolutive sur trois ans ainsi que l'intégration avec les outils de contrôle déjà déployés par l'Autorité.",
     categorie: "Fournitures",
     statut: "OUVERT" as const,
     publication: "2026-08-18",
@@ -360,6 +362,8 @@ export const appelsOffres = [
     id: 2,
     code: "AO-2026-011",
     nom: "Audit organisationnel et fonctionnel des directions techniques",
+    description:
+      "Diagnostic des processus internes, des effectifs et des outils des directions techniques, avec recommandations d'optimisation à horizon 2027. Le cabinet retenu conduira des entretiens avec l'ensemble des directions concernées et proposera un plan de mise en œuvre priorisé sur dix-huit mois.",
     categorie: "Services",
     statut: "OUVERT" as const,
     publication: "2026-07-28",
@@ -372,6 +376,8 @@ export const appelsOffres = [
     id: 3,
     code: "AO-2026-006",
     nom: "Travaux de réhabilitation du centre de contrôle de Kankan",
+    description:
+      "Rénovation du bâtiment, mise aux normes électriques et remplacement des équipements de contrôle du centre régional de Kankan. Les travaux incluent la réfection de la toiture, l'installation d'un groupe électrogène de secours et la sécurisation périmétrique du site.",
     categorie: "Travaux",
     statut: "CLOTURE" as const,
     publication: "2026-04-10",
@@ -396,7 +402,7 @@ export const offresEmploi = [
     nouveau: true,
     candidats: 24,
     description:
-      "Vous participez à la planification, à l'assignation et au contrôle du spectre radioélectrique national, en lien avec les opérateurs et les instances internationales.",
+      "Vous participez à la planification, à l'assignation et au contrôle du spectre radioélectrique national, en lien avec les opérateurs et les instances internationales. Vous intervenez aussi bien sur les dossiers techniques que sur le terrain, lors des campagnes de mesure, et contribuez à la préparation des positions guinéennes dans les négociations internationales sur le spectre.",
     missions: [
       "Instruire les demandes d'assignation de fréquences",
       "Conduire les campagnes de contrôle et de mesure sur le terrain",
@@ -424,7 +430,7 @@ export const offresEmploi = [
     nouveau: true,
     candidats: 37,
     description:
-      "Vous sécurisez juridiquement les décisions de l'Autorité et accompagnez l'élaboration des textes réglementaires du secteur.",
+      "Vous sécurisez juridiquement les décisions de l'Autorité et accompagnez l'élaboration des textes réglementaires du secteur. Vous travaillez en lien étroit avec les directions techniques pour anticiper les risques contentieux et représentez l'Autorité dans les procédures impliquant les opérateurs ou les instances de tutelle.",
     missions: [
       "Rédiger avis, décisions et projets de textes",
       "Assurer le suivi des contentieux sectoriels",
@@ -452,7 +458,7 @@ export const offresEmploi = [
     nouveau: false,
     candidats: 12,
     description:
-      "Vous traitez les réclamations des usagers, analysez les tendances et proposez des mesures correctives auprès des opérateurs.",
+      "Vous traitez les réclamations des usagers, analysez les tendances et proposez des mesures correctives auprès des opérateurs. Basé à Kindia, vous couvrez plusieurs préfectures de l'intérieur et menez des actions de sensibilisation auprès du public sur ses droits en tant que consommateur de services télécoms et postaux.",
     missions: [
       "Instruire les réclamations reçues via le portail",
       "Produire les tableaux de bord mensuels de traitement",

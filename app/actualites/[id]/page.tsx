@@ -4,21 +4,39 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CalendarDays, Eye, ArrowUpRight } from "lucide-react";
-import { actualites, formaterDate } from "@/data/mock";
+import { formaterDate } from "@/data/mock";
+import { useApiOne, useApiList } from "@/lib/hooks";
+
+interface News {
+  id: number;
+  uid: string;
+  title: string;
+  content: string;
+  views: number;
+  createdAt: string;
+  imageUrl: string | null;
+}
 
 export default function Article() {
   const { id } = useParams<{ id: string }>();
-  const article = actualites.find((a) => String(a.id) === id);
-  if (!article) return (
-    <div className="container-content section-y text-center">
-      <h1 className="text-2xl font-bold">Article introuvable</h1>
-      <Link href="/actualites" className="mt-4 inline-block text-primary hover:underline">
-        Retour aux actualités
-      </Link>
-    </div>
-  );
+  const { data: article, loading, error } = useApiOne<News>(id ? `/news/${id}?lang=fr` : null);
+  const { data: autres } = useApiList<News>("/news?lang=fr&pageSize=10");
+  const related = autres.filter((item) => item.uid !== id);
 
-  const related = actualites.filter((item) => item.id !== article.id);
+  if (loading) {
+    return <div className="container-content section-y text-center text-sm text-muted-foreground">Chargement…</div>;
+  }
+
+  if (error || !article) {
+    return (
+      <div className="container-content section-y text-center">
+        <h1 className="text-2xl font-bold">Article introuvable</h1>
+        <Link href="/actualites" className="mt-4 inline-block text-primary hover:underline">
+          Retour aux actualités
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <main className="section-y">
@@ -30,19 +48,20 @@ export default function Article() {
 
           <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             <div className="relative aspect-video bg-muted">
-              <Image src={article.image} alt="" fill priority sizes="(min-width: 1024px) 65vw, 100vw" className="object-cover" />
+              {article.imageUrl && (
+                <Image src={article.imageUrl} alt="" fill priority sizes="(min-width: 1024px) 65vw, 100vw" className="object-cover" />
+              )}
             </div>
             <div className="px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span className="rounded-full bg-accent px-2.5 py-0.5 font-semibold text-accent-foreground">{article.categorie}</span>
-                <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" aria-hidden /> {formaterDate(article.date)}</span>
-                <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5" aria-hidden /> {article.vues.toLocaleString("fr-FR")} vues</span>
+                <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" aria-hidden /> {formaterDate(article.createdAt)}</span>
+                <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5" aria-hidden /> {article.views.toLocaleString("fr-FR")} vues</span>
               </div>
-              <h1 className="mt-5 max-w-4xl text-3xl leading-tight font-bold tracking-tight md:text-5xl">{article.titre}</h1>
-              <p className="mt-7 border-l-2 border-gold pl-5 text-lg leading-8 text-muted-foreground">{article.extrait}</p>
-              <div className="mt-8 max-w-[68ch] text-base leading-8 text-foreground/85">
-                <p>{article.contenu}</p>
-              </div>
+              <h1 className="mt-5 max-w-4xl text-3xl leading-tight font-bold tracking-tight md:text-5xl">{article.title}</h1>
+              <div
+                className="prose prose-sm mt-8 max-w-[68ch] text-base leading-8 text-foreground/85"
+                dangerouslySetInnerHTML={{ __html: article.content }}
+              />
             </div>
           </div>
         </article>
@@ -54,14 +73,16 @@ export default function Article() {
           </div>
           <div className="mt-6 divide-y divide-border">
             {related.map((item) => (
-              <Link key={item.id} href={`/actualites/${item.id}`} className="group block py-5 first:pt-0">
+              <Link key={item.uid} href={`/actualites/${item.uid}`} className="group block py-5 first:pt-0">
                 <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-                  <Image src={item.image} alt="" fill sizes="(min-width: 1024px) 20rem, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                  {item.imageUrl && (
+                    <Image src={item.imageUrl} alt="" fill sizes="(min-width: 1024px) 20rem, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                  )}
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3 text-[11px] font-semibold tracking-wide text-primary uppercase">
-                  <span>{item.categorie}</span><span className="text-muted-foreground">{formaterDate(item.date)}</span>
+                  <span>{formaterDate(item.createdAt)}</span>
                 </div>
-                <h3 className="mt-2 font-heading text-base leading-snug font-semibold transition-colors group-hover:text-primary">{item.titre}</h3>
+                <h3 className="mt-2 font-heading text-base leading-snug font-semibold transition-colors group-hover:text-primary">{item.title}</h3>
                 <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors group-hover:text-primary">Lire l'article <ArrowUpRight className="size-3.5" aria-hidden /></span>
               </Link>
             ))}

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, ShieldCheck, LayoutDashboard, UserRound } from "lucide-react";
+import { Menu, X, ShieldCheck, LayoutDashboard, UserRound, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthTrigger } from "@/components/site/AuthModal";
+import { useAuth } from "@/lib/auth";
 
 const liens = [
   { to: "/", label: "Accueil" },
@@ -24,6 +25,7 @@ const liens = [
 export function Header() {
   const [ouvert, setOuvert] = useState(false);
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
@@ -42,16 +44,32 @@ export function Header() {
         </Link>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
-            <AuthTrigger>
-              <UserRound className="size-4" aria-hidden /> Se connecter
-            </AuthTrigger>
-          </Button>
-          <Button asChild size="sm" className="hidden md:inline-flex">
-            <Link href="/admin">
-              <LayoutDashboard className="size-4" aria-hidden /> Administration
-            </Link>
-          </Button>
+          {user ? (
+            <>
+              <Link
+                href="/portail"
+                className="hidden items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:text-primary md:inline-flex"
+              >
+                <UserRound className="size-4" aria-hidden /> {user.fullname.split(" ")[0]}
+              </Link>
+              <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => logout()}>
+                <LogOut className="size-4" aria-hidden /> Déconnexion
+              </Button>
+            </>
+          ) : (
+            <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+              <AuthTrigger>
+                <UserRound className="size-4" aria-hidden /> Se connecter
+              </AuthTrigger>
+            </Button>
+          )}
+          {user?.isStaff && (
+            <Button asChild size="sm" className="hidden md:inline-flex">
+              <Link href="/admin">
+                <LayoutDashboard className="size-4" aria-hidden /> Administration
+              </Link>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="icon"
@@ -92,12 +110,23 @@ export function Header() {
               </Link>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <Button asChild variant="outline" size="sm">
-                <AuthTrigger>Se connecter</AuthTrigger>
-              </Button>
-              <Button asChild size="sm" onClick={() => setOuvert(false)}>
-                <Link href="/admin">Administration</Link>
-              </Button>
+              {user ? (
+                <>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/portail" onClick={() => setOuvert(false)}>{user.fullname.split(" ")[0]}</Link>
+                  </Button>
+                  <Button size="sm" onClick={() => { logout(); setOuvert(false); }}>Déconnexion</Button>
+                </>
+              ) : (
+                <Button asChild variant="outline" size="sm">
+                  <AuthTrigger>Se connecter</AuthTrigger>
+                </Button>
+              )}
+              {user?.isStaff && (
+                <Button asChild size="sm" onClick={() => setOuvert(false)}>
+                  <Link href="/admin">Administration</Link>
+                </Button>
+              )}
             </div>
           </div>
         </nav>
