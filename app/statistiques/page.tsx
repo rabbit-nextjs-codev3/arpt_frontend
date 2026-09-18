@@ -22,12 +22,15 @@ const HERO_DEFAUT: HeroContent = {
 interface Overview {
   year: number;
   availableYears: number[];
+  // Chaque champ est optionnel côté admin (voir PointStatistiqueForm) — un
+  // point statistique n'a pas forcément toutes ses valeurs renseignées, et
+  // kpis lui-même est absent si l'année n'a aucun point mensuel.
   kpis: {
-    subscribersMillion: number;
-    penetrationRate: number;
-    activeOperators: number;
-    active4GSites: number;
-  };
+    subscribersMillion: number | null;
+    penetrationRate: number | null;
+    activeOperators: number | null;
+    active4GSites: number | null;
+  } | null;
   monthlySeries: { month: number; subscribersMillion: number }[];
   quarterlySeries: { year: number; quarter: number; revenueBillionGNF: number }[];
 }
@@ -39,12 +42,12 @@ export default function Statistiques() {
   const { data: hero } = useContentBlock<HeroContent>("statistics.hero", HERO_DEFAUT);
   const { data: overview, loading, error } = useApiOne<Overview>(`/statistics/overview?lang=${locale}`);
 
-  const indicateurs = overview
+  const indicateurs = overview?.kpis
     ? [
-        { libelle: t("mobileSubscribers"), valeur: `${overview.kpis.subscribersMillion.toLocaleString(locale)} M` },
-        { libelle: t("penetrationRate"), valeur: `${overview.kpis.penetrationRate} %` },
-        { libelle: t("activeOperators"), valeur: `${overview.kpis.activeOperators}` },
-        { libelle: t("active4GSites"), valeur: overview.kpis.active4GSites.toLocaleString(locale) },
+        { libelle: t("mobileSubscribers"), valeur: overview.kpis.subscribersMillion != null ? `${overview.kpis.subscribersMillion.toLocaleString(locale)} M` : "—" },
+        { libelle: t("penetrationRate"), valeur: overview.kpis.penetrationRate != null ? `${overview.kpis.penetrationRate} %` : "—" },
+        { libelle: t("activeOperators"), valeur: overview.kpis.activeOperators != null ? `${overview.kpis.activeOperators}` : "—" },
+        { libelle: t("active4GSites"), valeur: overview.kpis.active4GSites != null ? overview.kpis.active4GSites.toLocaleString(locale) : "—" },
       ]
     : [];
 
