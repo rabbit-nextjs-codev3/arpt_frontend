@@ -25,6 +25,11 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string, context?: "admin" | "public") => Promise<AuthUser>;
   register: (fullname: string, email: string, password: string, password2: string) => Promise<void>;
+  // Contrairement à register() : ne connecte jamais automatiquement — le
+  // compte créé reste bloqué jusqu'à validation d'un admin, voir le backend
+  // AuthService.registerEnterprise. `body` porte déjà tous les champs
+  // (email, fullname, companyName, password, password2, companyDocument).
+  registerEnterprise: (body: FormData) => Promise<{ detail: string }>;
   logout: () => Promise<void>;
   hasPermission: (action: string) => boolean;
   refreshUser: () => Promise<void>;
@@ -69,6 +74,10 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   }, []);
 
+  const registerEnterprise = useCallback(async (body: FormData) => {
+    return apiFetch<{ detail: string }>("/auth/register/enterprise", { method: "POST", body });
+  }, []);
+
   const logout = useCallback(async () => {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
     // Révoque le refresh token côté serveur avant d'effacer le token d'accès
@@ -94,7 +103,9 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, hasPermission, refreshUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, registerEnterprise, logout, hasPermission, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

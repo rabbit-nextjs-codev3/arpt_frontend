@@ -3140,6 +3140,11 @@ interface UserAdmin {
   isStaff: boolean;
   isSuperuser: boolean;
   dateJoined: string;
+  accountType: "PARTICULIER" | "ENTREPRISE";
+  companyName: string | null;
+  hasCompanyDocument: boolean;
+  enterpriseApprovalStatus: "EN_ATTENTE" | "APPROUVE" | "REJETE" | null;
+  rejectionReason: string | null;
 }
 
 interface RoleOption {
@@ -3355,6 +3360,108 @@ function RolesAdmin() {
   );
 }
 
+function EntrepriseDocumentLink({ userId }: { userId: number }) {
+  const [pending, setPending] = useState(false);
+
+  async function voir() {
+    setPending(true);
+    try {
+      const res = await apiFetch<{ url: string }>(`/users/${userId}/company-document`);
+      window.open(res.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Impossible d'ouvrir le document.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <button type="button" onClick={voir} disabled={pending} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+      Voir le document
+    </button>
+  );
+}
+
+function EntreprisesEnAttenteAdmin({ onUpdated }: { onUpdated: () => void }) {
+  const { data: demandes, loading, error, refetch } = useApiList<UserAdmin>(
+    "/users?accountType=ENTREPRISE&enterpriseApprovalStatus=EN_ATTENTE&pageSize=100",
+  );
+  const [pendingId, setPendingId] = useState<number | null>(null);
+
+  function refresh() {
+    refetch();
+    onUpdated();
+  }
+
+  async function approuver(id: number) {
+    setPendingId(id);
+    try {
+      await apiFetch(`/users/${id}/enterprise-approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "APPROUVE" }),
+      });
+      toast.success("Compte entreprise validé.");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function rejeter(id: number) {
+    const reason = window.prompt("Motif du rejet (visible par le demandeur) :");
+    if (!reason || !reason.trim()) return;
+    setPendingId(id);
+    try {
+      await apiFetch(`/users/${id}/enterprise-approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "REJETE", reason: reason.trim() }),
+      });
+      toast.success("Compte entreprise rejeté.");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  if (loading) return null;
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (demandes.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <Briefcase className="size-4 text-primary" aria-hidden />
+        <h2 className="font-heading text-lg font-semibold">Comptes entreprise en attente</h2>
+        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+          {demandes.length}
+        </span>
+      </div>
+      <TableauAdmin
+        codeColumn={false}
+        colonnes={["Entreprise", "Demandeur", "Document", "Inscrit le", "Actions"]}
+        lignes={demandes.map((u) => [
+          u.companyName ?? "—",
+          `${u.fullname} (${u.email})`,
+          u.hasCompanyDocument ? <EntrepriseDocumentLink key={u.id} userId={u.id} /> : "—",
+          formaterDate(u.dateJoined),
+          <div key={u.id} className="flex items-center gap-2">
+            <Button size="sm" disabled={pendingId === u.id} onClick={() => approuver(u.id)}>
+              Approuver
+            </Button>
+            <Button size="sm" variant="outline" disabled={pendingId === u.id} onClick={() => rejeter(u.id)}>
+              Rejeter
+            </Button>
+          </div>,
+        ])}
+      />
+    </div>
+  );
+}
+
 function UtilisateursAdmin() {
   const { data: users, loading, error, refetch } = useApiList<UserAdmin>("/users?pageSize=100");
   const { data: roles } = useApiOne<RoleOption[]>("/roles");
@@ -3364,13 +3471,15 @@ function UtilisateursAdmin() {
 
   return (
     <div className="mt-8 grid gap-10">
+      <EntreprisesEnAttenteAdmin onUpdated={refetch} />
       <div>
         <h2 className="font-heading text-lg font-semibold">Utilisateurs</h2>
         <TableauAdmin
           codeColumn={false}
-          colonnes={["Utilisateur", "Rôle", "Inscrit le", "État"]}
+          colonnes={["Utilisateur", "Type", "Rôle", "Inscrit le", "État"]}
           lignes={users.map((u) => [
             `${u.fullname} (${u.email})`,
+            u.accountType === "ENTREPRISE" ? (u.companyName ?? "Entreprise") : "Particulier",
             <UserRoleSelect key={u.id} user={u} roles={roles ?? []} onUpdated={refetch} />,
             formaterDate(u.dateJoined),
             <UserActiveToggle key={u.id} user={u} onUpdated={refetch} />,
