@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -37,6 +37,7 @@ import {
   TrendingUp,
   Users,
   Vote,
+  X,
 } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Group, Panel, Separator } from "react-resizable-panels";
@@ -3575,6 +3576,7 @@ interface UserAdmin {
   isActive: boolean;
   isStaff: boolean;
   isSuperuser: boolean;
+  emailVerified: boolean;
   dateJoined: string;
   accountType: "PARTICULIER" | "ENTREPRISE";
   companyName: string | null;
@@ -3672,6 +3674,85 @@ function UserActiveToggle({ user, onUpdated }: { user: UserAdmin; onUpdated: () 
         <Puce label="Désactivé" tone="warning" />
       )}
     </button>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[9rem_1fr] gap-3 border-b border-border py-2 last:border-0">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-sm">{value}</dd>
+    </div>
+  );
+}
+
+const ENTREPRISE_STATUT_LABEL: Record<NonNullable<UserAdmin["enterpriseApprovalStatus"]>, string> = {
+  EN_ATTENTE: "En attente",
+  APPROUVE: "Approuvé",
+  REJETE: "Rejeté",
+};
+
+/** Lien "Voir" par ligne (Utilisateurs comme Comptes entreprise) — ouvre le détail complet du compte, pas résumable dans une seule cellule de tableau. */
+function VoirCompteButton({ user }: { user: UserAdmin }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => dialogRef.current?.showModal()}
+        className="text-xs font-medium text-primary hover:underline"
+      >
+        Voir
+      </button>
+      <dialog
+        ref={dialogRef}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) dialogRef.current?.close();
+        }}
+        className="w-full max-w-md rounded-xl border border-border bg-card p-0 text-card-foreground shadow-soft backdrop:bg-black/40"
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="font-heading text-base font-semibold">Détails du compte</h2>
+          <button
+            type="button"
+            onClick={() => dialogRef.current?.close()}
+            aria-label="Fermer"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+        <dl className="px-5 py-2">
+          <DetailRow label="Nom" value={user.fullname} />
+          <DetailRow label="Email" value={user.email} />
+          <DetailRow label="Email vérifié" value={user.emailVerified ? "Oui" : "Non"} />
+          <DetailRow label="Type de compte" value={user.accountType === "ENTREPRISE" ? "Entreprise" : "Particulier"} />
+          {user.accountType === "ENTREPRISE" && (
+            <>
+              <DetailRow label="Raison sociale" value={user.companyName ?? "—"} />
+              <DetailRow
+                label="Statut entreprise"
+                value={user.enterpriseApprovalStatus ? ENTREPRISE_STATUT_LABEL[user.enterpriseApprovalStatus] : "—"}
+              />
+              {user.rejectionReason && <DetailRow label="Motif de rejet" value={user.rejectionReason} />}
+              <DetailRow
+                label="Document"
+                value={user.hasCompanyDocument ? <EntrepriseDocumentLink userId={user.id} /> : "—"}
+              />
+            </>
+          )}
+          <DetailRow label="Rôle" value={user.isSuperuser ? "Super Admin" : (user.role?.name ?? "Aucun (usager)")} />
+          <DetailRow label="État" value={user.isActive ? "Actif" : "Désactivé"} />
+          <DetailRow label="Inscrit le" value={formaterDate(user.dateJoined)} />
+        </dl>
+        <div className="flex justify-end border-t border-border px-5 py-4">
+          <Button type="button" size="sm" variant="outline" onClick={() => dialogRef.current?.close()}>
+            Fermer
+          </Button>
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -3921,7 +4002,10 @@ function EntreprisesAdmin() {
           const statut = u.enterpriseApprovalStatus ? statutPuce[u.enterpriseApprovalStatus] : null;
           return [
             u.companyName ?? "—",
-            `${u.fullname} (${u.email})`,
+            <div key={u.id} className="flex items-center gap-2">
+              <span>{u.fullname} ({u.email})</span>
+              <VoirCompteButton user={u} />
+            </div>,
             u.hasCompanyDocument ? <EntrepriseDocumentLink key={u.id} userId={u.id} /> : "—",
             statut ? <Puce key={u.id} label={statut.label} tone={statut.tone} /> : "—",
             formaterDate(u.dateJoined),
@@ -4039,23 +4123,30 @@ function UtilisateursAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8 grid gap-10">
-      <EntreprisesAdmin />
-      <div>
+    <div className="mt-8 grid gap-6">
+      <section className="rounded-xl border border-border bg-card p-5">
+        <EntreprisesAdmin />
+      </section>
+      <section className="rounded-xl border border-border bg-card p-5">
         <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
         <TableauAdmin
           codeColumn={false}
           colonnes={["Utilisateur", "Type", "Rôle", "Inscrit le", "État"]}
           lignes={users.map((u) => [
-            `${u.fullname} (${u.email})`,
+            <div key={u.id} className="flex items-center gap-2">
+              <span>{u.fullname} ({u.email})</span>
+              <VoirCompteButton user={u} />
+            </div>,
             u.accountType === "ENTREPRISE" ? (u.companyName ?? "Entreprise") : "Particulier",
             <UserRoleSelect key={u.id} user={u} roles={roles ?? []} onUpdated={refetch} />,
             formaterDate(u.dateJoined),
             <UserActiveToggle key={u.id} user={u} onUpdated={refetch} />,
           ])}
         />
-      </div>
-      <RolesAdmin />
+      </section>
+      <section className="rounded-xl border border-border bg-card p-5">
+        <RolesAdmin />
+      </section>
     </div>
   );
 }
