@@ -2726,6 +2726,7 @@ function StatistiquesAdmin() {
           </ResponsiveContainer>
         </div>
       </div>
+      <PointsStatistiquesAdmin />
       {!loadingReports && (
         <TableauAdmin
           codeColumn={false}
@@ -2741,6 +2742,272 @@ function StatistiquesAdmin() {
             </a>,
           ])}
         />
+      )}
+    </div>
+  );
+}
+
+interface SectorStatisticEntry {
+  id: number;
+  year: number;
+  month: number | null;
+  quarter: number | null;
+  subscribersMillion: number | null;
+  penetrationRate: number | null;
+  activeOperators: number | null;
+  active4GSites: number | null;
+  internetSubscribersMillion: number | null;
+  internetPenetrationRate: number | null;
+  mobileMoneyPenetrationRate: number | null;
+  salariedJobs: number | null;
+  revenueBillionGNF: number | null;
+}
+
+const STAT_NUMBER_FIELDS = [
+  "subscribersMillion",
+  "penetrationRate",
+  "activeOperators",
+  "active4GSites",
+  "internetSubscribersMillion",
+  "internetPenetrationRate",
+  "mobileMoneyPenetrationRate",
+  "salariedJobs",
+  "revenueBillionGNF",
+] as const;
+
+/**
+ * Formulaire créer/modifier un point statistique — un point est soit mensuel
+ * (abonnés, pénétration, opérateurs actifs, sites 4G...) soit trimestriel
+ * (chiffre d'affaires), jamais les deux à la fois, voir le commentaire du
+ * modèle SectorStatistic côté backend. Tous les champs numériques sont
+ * optionnels : laisser un champ vide n'envoie pas la clé plutôt que 0, pour
+ * ne pas écraser une valeur existante par une fausse donnée à 0.
+ */
+function PointStatistiqueForm({
+  entry,
+  onDone,
+  onCancel,
+}: {
+  entry: SectorStatisticEntry | null;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [periodeType, setPeriodeType] = useState<"month" | "quarter">(entry?.quarter ? "quarter" : "month");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  async function enregistrer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+    const form = new FormData(event.currentTarget);
+    const nombre = (name: string) => {
+      const valeur = form.get(name);
+      return valeur !== null && String(valeur).trim() !== "" ? Number(valeur) : undefined;
+    };
+
+    const body: Record<string, unknown> = {
+      year: Number(form.get("year")),
+      month: periodeType === "month" ? Number(form.get("month")) : null,
+      quarter: periodeType === "quarter" ? Number(form.get("quarter")) : null,
+    };
+    for (const champ of STAT_NUMBER_FIELDS) body[champ] = nombre(champ);
+
+    setSubmitting(true);
+    try {
+      if (entry) {
+        await apiFetch(`/statistics/entries/${entry.id}`, { method: "PATCH", body: JSON.stringify(body) });
+        toast.success("Point statistique mis à jour.");
+      } else {
+        await apiFetch("/statistics/entries", { method: "POST", body: JSON.stringify(body) });
+        toast.success("Point statistique créé.");
+      }
+      onDone();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={enregistrer} className="grid gap-4 rounded-xl border border-primary/15 bg-surface p-5 shadow-soft">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-2">
+          <Label htmlFor="stat-year">Année *</Label>
+          <Input id="stat-year" name="year" type="number" required min={2000} defaultValue={entry?.year} />
+        </div>
+        <div className="grid gap-2">
+          <Label>Type de période *</Label>
+          <Select value={periodeType} onValueChange={(v) => setPeriodeType(v as "month" | "quarter")}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Mensuel (abonnés, pénétration…)</SelectItem>
+              <SelectItem value="quarter">Trimestriel (chiffre d'affaires)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {periodeType === "month" ? (
+          <div className="grid gap-2">
+            <Label htmlFor="stat-month">Mois *</Label>
+            <Select name="month" defaultValue={entry?.month ? String(entry.month) : undefined} required>
+              <SelectTrigger id="stat-month">
+                <SelectValue placeholder="Sélectionnez le mois" />
+              </SelectTrigger>
+              <SelectContent>
+                {MOIS_COURTS.map((m, i) => (
+                  <SelectItem key={m} value={String(i + 1)}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <Label htmlFor="stat-quarter">Trimestre *</Label>
+            <Select name="quarter" defaultValue={entry?.quarter ? String(entry.quarter) : undefined} required>
+              <SelectTrigger id="stat-quarter">
+                <SelectValue placeholder="Sélectionnez le trimestre" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4].map((q) => (
+                  <SelectItem key={q} value={String(q)}>
+                    T{q}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      {periodeType === "month" ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-2">
+            <Label htmlFor="stat-subscribersMillion">Abonnés mobile (M)</Label>
+            <Input id="stat-subscribersMillion" name="subscribersMillion" type="number" step="0.1" min={0} defaultValue={entry?.subscribersMillion ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-penetrationRate">Pénétration mobile (%)</Label>
+            <Input id="stat-penetrationRate" name="penetrationRate" type="number" step="0.1" min={0} defaultValue={entry?.penetrationRate ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-internetSubscribersMillion">Abonnés internet (M)</Label>
+            <Input id="stat-internetSubscribersMillion" name="internetSubscribersMillion" type="number" step="0.1" min={0} defaultValue={entry?.internetSubscribersMillion ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-internetPenetrationRate">Pénétration internet (%)</Label>
+            <Input id="stat-internetPenetrationRate" name="internetPenetrationRate" type="number" step="0.1" min={0} defaultValue={entry?.internetPenetrationRate ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-mobileMoneyPenetrationRate">Pénétration mobile money (%)</Label>
+            <Input id="stat-mobileMoneyPenetrationRate" name="mobileMoneyPenetrationRate" type="number" step="0.1" min={0} defaultValue={entry?.mobileMoneyPenetrationRate ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-salariedJobs">Emplois salariés</Label>
+            <Input id="stat-salariedJobs" name="salariedJobs" type="number" min={0} defaultValue={entry?.salariedJobs ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-activeOperators">Opérateurs actifs</Label>
+            <Input id="stat-activeOperators" name="activeOperators" type="number" min={0} defaultValue={entry?.activeOperators ?? undefined} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="stat-active4GSites">Sites 4G en service</Label>
+            <Input id="stat-active4GSites" name="active4GSites" type="number" min={0} defaultValue={entry?.active4GSites ?? undefined} />
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-2 sm:max-w-xs">
+          <Label htmlFor="stat-revenueBillionGNF">Chiffre d'affaires (milliards GNF)</Label>
+          <Input id="stat-revenueBillionGNF" name="revenueBillionGNF" type="number" step="0.1" min={0} defaultValue={entry?.revenueBillionGNF ?? undefined} />
+        </div>
+      )}
+
+      {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
+      <div className="flex gap-2">
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "Enregistrement…" : entry ? "Enregistrer les modifications" : "Créer le point"}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annuler
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function PointsStatistiquesAdmin() {
+  const { data: entries, loading, error, refetch } = useApiOne<SectorStatisticEntry[]>("/statistics/entries");
+  const [editing, setEditing] = useState<SectorStatisticEntry | "new" | null>(null);
+  const confirm = useConfirm();
+
+  async function supprimer(id: number) {
+    if (!(await confirm("Supprimer ce point statistique ?"))) return;
+    try {
+      await apiFetch(`/statistics/entries/${id}`, { method: "DELETE" });
+      toast.success("Point statistique supprimé.");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    }
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="font-heading text-lg font-semibold">Points statistiques</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Alimentent les chiffres affichés sur le site public (page d'accueil, observatoire du secteur).
+          </p>
+        </div>
+        {editing === null && (
+          <Button size="sm" onClick={() => setEditing("new")}>
+            + Nouveau point
+          </Button>
+        )}
+      </div>
+
+      {editing !== null && (
+        <div className="mt-4">
+          <PointStatistiqueForm
+            entry={editing === "new" ? null : editing}
+            onCancel={() => setEditing(null)}
+            onDone={() => {
+              setEditing(null);
+              refetch();
+            }}
+          />
+        </div>
+      )}
+
+      <TableauAdmin
+        codeColumn={false}
+        colonnes={["Période", "Abonnés mobile", "Pénétration mobile", "Abonnés internet", "Mobile money", "Emplois", "Actions"]}
+        lignes={(entries ?? []).map((e) => [
+          e.month ? `${MOIS_COURTS[e.month - 1]} ${e.year}` : `T${e.quarter} ${e.year}`,
+          e.subscribersMillion != null ? `${e.subscribersMillion} M` : "—",
+          e.penetrationRate != null ? `${e.penetrationRate} %` : "—",
+          e.internetSubscribersMillion != null ? `${e.internetSubscribersMillion} M` : "—",
+          e.mobileMoneyPenetrationRate != null ? `${e.mobileMoneyPenetrationRate} %` : "—",
+          e.salariedJobs != null ? e.salariedJobs.toLocaleString("fr-FR") : "—",
+          <div key={e.id} className="flex items-center gap-3">
+            <button type="button" onClick={() => setEditing(e)} className="text-xs font-medium text-primary hover:underline">
+              Modifier
+            </button>
+            <button type="button" onClick={() => supprimer(e.id)} className="text-xs font-medium text-destructive hover:underline">
+              Supprimer
+            </button>
+          </div>,
+        ])}
+      />
+      {(entries ?? []).length === 0 && (
+        <p className="mt-4 text-sm text-muted-foreground">Aucun point statistique pour le moment.</p>
       )}
     </div>
   );
