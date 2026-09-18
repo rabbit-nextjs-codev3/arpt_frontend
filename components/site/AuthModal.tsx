@@ -200,8 +200,12 @@ function AuthForm({ mode, onSuccess }: { mode: "signin" | "signup"; onSuccess: (
       <p className="text-center text-xs leading-5 text-muted-foreground sm:col-span-2">
         Retrouvez vos dossiers et poursuivez vos démarches.
         <br />
+        <Link href="/mot-de-passe" className="font-medium text-primary hover:underline">
+          Mot de passe oublié ?
+        </Link>
+        {" · "}
         <Link href="/compte-entreprise" className="font-medium text-primary hover:underline">
-          Compte entreprise rejeté ? Soumettre un nouveau document
+          Compte entreprise rejeté ?
         </Link>
       </p>
     )}

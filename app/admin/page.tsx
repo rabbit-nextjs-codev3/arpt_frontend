@@ -3462,6 +3462,90 @@ function EntreprisesEnAttenteAdmin({ onUpdated }: { onUpdated: () => void }) {
   );
 }
 
+function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCreated: () => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const membre = roles.find((r) => r.name === "Membre");
+  const [roleIdOverride, setRoleIdOverride] = useState<string | null>(null);
+  // "Membre" par défaut tant que l'admin n'a pas choisi un autre rôle —
+  // calculé plutôt que synchronisé via effet, roles arrivant après le
+  // premier rendu (useApiOne).
+  const roleId = roleIdOverride ?? (membre ? String(membre.id) : "");
+
+  async function creer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+    setSubmitting(true);
+    const data = new FormData(event.currentTarget);
+    try {
+      await apiFetch("/users", {
+        method: "POST",
+        body: JSON.stringify({
+          fullname: String(data.get("fullname")),
+          email: String(data.get("email")),
+          roleId: roleId ? Number(roleId) : undefined,
+        }),
+      });
+      toast.success("Utilisateur créé — un email lui a été envoyé pour définir son mot de passe.");
+      setShowForm(false);
+      setRoleIdOverride(null);
+      event.currentTarget.reset();
+      onCreated();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="font-heading text-lg font-semibold">Utilisateurs</h2>
+        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? "Annuler" : "+ Nouvel utilisateur"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={creer} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="new-user-fullname">Nom complet *</Label>
+            <Input id="new-user-fullname" name="fullname" required minLength={2} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="new-user-email">Adresse e-mail *</Label>
+            <Input id="new-user-email" name="email" type="email" required />
+          </div>
+          <div className="grid gap-2 sm:col-span-2">
+            <Label htmlFor="new-user-role">Rôle</Label>
+            <Select value={roleId} onValueChange={setRoleIdOverride}>
+              <SelectTrigger id="new-user-role">
+                <SelectValue placeholder="Membre (par défaut)" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={String(r.id)}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Aucun mot de passe à saisir : l&apos;utilisateur recevra un email pour définir le sien.
+          </p>
+          {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
+          <Button type="submit" disabled={submitting} className="justify-self-start">
+            {submitting ? "Création…" : "Créer l'utilisateur"}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function UtilisateursAdmin() {
   const { data: users, loading, error, refetch } = useApiList<UserAdmin>("/users?pageSize=100");
   const { data: roles } = useApiOne<RoleOption[]>("/roles");
@@ -3473,7 +3557,7 @@ function UtilisateursAdmin() {
     <div className="mt-8 grid gap-10">
       <EntreprisesEnAttenteAdmin onUpdated={refetch} />
       <div>
-        <h2 className="font-heading text-lg font-semibold">Utilisateurs</h2>
+        <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
         <TableauAdmin
           codeColumn={false}
           colonnes={["Utilisateur", "Type", "Rôle", "Inscrit le", "État"]}
@@ -3528,6 +3612,9 @@ function AdminLogin() {
           <Button type="submit" disabled={submitting} className="mt-1">
             {submitting ? "Connexion…" : "Se connecter"}
           </Button>
+          <Link href="/mot-de-passe" className="text-center text-xs font-medium text-primary hover:underline">
+            Première connexion ou mot de passe oublié ?
+          </Link>
         </div>
       </form>
     </div>
