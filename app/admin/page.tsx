@@ -198,12 +198,16 @@ interface MonthlyPoint {
 
 interface SectorOverview {
   year: number;
+  // Chaque champ est optionnel côté admin (voir PointStatistiqueForm) — un
+  // point statistique n'a pas forcément toutes ses valeurs renseignées, et
+  // kpis lui-même est absent si l'année n'a aucun point mensuel (voir
+  // StatisticsService.getOverview côté backend).
   kpis: {
-    subscribersMillion: number;
-    penetrationRate: number;
-    activeOperators: number;
-    active4GSites: number;
-  };
+    subscribersMillion: number | null;
+    penetrationRate: number | null;
+    activeOperators: number | null;
+    active4GSites: number | null;
+  } | null;
   monthlySeries: MonthlyPoint[];
   quarterlySeries: QuarterlyPoint[];
 }
@@ -402,12 +406,17 @@ export default function Admin() {
     abonnes: m.subscribersMillion,
   }));
 
-  const indicateursSectoriels = overviewStats
+  // Chaque champ de kpis est optionnel côté admin (voir PointStatistiqueForm)
+  // — un point statistique n'a pas forcément activeOperators/active4GSites
+  // renseignés, donc jamais d'accès direct à .toLocaleString() sans garde
+  // nullité (a fait planter ce tableau de bord en prod : Cannot read
+  // properties of null).
+  const indicateursSectoriels = overviewStats?.kpis
     ? [
-        { libelle: "Abonnés mobiles", valeur: `${overviewStats.kpis.subscribersMillion.toLocaleString("fr-FR")} M`, icon: Smartphone },
-        { libelle: "Taux de pénétration", valeur: `${overviewStats.kpis.penetrationRate} %`, icon: TrendingUp },
-        { libelle: "Opérateurs actifs", valeur: `${overviewStats.kpis.activeOperators}`, icon: Users },
-        { libelle: "Sites 4G en service", valeur: overviewStats.kpis.active4GSites.toLocaleString("fr-FR"), icon: TowerControl },
+        { libelle: "Abonnés mobiles", valeur: overviewStats.kpis.subscribersMillion != null ? `${overviewStats.kpis.subscribersMillion.toLocaleString("fr-FR")} M` : "—", icon: Smartphone },
+        { libelle: "Taux de pénétration", valeur: overviewStats.kpis.penetrationRate != null ? `${overviewStats.kpis.penetrationRate} %` : "—", icon: TrendingUp },
+        { libelle: "Opérateurs actifs", valeur: overviewStats.kpis.activeOperators != null ? `${overviewStats.kpis.activeOperators}` : "—", icon: Users },
+        { libelle: "Sites 4G en service", valeur: overviewStats.kpis.active4GSites != null ? overviewStats.kpis.active4GSites.toLocaleString("fr-FR") : "—", icon: TowerControl },
       ]
     : [];
 
@@ -2696,19 +2705,19 @@ function StatistiquesAdmin() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Abonnés mobiles</p>
-          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis.subscribersMillion} M</p>
+          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.subscribersMillion != null ? `${overview.kpis.subscribersMillion} M` : "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Taux de pénétration</p>
-          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis.penetrationRate} %</p>
+          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.penetrationRate != null ? `${overview.kpis.penetrationRate} %` : "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Opérateurs actifs</p>
-          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis.activeOperators}</p>
+          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.activeOperators ?? "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Sites 4G en service</p>
-          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis.active4GSites.toLocaleString("fr-FR")}</p>
+          <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.active4GSites != null ? overview.kpis.active4GSites.toLocaleString("fr-FR") : "—"}</p>
         </div>
       </div>
       <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">

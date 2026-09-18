@@ -78,9 +78,9 @@ interface SectorOverview {
   kpis: {
     subscribersMillion: number | null;
     penetrationRate: number | null;
-    // Colonnes existent côté backend mais aucun outil d'admin ne permet
-    // encore de les renseigner, donc `null` tant qu'aucune valeur n'a été
-    // saisie en base. Optionnels par prudence si le backend omet la clé.
+    // `null` tant qu'aucune valeur n'a été saisie pour le point statistique
+    // le plus récent (voir l'onglet Statistiques > Points statistiques côté
+    // admin). Optionnels par prudence si le backend omet la clé.
     internetSubscribersMillion?: number | null;
     internetPenetrationRate?: number | null;
     mobileMoneyPenetrationRate?: number | null;
