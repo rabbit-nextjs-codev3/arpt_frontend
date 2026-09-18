@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Search } from "lucide-react";
+import { Radio, Search, ShieldCheck } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Input } from "@/components/ui/input";
 import { StatutBadge } from "@/components/site/StatutBadge";
@@ -58,24 +58,25 @@ export default function Equipements() {
     <>
       <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
-      <section className="section-y">
+      <section className="section-y bg-surface-fade">
         <div className="container-content">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              value={recherche}
-              onChange={(e) => setRecherche(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="pl-9"
-              aria-label={t("searchAriaLabel")}
-            />
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Radio className="size-5" aria-hidden /></span><div><h2 className="font-heading text-lg font-semibold">Registre d’homologation</h2><p className="mt-1 text-sm text-muted-foreground">{resultats.length} résultat{resultats.length > 1 ? "s" : ""}</p></div></div>
+              <div className="relative w-full md:max-w-md">
+                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder={t("searchPlaceholder")} className="h-10 pl-9" aria-label={t("searchAriaLabel")} />
+              </div>
+            </div>
           </div>
 
           {loading && <p className="mt-6 text-sm text-muted-foreground">{t("loading")}</p>}
           {error && !loading && <p className="mt-6 text-sm text-destructive">{error}</p>}
 
           {!loading && !error && (
-            <div className="mt-8 overflow-x-auto border-y border-border">
+            <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+              <div className="flex items-center gap-2 border-b border-border bg-surface px-5 py-3 text-xs text-muted-foreground"><ShieldCheck className="size-4 text-success" aria-hidden /> Vérifiez la référence et le statut avant tout achat ou importation.</div>
+              <div className="overflow-x-auto">
               <table className="w-full min-w-[52rem] text-sm">
                 <thead className="bg-muted text-left">
                   <tr className="text-xs tracking-wide text-muted-foreground uppercase">
@@ -89,7 +90,7 @@ export default function Equipements() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {resultats.map((e) => (
-                    <tr key={e.uid} className="transition-colors hover:bg-muted/60">
+                    <tr key={e.uid} className="transition-colors hover:bg-accent/30">
                       <td className="px-5 py-4 font-mono text-xs text-primary">{e.code}</td>
                       <td className="px-5 py-4 font-medium">{e.name}</td>
                       <td className="px-5 py-4 text-muted-foreground">
@@ -113,6 +114,7 @@ export default function Equipements() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>

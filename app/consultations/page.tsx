@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { CalendarRange, Download, Mail } from "lucide-react";
+import { CalendarRange, Download, Mail, MessageSquare, UsersRound } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { StatutBadge } from "@/components/site/StatutBadge";
 import { Button } from "@/components/ui/button";
@@ -46,18 +46,23 @@ export default function Consultations() {
     <>
       <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
-      <section className="section-y">
+      <section className="section-y bg-surface-fade">
         <div className="container-content">
           {loading && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
           {error && !loading && <p className="text-sm text-destructive">{error}</p>}
 
-          <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+          <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><UsersRound className="size-5" aria-hidden /></span><div><h2 className="font-heading text-xl font-semibold">Participation citoyenne</h2><p className="mt-1 text-sm text-muted-foreground">{consultations.length} consultation{consultations.length > 1 ? "s" : ""} publiée{consultations.length > 1 ? "s" : ""}</p></div></div>
+          </div>
+
+          <div className="mt-7 grid gap-5 lg:grid-cols-2">
             {consultations.map((c) => (
-              <article key={c.uid} className="flex flex-col border-t border-border pt-7">
-                <StatutBadge statut={c.status} className="self-start" />
-                <h2 className="mt-4 font-heading text-xl font-semibold">{c.title}</h2>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
-                <p className="mt-5 flex items-center gap-2 text-sm">
+              <article key={c.uid} className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card sm:p-6">
+                <div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-accent text-primary"><MessageSquare className="size-5" aria-hidden /></span><StatutBadge statut={c.status} /></div>
+                <h2 className="mt-5 font-heading text-xl font-semibold">{c.title}</h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{c.description}</p>
+                <div className="mt-5 rounded-xl bg-surface p-3">
+                <p className="flex items-center gap-2 text-sm font-medium">
                   <CalendarRange className="size-4 shrink-0 text-primary" aria-hidden />
                   {t("dateRange", { start: formaterDate(c.startDate), end: formaterDate(c.endDate) })}
                 </p>
@@ -65,6 +70,7 @@ export default function Consultations() {
                   <Mail className="size-4 shrink-0" aria-hidden />
                   {c.contactEmail}
                 </p>
+                </div>
                 <div className="mt-6 flex flex-wrap items-center gap-3">
                   <Button asChild disabled={c.status === "CLOTUREE"}>
                     <a href={c.status === "CLOTUREE" ? undefined : `mailto:${c.contactEmail}`}>
