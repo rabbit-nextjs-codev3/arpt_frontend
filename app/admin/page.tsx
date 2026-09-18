@@ -162,7 +162,7 @@ function ConfirmProvider({ children }: { children: React.ReactNode }) {
         onClick={(event) => {
           if (event.target === event.currentTarget) repondre(false);
         }}
-        className="w-full max-w-sm rounded-xl border border-border bg-card p-5 text-card-foreground shadow-soft backdrop:bg-black/40"
+        className="fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-sm rounded-xl border border-border bg-card p-5 text-card-foreground shadow-soft backdrop:bg-black/40"
       >
         <p className="text-sm">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
@@ -5289,7 +5289,7 @@ function VoirCompteButton({ user }: { user: UserAdmin }) {
         onClick={(event) => {
           if (event.target === event.currentTarget) dialogRef.current?.close();
         }}
-        className="w-full max-w-md rounded-xl border border-border bg-card p-0 text-card-foreground shadow-soft backdrop:bg-black/40"
+        className="fixed inset-0 m-auto h-fit max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl border border-border bg-card p-0 text-card-foreground shadow-soft backdrop:bg-black/40"
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="font-heading text-base font-semibold">Détails du compte</h2>
