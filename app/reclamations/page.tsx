@@ -16,7 +16,6 @@ import {
   Mail,
   MessageSquare,
   Paperclip,
-  Phone,
   Send,
   ShieldAlert,
   ShieldCheck,
@@ -127,7 +126,6 @@ export default function Reclamations() {
     setEnvoiEnCours(true);
     const form = new FormData(event.currentTarget);
     const body = new FormData();
-    if (form.get("tel")) body.append("telephone", String(form.get("tel")));
     body.append("claimType", TYPES[type] ?? type);
     body.append("concernedOperator", OPERATEURS[operateur] ?? operateur);
     body.append("claimDescriptionFr", String(form.get("description")));
@@ -277,13 +275,6 @@ export default function Reclamations() {
                     <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="size-4" aria-hidden /> {user.email}
                     </span>
-                  </div>
-                  <div className="mt-4 grid gap-2 sm:max-w-xs">
-                    <Label htmlFor="tel">{t("phone")}</Label>
-                    <div className="relative">
-                      <Phone className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                      <Input id="tel" name="tel" type="tel" maxLength={20} className="pl-10" placeholder="+224 …" />
-                    </div>
                   </div>
                 </div>
 

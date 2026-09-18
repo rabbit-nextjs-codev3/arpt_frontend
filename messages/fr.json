@@ -86,7 +86,6 @@
     "formTitle": "Formulaire de réclamation",
     "requiredFieldsNote": "Les champs marqués d'un astérisque (*) sont obligatoires.",
     "claimantNote": "Réclamation déposée avec les informations de votre compte.",
-    "phone": "Téléphone",
     "claimType": "Nature de la réclamation *",
     "claimTypePlaceholder": "Sélectionnez la nature",
     "operator": "Opérateur concerné *",

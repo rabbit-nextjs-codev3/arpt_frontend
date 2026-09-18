@@ -86,7 +86,6 @@
     "formTitle": "استمارة الشكوى",
     "requiredFieldsNote": "الحقول المميزة بنجمة (*) إلزامية.",
     "claimantNote": "الشكوى مودعة بمعلومات حسابك.",
-    "phone": "الهاتف",
     "claimType": "طبيعة الشكوى *",
     "claimTypePlaceholder": "اختر الطبيعة",
     "operator": "المشغل المعني *",

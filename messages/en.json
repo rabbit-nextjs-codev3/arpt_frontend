@@ -86,7 +86,6 @@
     "formTitle": "Complaint form",
     "requiredFieldsNote": "Fields marked with an asterisk (*) are required.",
     "claimantNote": "Complaint filed with your account information.",
-    "phone": "Phone",
     "claimType": "Nature of the complaint *",
     "claimTypePlaceholder": "Select the type",
     "operator": "Operator concerned *",
