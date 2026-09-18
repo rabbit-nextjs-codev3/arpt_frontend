@@ -1,13 +1,13 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
+  Archive,
   ArrowUpRight,
   BarChart3,
   Briefcase,
-  Building2,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -23,11 +23,19 @@ import {
   Newspaper,
   Bell,
   ChevronDown,
+  Download,
+  Eye,
   LogOut,
   MessageSquare,
+  Mail,
+  MailOpen,
+  Paperclip,
+  ChevronLeft,
   Pencil,
   Radio,
+  Reply,
   Search,
+  Send,
   Trash2,
   UserRound,
   ScrollText,
@@ -109,6 +117,66 @@ const menus = menuGroups.flatMap((g) => g.items).map((m) => ({ ...m, href: `/adm
 
 
 const kpiIcons = [MessageSquareWarning, FileText, Users, Inbox];
+
+/**
+ * Remplace window.confirm() pour toutes les suppressions du panneau admin —
+ * un dialogue navigateur natif (bloquant, non stylé, incohérent d'un
+ * navigateur à l'autre) n'a pas sa place dans une UI applicative. Un seul
+ * <dialog> partagé (monté une fois par ConfirmProvider) plutôt qu'une
+ * instance par module : chaque appelant obtient juste confirm(message),
+ * une Promise<boolean> résolue par le clic Annuler/Supprimer ou Échap.
+ */
+const ConfirmContext = createContext<((message: string) => Promise<boolean>) | null>(null);
+
+function useConfirm() {
+  const confirm = useContext(ConfirmContext);
+  if (!confirm) throw new Error("useConfirm doit être utilisé sous ConfirmProvider.");
+  return confirm;
+}
+
+function ConfirmProvider({ children }: { children: React.ReactNode }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [message, setMessage] = useState("");
+  const resolveRef = useRef<((value: boolean) => void) | null>(null);
+
+  const confirm = useCallback((msg: string) => {
+    setMessage(msg);
+    dialogRef.current?.showModal();
+    return new Promise<boolean>((resolve) => {
+      resolveRef.current = resolve;
+    });
+  }, []);
+
+  function repondre(value: boolean) {
+    dialogRef.current?.close();
+    resolveRef.current?.(value);
+    resolveRef.current = null;
+  }
+
+  return (
+    <ConfirmContext.Provider value={confirm}>
+      {children}
+      <dialog
+        ref={dialogRef}
+        onCancel={() => repondre(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) repondre(false);
+        }}
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-5 text-card-foreground shadow-soft backdrop:bg-black/40"
+      >
+        <p className="text-sm">{message}</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => repondre(false)}>
+            Annuler
+          </Button>
+          <Button type="button" variant="destructive" size="sm" onClick={() => repondre(true)}>
+            Supprimer
+          </Button>
+        </div>
+      </dialog>
+    </ConfirmContext.Provider>
+  );
+}
 
 interface AdminOverview {
   reclamations: { total: number; ouvertes: number } | null;
@@ -385,6 +453,7 @@ export default function Admin() {
   }
 
   return (
+    <ConfirmProvider>
     <Group orientation="horizontal" className="h-full min-h-0 w-full">
       <Panel id="sidebar" defaultSize="18" minSize="14" maxSize="30" className="h-full min-w-0">
         <aside className="sticky top-0 z-10 flex h-full flex-col self-start overflow-y-auto bg-sidebar text-sidebar-foreground">
@@ -736,6 +805,7 @@ export default function Admin() {
         </div>
       </Panel>
     </Group>
+    </ConfirmProvider>
   );
 }
 
@@ -850,6 +920,7 @@ const EQUIPMENT_STATUTS: { value: EquipementAdmin["status"]; label: string }[] =
 ];
 
 function EquipementsAdmin() {
+  const confirm = useConfirm();
   const { data: equipements, loading, error, refetch } = useApiList<EquipementAdmin>("/equipment?lang=fr&pageSize=100");
   const { data: categories } = useApiOne<EquipmentCategoryOption[]>("/equipment-categories?lang=fr");
   const [showForm, setShowForm] = useState(false);
@@ -858,6 +929,42 @@ function EquipementsAdmin() {
   const [categoryId, setCategoryId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState<"all" | EquipementAdmin["status"]>("all");
+  const [filtreCategorie, setFiltreCategorie] = useState("all");
+  const [page, setPage] = useState(1);
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreStatut("all");
+    setFiltreCategorie("all");
+    setPage(1);
+  }
+
+  const resultat = equipements.filter((e) => {
+    const correspondRecherche = `${e.code} ${e.name} ${e.brand} ${e.model}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondStatut = filtreStatut === "all" || e.status === filtreStatut;
+    const correspondCategorie = filtreCategorie === "all" || e.category.slug === filtreCategorie;
+    return correspondRecherche && correspondStatut && correspondCategorie;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const homologues = equipements.filter((e) => e.status === "HOMOLOGUE").length;
+  const enCoursCount = equipements.filter((e) => e.status === "EN_COURS").length;
+  const interdits = equipements.filter((e) => e.status === "INTERDIT").length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `equipements-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Code", "Équipement", "Marque", "Modèle", "Catégorie", "Statut"],
+      resultat.map((e) => [e.code, e.name, e.brand, e.model, e.category.name, e.status]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -874,7 +981,7 @@ function EquipementsAdmin() {
   }
 
   async function supprimer(e: EquipementAdmin) {
-    if (!window.confirm(`Supprimer l'équipement "${e.name}" ?`)) return;
+    if (!(await confirm(`Supprimer l'équipement "${e.name}" ?`))) return;
     try {
       await apiFetch(`/equipment/${e.id}`, { method: "DELETE" });
       toast.success("Équipement supprimé.");
@@ -928,16 +1035,36 @@ function EquipementsAdmin() {
   }
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{equipements.length} équipement(s) enregistré(s)</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouvel équipement"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Radio className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Équipements</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les équipements homologués et leur statut.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouvel équipement"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTrendCard icon={Radio} tone="primary" value={equipements.length} label="Total" />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={homologues} label="Homologués" />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCoursCount} label="En cours" />
+        <StatTrendCard icon={X} tone="destructive" value={interdits} label="Interdits" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
           <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouvel équipement"}</p>
           <div className="grid gap-2">
             <Label htmlFor="eq-code">Code *</Label>
@@ -1019,34 +1146,198 @@ function EquipementsAdmin() {
         </form>
       )}
 
-      {loading && <p className="mt-6 text-sm text-muted-foreground">Chargement…</p>}
-      {error && !loading && <p className="mt-6 text-sm text-destructive">{error}</p>}
+      {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {error && !loading && <p className="text-sm text-destructive">{error}</p>}
       {!loading && !error && (
-        <TableauAdmin
-          colonnes={["Référence", "Équipement", "Marque / modèle", "Catégorie", "Validité", "Statut", "Actions"]}
-          lignes={equipements.map((e) => [
-            e.code,
-            e.name,
-            `${e.brand} · ${e.model}`,
-            e.category.name,
-            e.validUntil ? formaterDate(e.validUntil) : "—",
-            <StatutBadge key={e.id} statut={e.status} />,
-            <RowActions key={e.id} onEdit={() => ouvrirEdition(e)} onDelete={() => supprimer(e)} />,
-          ])}
-        />
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+          <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_10rem_auto]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input
+                value={recherche}
+                onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+                className="h-9 bg-card pl-9 text-xs"
+                placeholder="Rechercher par marque, modèle ou code…"
+              />
+            </div>
+            <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
+              <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                {EQUIPMENT_STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
+              <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les catégories</SelectItem>
+                {(categories ?? []).map((c) => <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+              Réinitialiser
+            </Button>
+          </div>
+
+          <TableauAdmin
+            compact
+            colonnes={["Référence", "Équipement", "Marque / modèle", "Catégorie", "Validité", "Statut", "Actions"]}
+            lignes={resultatPage.map((e) => [
+              e.code,
+              e.name,
+              `${e.brand} · ${e.model}`,
+              e.category.name,
+              e.validUntil ? formaterDate(e.validUntil) : "—",
+              <StatutBadge key={e.id} statut={e.status} />,
+              <RowActions key={e.id} onEdit={() => ouvrirEdition(e)} onDelete={() => supprimer(e)} />,
+            ])}
+          />
+          {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun équipement ne correspond aux filtres.</p>}
+
+          <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+        </div>
       )}
+    </section>
+  );
+}
+
+const PAGE_SIZE_ADMIN = 6;
+const SEMAINE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function depuisMoinsDuneSemaine(iso: string) {
+  return Date.now() - new Date(iso).getTime() <= SEMAINE_MS;
+}
+
+function formaterHeure(iso: string) {
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function exporterCsv(fichier: string, colonnes: string[], lignes: (string | number)[][]) {
+  const echapper = (valeur: string | number) => `"${String(valeur).replace(/"/g, '""')}"`;
+  const contenu = [colonnes, ...lignes].map((ligne) => ligne.map(echapper).join(";")).join("\n");
+  const blob = new Blob([`﻿${contenu}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const lien = document.createElement("a");
+  lien.href = url;
+  lien.download = fichier;
+  lien.click();
+  URL.revokeObjectURL(url);
+}
+
+function StatTrendCard({
+  icon: Icon,
+  tone,
+  value,
+  label,
+  delta,
+}: {
+  icon: typeof FileText;
+  tone: "primary" | "warning" | "success" | "destructive";
+  value: number;
+  label: string;
+  delta?: number;
+}) {
+  const toneStyles: Record<typeof tone, string> = {
+    primary: "bg-primary/10 text-primary",
+    warning: "bg-warning/15 text-warning-foreground",
+    success: "bg-success/10 text-success",
+    destructive: "bg-destructive/10 text-destructive",
+  };
+  const deltaStyle = !delta ? "text-muted-foreground" : delta > 0 ? "text-success" : "text-destructive";
+  const deltaTexte = !delta ? "0" : delta > 0 ? `↑ ${delta}` : `↓ ${Math.abs(delta)}`;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-soft">
+      <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", toneStyles[tone])}>
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="font-heading text-2xl font-bold text-foreground">{value}</p>
+        <p className="truncate text-xs text-muted-foreground">{label}</p>
+        {delta !== undefined && (
+        <p className={cn("mt-0.5 text-[11px] font-semibold", deltaStyle)}>{deltaTexte} cette semaine</p>
+        )}
+      </div>
     </div>
   );
+}
+
+function PaginationAdmin({
+  page,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  if (totalItems === 0) return null;
+  const debut = (page - 1) * pageSize + 1;
+  const fin = Math.min(page * pageSize, totalItems);
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs text-muted-foreground">
+        Affichage de {debut} à {fin} sur {totalItems} résultats
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-40"
+        >
+          <ChevronLeft className="size-4" aria-hidden />
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onPageChange(p)}
+            className={cn(
+              "grid size-7 place-items-center rounded-md text-xs font-semibold transition-colors",
+              p === page ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-primary",
+            )}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-40"
+        >
+          <ChevronRight className="size-4" aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface ClaimAttachment {
+  id: number;
+  filename: string;
+  url: string;
 }
 
 interface ClaimAdminFull {
   id: number;
   firstname: string;
   lastname: string;
+  email: string;
+  telephone: string | null;
   concernedOperator: string;
   claimType: string;
+  claimDescription: string;
+  rejectionReason: string | null;
   status: "NOUVEAU" | "EN_COURS" | "RESOLU" | "REJETE";
   createdAt: string;
+  updatedAt: string;
+  attachments: ClaimAttachment[];
 }
 
 const CLAIM_STATUTS: ClaimAdminFull["status"][] = ["NOUVEAU", "EN_COURS", "RESOLU", "REJETE"];
@@ -1103,33 +1394,303 @@ function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpda
 }
 
 function ReclamationsAdmin() {
+  const confirm = useConfirm();
   const { data: claims, loading, error, refetch } = useApiList<ClaimAdminFull>("/claims?lang=fr&pageSize=100");
+  const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState<"all" | ClaimAdminFull["status"]>("all");
+  const [filtreCategorie, setFiltreCategorie] = useState("all");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+  const [selection, setSelection] = useState<Set<number>>(new Set());
+  const [ouvert, setOuvert] = useState<number | null>(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+
+  const categories = Array.from(new Set(claims.map((claim) => claim.claimType))).filter(Boolean);
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreStatut("all");
+    setFiltreCategorie("all");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = claims.filter((claim) => {
+    const termes = `${claim.firstname} ${claim.lastname} ${claim.concernedOperator} ${claim.email} ${claim.telephone ?? ""}`.toLocaleLowerCase("fr");
+    const correspondRecherche = termes.includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondStatut = filtreStatut === "all" || claim.status === filtreStatut;
+    const correspondCategorie = filtreCategorie === "all" || claim.claimType === filtreCategorie;
+    const date = claim.createdAt.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondStatut && correspondCategorie && correspondDateDebut && correspondDateFin;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+
+  const enCours = claims.filter((claim) => claim.status === "EN_COURS");
+  const resolues = claims.filter((claim) => claim.status === "RESOLU");
+  const rejetees = claims.filter((claim) => claim.status === "REJETE");
+  const nouvellesCetteSemaine = claims.filter((claim) => depuisMoinsDuneSemaine(claim.createdAt)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function basculerSelection(id: number) {
+    setSelection((prev) => {
+      const suivant = new Set(prev);
+      if (suivant.has(id)) suivant.delete(id);
+      else suivant.add(id);
+      return suivant;
+    });
+  }
+
+  function basculerSelectionPage() {
+    const idsPage = resultatPage.map((c) => c.id);
+    const tousSelectionnes = idsPage.every((id) => selection.has(id));
+    setSelection((prev) => {
+      const suivant = new Set(prev);
+      idsPage.forEach((id) => (tousSelectionnes ? suivant.delete(id) : suivant.add(id)));
+      return suivant;
+    });
+  }
+
+  async function supprimerSelection() {
+    if (selection.size === 0) return;
+    if (!(await confirm(`Supprimer ${selection.size} réclamation(s) ? Cette action est irréversible.`))) return;
+    setSuppressionEnCours(true);
+    try {
+      await Promise.all(Array.from(selection).map((id) => apiFetch(`/claims/${id}`, { method: "DELETE" })));
+      toast.success("Réclamation(s) supprimée(s).");
+      setSelection(new Set());
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  }
+
+  async function supprimerUne(claim: ClaimAdminFull) {
+    if (!(await confirm(`Supprimer la réclamation de ${claim.firstname} ${claim.lastname} ?`))) return;
+    try {
+      await apiFetch(`/claims/${claim.id}`, { method: "DELETE" });
+      toast.success("Réclamation supprimée.");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    }
+  }
+
+  function exporter() {
+    exporterCsv(
+      `reclamations-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Prénom", "Nom", "Email", "Téléphone", "Opérateur", "Catégorie", "Statut", "Date"],
+      resultat.map((c) => [c.firstname, c.lastname, c.email, c.telephone ?? "", c.concernedOperator, c.claimType, c.status, formaterDate(c.createdAt)]),
+    );
+  }
 
   if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <TableauAdmin
-      codeColumn={false}
-      colonnes={["Usager", "Nature", "Opérateur", "Date", "Statut"]}
-      lignes={claims.map((c) => [
-        `${c.firstname} ${c.lastname}`,
-        c.claimType,
-        c.concernedOperator,
-        formaterDate(c.createdAt),
-        <ClaimStatusSelect key={c.id} claim={c} onUpdated={refetch} />,
-      ])}
-    />
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <MessageSquareWarning className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Réclamations</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les réclamations des usagers et suivez leur traitement.</p>
+          </div>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+          <Download className="size-4" aria-hidden /> Exporter
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTrendCard icon={FileText} tone="primary" value={claims.length} label="Total" delta={nouvellesCetteSemaine} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label="En cours" delta={enCours.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={resolues.length} label="Résolues" delta={resolues.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
+        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label="Rejetées" delta={rejetees.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_10rem_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un usager, un opérateur…"
+            />
+          </div>
+          <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {CLAIM_STATUTS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        {selection.size > 0 && (
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-2.5">
+            <p className="text-xs font-medium text-destructive">{selection.size} sélectionnée(s)</p>
+            <Button type="button" size="sm" variant="outline" onClick={supprimerSelection} disabled={suppressionEnCours} className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive">
+              <Trash2 className="size-3.5" aria-hidden /> Supprimer la sélection
+            </Button>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[54rem] text-left text-sm">
+            <thead className="border-b border-border text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+              <tr>
+                <th className="w-10 px-5 py-3">
+                  <input
+                    type="checkbox"
+                    checked={resultatPage.length > 0 && resultatPage.every((c) => selection.has(c.id))}
+                    onChange={basculerSelectionPage}
+                    aria-label="Sélectionner la page"
+                  />
+                </th>
+                <th className="px-4 py-3">Usager</th>
+                <th className="px-4 py-3">Nature</th>
+                <th className="px-4 py-3">Catégorie</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Statut</th>
+                <th className="px-5 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {resultatPage.flatMap((claim) => {
+                const ligne = (
+                  <tr key={claim.id} className="transition-colors hover:bg-accent/25">
+                    <td className="px-5 py-3.5">
+                      <input type="checkbox" checked={selection.has(claim.id)} onChange={() => basculerSelection(claim.id)} aria-label={`Sélectionner ${claim.firstname} ${claim.lastname}`} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-primary">
+                          {initiales(`${claim.firstname} ${claim.lastname}`)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{claim.firstname} {claim.lastname}</p>
+                          {claim.telephone && <p className="truncate text-xs text-muted-foreground">{claim.telephone}</p>}
+                          <p className="truncate text-xs text-muted-foreground">{claim.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">Réclamation</td>
+                    <td className="px-4 py-3.5">
+                      <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{claim.claimType}</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                      <p>{formaterDate(claim.createdAt)}</p>
+                      <p>{formaterHeure(claim.createdAt)}</p>
+                    </td>
+                    <td className="px-4 py-3.5"><StatutBadge statut={claim.status} /></td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button type="button" onClick={() => setOuvert((v) => (v === claim.id ? null : claim.id))} aria-label="Voir détails" title="Voir détails" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
+                          <Eye className="size-4" aria-hidden />
+                        </button>
+                        <button type="button" onClick={() => supprimerUne(claim)} aria-label="Supprimer" title="Supprimer" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+                if (ouvert !== claim.id) return [ligne];
+                return [
+                  ligne,
+                  <tr key={`${claim.id}-detail`}>
+                    <td colSpan={7} className="bg-surface/60 px-5 py-5 sm:px-8">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Opérateur concerné</p>
+                          <p className="mt-1 text-sm">{claim.concernedOperator}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statut du dossier</p>
+                          <div className="mt-1"><ClaimStatusSelect claim={claim} onUpdated={refetch} /></div>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Description</p>
+                          <p className="mt-1 text-sm leading-6 whitespace-pre-line text-muted-foreground">{claim.claimDescription}</p>
+                        </div>
+                        {claim.status === "REJETE" && claim.rejectionReason && (
+                          <div className="sm:col-span-2">
+                            <p className="text-xs font-semibold tracking-wide text-destructive uppercase">Motif du rejet</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{claim.rejectionReason}</p>
+                          </div>
+                        )}
+                        {claim.attachments.length > 0 && (
+                          <div className="sm:col-span-2">
+                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Pièces jointes</p>
+                            <ul className="mt-1.5 flex flex-wrap gap-2">
+                              {claim.attachments.map((piece) => (
+                                <li key={piece.id}>
+                                  <a href={piece.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-primary hover:underline">
+                                    <Paperclip className="size-3.5" aria-hidden /> {piece.filename}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>,
+                ];
+              })}
+              {resultatPage.length === 0 && (
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune réclamation ne correspond aux filtres.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
 interface ServiceRequestAdmin {
   id: number;
   fullname: string;
+  email: string;
+  phone: string | null;
   company: string | null;
-  service: { name: string };
+  message: string | null;
+  service: { id: number; name: string };
   status: "NOUVEAU" | "EN_COURS" | "TRAITE" | "REJETE";
   createdAt: string;
+  updatedAt: string;
+  attachments: { id: number; url: string }[];
 }
 
 const SERVICE_REQUEST_STATUTS: ServiceRequestAdmin["status"][] = ["NOUVEAU", "EN_COURS", "TRAITE", "REJETE"];
@@ -1167,26 +1728,323 @@ function ServiceRequestStatusSelect({ demande, onUpdated }: { demande: ServiceRe
   );
 }
 
-function DemandesServiceAdmin() {
-  const { data: demandes, loading, error, refetch } = useApiList<ServiceRequestAdmin>(
-    "/service-requests?lang=fr&pageSize=100",
+function ServiceRequestReplyForm({ demande }: { demande: ServiceRequestAdmin }) {
+  const [message, setMessage] = useState("");
+  const [envoi, setEnvoi] = useState(false);
+
+  async function envoyer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (message.trim().length < 1) return;
+    setEnvoi(true);
+    try {
+      await apiFetch(`/service-requests/${demande.id}/reply`, { method: "POST", body: JSON.stringify({ replyMessage: message }) });
+      toast.success("Réponse envoyée par email.");
+      setMessage("");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  return (
+    <form onSubmit={envoyer} className="mt-2 flex flex-col gap-2 sm:flex-row">
+      <Textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        rows={2}
+        placeholder={`Répondre à ${demande.fullname}…`}
+        className="text-sm"
+        required
+      />
+      <Button type="submit" size="sm" disabled={envoi} className="shrink-0 gap-1.5 sm:self-end">
+        <Send className="size-3.5" aria-hidden /> {envoi ? "Envoi…" : "Envoyer"}
+      </Button>
+    </form>
   );
+}
+
+function DemandesServiceAdmin() {
+  const confirm = useConfirm();
+  const { data: demandes, loading, error, refetch } = useApiList<ServiceRequestAdmin>("/service-requests?lang=fr&pageSize=100");
+  const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState<"all" | ServiceRequestAdmin["status"]>("all");
+  const [filtreService, setFiltreService] = useState("all");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+  const [selection, setSelection] = useState<Set<number>>(new Set());
+  const [ouvert, setOuvert] = useState<number | null>(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+
+  const services = Array.from(new Set(demandes.map((d) => d.service.name))).filter(Boolean);
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreStatut("all");
+    setFiltreService("all");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = demandes.filter((d) => {
+    const termes = `${d.fullname} ${d.company ?? ""} ${d.email} ${d.phone ?? ""} ${d.service.name}`.toLocaleLowerCase("fr");
+    const correspondRecherche = termes.includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondStatut = filtreStatut === "all" || d.status === filtreStatut;
+    const correspondService = filtreService === "all" || d.service.name === filtreService;
+    const date = d.createdAt.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondStatut && correspondService && correspondDateDebut && correspondDateFin;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+
+  const enCours = demandes.filter((d) => d.status === "EN_COURS");
+  const traitees = demandes.filter((d) => d.status === "TRAITE");
+  const rejetees = demandes.filter((d) => d.status === "REJETE");
+  const nouvellesCetteSemaine = demandes.filter((d) => depuisMoinsDuneSemaine(d.createdAt)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function basculerSelection(id: number) {
+    setSelection((prev) => {
+      const suivant = new Set(prev);
+      if (suivant.has(id)) suivant.delete(id);
+      else suivant.add(id);
+      return suivant;
+    });
+  }
+
+  function basculerSelectionPage() {
+    const idsPage = resultatPage.map((d) => d.id);
+    const tousSelectionnes = idsPage.every((id) => selection.has(id));
+    setSelection((prev) => {
+      const suivant = new Set(prev);
+      idsPage.forEach((id) => (tousSelectionnes ? suivant.delete(id) : suivant.add(id)));
+      return suivant;
+    });
+  }
+
+  async function supprimerSelection() {
+    if (selection.size === 0) return;
+    if (!(await confirm(`Supprimer ${selection.size} demande(s) ? Cette action est irréversible.`))) return;
+    setSuppressionEnCours(true);
+    try {
+      await Promise.all(Array.from(selection).map((id) => apiFetch(`/service-requests/${id}`, { method: "DELETE" })));
+      toast.success("Demande(s) supprimée(s).");
+      setSelection(new Set());
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  }
+
+  async function supprimerUne(demande: ServiceRequestAdmin) {
+    if (!(await confirm(`Supprimer la demande de ${demande.fullname} ?`))) return;
+    try {
+      await apiFetch(`/service-requests/${demande.id}`, { method: "DELETE" });
+      toast.success("Demande supprimée.");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    }
+  }
+
+  function exporter() {
+    exporterCsv(
+      `demandes-service-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Nom", "Société", "Email", "Téléphone", "Service", "Statut", "Date"],
+      resultat.map((d) => [d.fullname, d.company ?? "", d.email, d.phone ?? "", d.service.name, d.status, formaterDate(d.createdAt)]),
+    );
+  }
 
   if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <TableauAdmin
-      codeColumn={false}
-      colonnes={["Demandeur", "Service", "Société", "Date", "Statut"]}
-      lignes={demandes.map((d) => [
-        d.fullname,
-        d.service.name,
-        d.company ?? "—",
-        formaterDate(d.createdAt),
-        <ServiceRequestStatusSelect key={d.id} demande={d} onUpdated={refetch} />,
-      ])}
-    />
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <FileText className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Demandes de service</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les demandes des usagers et suivez leur traitement.</p>
+          </div>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+          <Download className="size-4" aria-hidden /> Exporter
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTrendCard icon={FileText} tone="primary" value={demandes.length} label="Total" delta={nouvellesCetteSemaine} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label="En cours" delta={enCours.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={traitees.length} label="Traitées" delta={traitees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
+        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label="Rejetées" delta={rejetees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_10rem_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un usager, une société…"
+            />
+          </div>
+          <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {SERVICE_REQUEST_STATUTS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filtreService} onValueChange={(value) => { setFiltreService(value); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les services</SelectItem>
+              {services.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        {selection.size > 0 && (
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-2.5">
+            <p className="text-xs font-medium text-destructive">{selection.size} sélectionnée(s)</p>
+            <Button type="button" size="sm" variant="outline" onClick={supprimerSelection} disabled={suppressionEnCours} className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive">
+              <Trash2 className="size-3.5" aria-hidden /> Supprimer la sélection
+            </Button>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[54rem] text-left text-sm">
+            <thead className="border-b border-border text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+              <tr>
+                <th className="w-10 px-5 py-3">
+                  <input
+                    type="checkbox"
+                    checked={resultatPage.length > 0 && resultatPage.every((d) => selection.has(d.id))}
+                    onChange={basculerSelectionPage}
+                    aria-label="Sélectionner la page"
+                  />
+                </th>
+                <th className="px-4 py-3">Demandeur</th>
+                <th className="px-4 py-3">Nature</th>
+                <th className="px-4 py-3">Service</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Statut</th>
+                <th className="px-5 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {resultatPage.flatMap((demande) => {
+                const ligne = (
+                  <tr key={demande.id} className="transition-colors hover:bg-accent/25">
+                    <td className="px-5 py-3.5">
+                      <input type="checkbox" checked={selection.has(demande.id)} onChange={() => basculerSelection(demande.id)} aria-label={`Sélectionner ${demande.fullname}`} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-primary">
+                          {initiales(demande.fullname)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{demande.fullname}</p>
+                          {demande.company && <p className="truncate text-xs text-muted-foreground">{demande.company}</p>}
+                          <p className="truncate text-xs text-muted-foreground">{demande.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">Demande de service</td>
+                    <td className="px-4 py-3.5">
+                      <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{demande.service.name}</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                      <p>{formaterDate(demande.createdAt)}</p>
+                      <p>{formaterHeure(demande.createdAt)}</p>
+                    </td>
+                    <td className="px-4 py-3.5"><StatutBadge statut={demande.status} /></td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button type="button" onClick={() => setOuvert((v) => (v === demande.id ? null : demande.id))} aria-label="Voir détails" title="Voir détails" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
+                          <Eye className="size-4" aria-hidden />
+                        </button>
+                        <button type="button" onClick={() => supprimerUne(demande)} aria-label="Supprimer" title="Supprimer" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+                if (ouvert !== demande.id) return [ligne];
+                return [
+                  ligne,
+                  <tr key={`${demande.id}-detail`}>
+                    <td colSpan={7} className="bg-surface/60 px-5 py-5 sm:px-8">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Téléphone</p>
+                          <p className="mt-1 text-sm">{demande.phone ?? "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statut du dossier</p>
+                          <div className="mt-1"><ServiceRequestStatusSelect demande={demande} onUpdated={refetch} /></div>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Message</p>
+                          <p className="mt-1 text-sm leading-6 whitespace-pre-line text-muted-foreground">{demande.message || "—"}</p>
+                        </div>
+                        {demande.attachments.length > 0 && (
+                          <div className="sm:col-span-2">
+                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Pièces jointes</p>
+                            <ul className="mt-1.5 flex flex-wrap gap-2">
+                              {demande.attachments.map((piece, i) => (
+                                <li key={piece.id}>
+                                  <a href={piece.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-primary hover:underline">
+                                    <Paperclip className="size-3.5" aria-hidden /> Pièce jointe {i + 1}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="sm:col-span-2">
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Répondre par email</p>
+                          <ServiceRequestReplyForm demande={demande} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>,
+                ];
+              })}
+              {resultatPage.length === 0 && (
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune demande ne correspond aux filtres.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -1224,6 +2082,7 @@ const TENDER_STATUTS = ["OUVERT", "CLOTURE", "ANNULE"] as const;
 const CONSULTATION_STATUTS = ["OUVERTE", "CLOTUREE"] as const;
 
 function AppelsOffresAdmin() {
+  const confirm = useConfirm();
   const { data: tenders, loading, error, refetch } = useApiList<TendersCallAdmin>("/tenders?lang=fr&pageSize=100");
   const { data: categories } = useApiOne<{ id: number; name: string }[]>("/tender-categories?lang=fr");
   const [showForm, setShowForm] = useState(false);
@@ -1232,6 +2091,52 @@ function AppelsOffresAdmin() {
   const [status, setStatus] = useState<string>("OUVERT");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState<"all" | (typeof TENDER_STATUTS)[number]>("all");
+  const [filtreCategorie, setFiltreCategorie] = useState("all");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+
+  const categoriesNoms = Array.from(new Set(tenders.map((t) => t.category.name)));
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreStatut("all");
+    setFiltreCategorie("all");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = tenders.filter((t) => {
+    const correspondRecherche = `${t.name} ${t.code}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondStatut = filtreStatut === "all" || t.status === filtreStatut;
+    const correspondCategorie = filtreCategorie === "all" || t.category.name === filtreCategorie;
+    const date = t.publicationDate.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondStatut && correspondCategorie && correspondDateDebut && correspondDateFin;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const ouverts = tenders.filter((t) => t.status === "OUVERT");
+  const clotures = tenders.filter((t) => t.status === "CLOTURE");
+  const annules = tenders.filter((t) => t.status === "ANNULE");
+  const nouveauxCetteSemaine = tenders.filter((t) => depuisMoinsDuneSemaine(t.publicationDate)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `appels-offres-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Référence", "Intitulé", "Catégorie", "Statut", "Date limite"],
+      resultat.map((t) => [t.code, t.name, t.category.name, t.status, formaterDate(t.limitDate)]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -1248,7 +2153,7 @@ function AppelsOffresAdmin() {
   }
 
   async function supprimer(t: TendersCallAdmin) {
-    if (!window.confirm(`Supprimer l'appel d'offres "${t.name}" ?`)) return;
+    if (!(await confirm(`Supprimer l'appel d'offres "${t.name}" ?`))) return;
     try {
       await apiFetch(`/tenders/${t.id}`, { method: "DELETE" });
       toast.success("Appel d'offres supprimé.");
@@ -1304,16 +2209,36 @@ function AppelsOffresAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{tenders.length} appel(s) d'offres</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouvel appel d'offres"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Gavel className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Appels d'offres</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les appels d'offres et suivez les soumissions.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouvel appel d'offres"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTrendCard icon={Gavel} tone="primary" value={tenders.length} label="Total" delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={ouverts.length} label="Ouverts" />
+        <StatTrendCard icon={Clock3} tone="warning" value={clotures.length} label="Clôturés" />
+        <StatTrendCard icon={X} tone="destructive" value={annules.length} label="Annulés" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
           <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouvel appel d'offres"}</p>
           <div className="grid gap-2">
             <Label htmlFor="ao-code">Code *</Label>
@@ -1395,19 +2320,56 @@ function AppelsOffresAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        colonnes={["Référence", "Intitulé", "Catégorie", "Date limite", "Soumissions", "Statut", "Actions"]}
-        lignes={tenders.map((t) => [
-          t.code,
-          t.name,
-          t.category.name,
-          formaterDate(t.limitDate),
-          t.submissionCount,
-          <StatutBadge key={t.id} statut={t.status} />,
-          <RowActions key={t.id} onEdit={() => ouvrirEdition(t)} onDelete={() => supprimer(t)} />,
-        ])}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_10rem_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un appel d'offres…"
+            />
+          </div>
+          <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {TENDER_STATUTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {categoriesNoms.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        <TableauAdmin
+          compact
+          colonnes={["Référence", "Intitulé", "Catégorie", "Date limite", "Soumissions", "Statut", "Actions"]}
+          lignes={resultatPage.map((t) => [
+            t.code,
+            t.name,
+            t.category.name,
+            formaterDate(t.limitDate),
+            t.submissionCount,
+            <StatutBadge key={t.id} statut={t.status} />,
+            <RowActions key={t.id} onEdit={() => ouvrirEdition(t)} onDelete={() => supprimer(t)} />,
+          ])}
+        />
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun appel d'offres ne correspond aux filtres.</p>}
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -1429,6 +2391,7 @@ interface CareerAdmin {
 }
 
 function CarrieresAdmin() {
+  const confirm = useConfirm();
   const { data: careers, loading, error, refetch } = useApiList<CareerAdmin>("/careers?lang=fr&pageSize=100");
   const { data: categories } = useApiOne<{ id: number; name: string }[]>("/career-categories?lang=fr");
   const [showForm, setShowForm] = useState(false);
@@ -1436,6 +2399,54 @@ function CarrieresAdmin() {
   const [categoryId, setCategoryId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState<"all" | "en_cours" | "cloture">("all");
+  const [filtreCategorie, setFiltreCategorie] = useState("all");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+
+  const categoriesNoms = Array.from(new Set(careers.map((c) => c.category.name)));
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreStatut("all");
+    setFiltreCategorie("all");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = careers.filter((c) => {
+    const correspondRecherche = `${c.name} ${c.code} ${c.departement}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const enCours = c.limitDate.slice(0, 10) >= aujourdhui;
+    const correspondStatut = filtreStatut === "all" || (filtreStatut === "en_cours" ? enCours : !enCours);
+    const correspondCategorie = filtreCategorie === "all" || c.category.name === filtreCategorie;
+    const date = c.publicationDate.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondStatut && correspondCategorie && correspondDateDebut && correspondDateFin;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const enCoursListe = careers.filter((c) => c.limitDate.slice(0, 10) >= aujourdhui);
+  const cloturesListe = careers.filter((c) => c.limitDate.slice(0, 10) < aujourdhui);
+  const totalCandidatures = careers.reduce((somme, c) => somme + c.candidatCount, 0);
+  const nouveauxCetteSemaine = careers.filter((c) => depuisMoinsDuneSemaine(c.publicationDate)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `recrutements-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Référence", "Poste", "Département", "Catégorie", "Candidatures", "Date limite"],
+      resultat.map((c) => [c.code, c.name, c.departement, c.category.name, c.candidatCount, formaterDate(c.limitDate)]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -1450,7 +2461,7 @@ function CarrieresAdmin() {
   }
 
   async function supprimer(c: CareerAdmin) {
-    if (!window.confirm(`Supprimer l'offre "${c.name}" ?`)) return;
+    if (!(await confirm(`Supprimer l'offre "${c.name}" ?`))) return;
     try {
       await apiFetch(`/careers/${c.id}`, { method: "DELETE" });
       toast.success("Offre d'emploi supprimée.");
@@ -1505,16 +2516,36 @@ function CarrieresAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{careers.length} offre(s) d'emploi</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouvelle offre"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Briefcase className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Recrutements</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez et suivez les offres d'emploi de l'ARPT.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouvelle offre"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTrendCard icon={Briefcase} tone="primary" value={careers.length} label="Total des recrutements" delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCoursListe.length} label="En cours" />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={cloturesListe.length} label="Clôturés" />
+        <StatTrendCard icon={Users} tone="primary" value={totalCandidatures} label="Candidatures reçues" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
           <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouvelle offre d'emploi"}</p>
           <div className="grid gap-2">
             <Label htmlFor="cr-code">Code *</Label>
@@ -1585,19 +2616,57 @@ function CarrieresAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        colonnes={["Référence", "Poste", "Département", "Date limite", "Candidats", "Publication", "Actions"]}
-        lignes={careers.map((c) => [
-          c.code,
-          c.name,
-          c.departement,
-          formaterDate(c.limitDate),
-          c.candidatCount,
-          c.isNew ? <Puce key={c.id} label="Nouveau" tone="info" /> : <Puce key={c.id} label="Publié" tone="success" />,
-          <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
-        ])}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_9rem_10rem_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un poste, une référence, un service…"
+            />
+          </div>
+          <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="en_cours">En cours</SelectItem>
+              <SelectItem value="cloture">Clôturé</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {categoriesNoms.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        <TableauAdmin
+          compact
+          colonnes={["Référence", "Poste", "Département", "Date limite", "Candidats", "Publication", "Actions"]}
+          lignes={resultatPage.map((c) => [
+            c.code,
+            c.name,
+            c.departement,
+            formaterDate(c.limitDate),
+            c.candidatCount,
+            c.isNew ? <Puce key={c.id} label="Nouveau" tone="info" /> : <Puce key={c.id} label="Publié" tone="success" />,
+            <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
+          ])}
+        />
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun recrutement ne correspond aux filtres.</p>}
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -2227,9 +3296,48 @@ function ConsumerRightsDocumentAdmin() {
 }
 
 function PagesPubliquesAdmin() {
+  const [pageSelectionnee, setPageSelectionnee] = useState("home");
+  const pages = [
+    { value: "home", label: "Accueil" },
+    { value: "about", label: "L’Autorité · À propos" },
+    { value: "claims", label: "Réclamations" },
+    { value: "regulation", label: "Réglementation" },
+    { value: "equipment", label: "Équipements" },
+    { value: "tenders", label: "Appels d’offres" },
+    { value: "careers", label: "Carrières" },
+    { value: "news", label: "Actualités" },
+    { value: "services", label: "Services" },
+    { value: "contact", label: "Contact" },
+    { value: "statistics", label: "Statistiques" },
+    { value: "consultations", label: "Consultations publiques" },
+  ];
+
   return (
-    <div className="mt-8 space-y-10">
-      <section>
+    <div className="mt-8">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><LayoutTemplate className="size-5" aria-hidden /></span>
+            <div>
+              <p className="font-heading text-xs font-semibold tracking-[0.15em] text-primary uppercase">Éditeur du site</p>
+              <h2 className="mt-1 font-heading text-xl font-semibold">Pages publiques</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Sélectionnez une page pour modifier uniquement son contenu.</p>
+            </div>
+          </div>
+          <div className="grid gap-1.5 sm:min-w-72">
+            <Label htmlFor="public-page-select" className="text-xs">Page à administrer</Label>
+            <Select value={pageSelectionnee} onValueChange={setPageSelectionnee}>
+              <SelectTrigger id="public-page-select" className="bg-surface"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {pages.map((page) => <SelectItem key={page.value} value={page.value}>{page.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6">
+      {pageSelectionnee === "home" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Accueil</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2293,9 +3401,9 @@ function PagesPubliquesAdmin() {
             ]}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "about" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">L'Autorité (À propos)</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2415,9 +3523,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "claims" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Réclamations</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2480,9 +3588,9 @@ function PagesPubliquesAdmin() {
           />
           <ConsumerRightsDocumentAdmin />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "regulation" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Réglementation</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2500,9 +3608,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "equipment" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Équipements</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2520,9 +3628,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "tenders" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Appels d'offres</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2540,9 +3648,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "careers" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Carrières</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2560,9 +3668,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "news" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Actualités</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2584,9 +3692,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "services" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Services</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2604,9 +3712,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "contact" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Contact</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2624,9 +3732,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "statistics" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statistiques</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2644,9 +3752,9 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {pageSelectionnee === "consultations" && <section>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Consultations publiques</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
@@ -2664,7 +3772,8 @@ function PagesPubliquesAdmin() {
             }}
           />
         </div>
-      </section>
+      </section>}
+      </div>
     </div>
   );
 }
@@ -2682,12 +3791,27 @@ interface NewsAdmin {
 }
 
 function ActualitesAdmin() {
+  const confirm = useConfirm();
   const { data: news, loading, error, refetch } = useApiList<NewsAdmin>("/news?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<NewsAdmin | null>(null);
   const [isPublished, setIsPublished] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [categorie, setCategorie] = useState("all");
+  const [statut, setStatut] = useState<"all" | "published" | "draft">("all");
+  const [ordre, setOrdre] = useState<"recent" | "views">("recent");
+
+  const categories = Array.from(new Set(news.map((item) => item.category).filter((item): item is string => Boolean(item))));
+  const actualitesFiltrees = news
+    .filter((item) => {
+      const correspondRecherche = `${item.title} ${item.content} ${item.category ?? ""}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+      const correspondCategorie = categorie === "all" || item.category === categorie;
+      const correspondStatut = statut === "all" || (statut === "published" ? item.isPublished : !item.isPublished);
+      return correspondRecherche && correspondCategorie && correspondStatut;
+    })
+    .sort((a, b) => ordre === "views" ? b.views - a.views : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   function ouvrirCreation() {
     setEditing(null);
@@ -2702,7 +3826,7 @@ function ActualitesAdmin() {
   }
 
   async function supprimer(n: NewsAdmin) {
-    if (!window.confirm(`Supprimer l'actualité "${n.title}" ?`)) return;
+    if (!(await confirm(`Supprimer l'actualité "${n.title}" ?`))) return;
     try {
       await apiFetch(`/news/${n.id}`, { method: "DELETE" });
       toast.success("Actualité supprimée.");
@@ -2710,6 +3834,19 @@ function ActualitesAdmin() {
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
     }
+  }
+
+  function exporter() {
+    const csv = [
+      ["Titre", "Catégorie", "Date", "Vues", "Statut"],
+      ...actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), String(item.views), item.isPublished ? "Publié" : "Brouillon"]),
+    ].map((ligne) => ligne.map((valeur) => `"${valeur.replaceAll('"', '""')}"`).join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
+    const lien = document.createElement("a");
+    lien.href = url;
+    lien.download = "actualites-arpt.csv";
+    lien.click();
+    URL.revokeObjectURL(url);
   }
 
   async function soumettre(event: React.FormEvent<HTMLFormElement>) {
@@ -2752,12 +3889,24 @@ function ActualitesAdmin() {
 
   return (
     <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{news.length} actualité(s)</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouvelle actualité"}
-        </Button>
-      </div>
+      <div className="rounded-2xl border border-border bg-card shadow-card">
+        <div className="flex flex-col gap-4 border-b border-border p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Newspaper className="size-5" aria-hidden /></span>
+            <div><h2 className="font-heading text-xl font-semibold">Dernières actualités</h2><p className="mt-1 text-sm text-muted-foreground">Retrouvez et gérez les publications du site.</p></div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={exporter}><Download className="size-3.5" aria-hidden /> Exporter</Button>
+            <Button size="sm" onClick={ouvrirCreation}>{showForm && !editing ? "Annuler" : "+ Nouvelle actualité"}</Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(13rem,1fr)_10rem_10rem_9rem] lg:p-5">
+          <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-9 bg-card pl-9 text-xs" placeholder="Rechercher une actualité…" /></div>
+          <Select value={categorie} onValueChange={setCategorie}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue placeholder="Toutes les catégories" /></SelectTrigger><SelectContent><SelectItem value="all">Toutes les catégories</SelectItem>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
+          <Select value={statut} onValueChange={(value) => setStatut(value as typeof statut)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tous les statuts</SelectItem><SelectItem value="published">Publié</SelectItem><SelectItem value="draft">Brouillon</SelectItem></SelectContent></Select>
+          <Select value={ordre} onValueChange={(value) => setOrdre(value as typeof ordre)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="recent">Date (récent)</SelectItem><SelectItem value="views">Plus consultées</SelectItem></SelectContent></Select>
+        </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
@@ -2799,18 +3948,25 @@ function ActualitesAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Titre", "Catégorie", "Date", "Vues", "État", "Actions"]}
-        lignes={news.map((n) => [
-          n.title,
-          n.category ?? "—",
-          formaterDate(n.createdAt),
-          n.views.toLocaleString("fr-FR"),
-          n.isPublished ? <Puce key={n.id} label="Publié" tone="success" /> : <Puce key={n.id} label="Brouillon" tone="warning" />,
-          <RowActions key={n.id} onEdit={() => ouvrirEdition(n)} onDelete={() => supprimer(n)} />,
-        ])}
-      />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[55rem] text-left text-sm">
+            <thead className="border-b border-border bg-card text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"><tr><th className="px-5 py-3">Titre</th><th className="px-4 py-3">Catégorie</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Vues</th><th className="px-4 py-3">Statut</th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
+            <tbody className="divide-y divide-border">
+              {actualitesFiltrees.map((n) => (
+                <tr key={n.id} className="transition-colors hover:bg-accent/25">
+                  <td className="px-5 py-3.5"><div className="flex max-w-lg items-center gap-3"><div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-muted">{n.imageUrl && <img src={n.imageUrl} alt="" className="size-full object-cover" />}</div><div className="min-w-0"><p className="line-clamp-1 text-xs font-semibold">{n.title}</p><p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{n.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}</p><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} className="mt-1 text-[10px] font-semibold text-primary hover:underline">Lire la suite</button></div></div></td>
+                  <td className="px-4 py-3.5">{n.category ? <span className="inline-flex rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{n.category}</span> : <span className="text-xs text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3.5 text-xs text-muted-foreground"><p>{formaterDate(n.createdAt)}</p></td>
+                  <td className="px-4 py-3.5"><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Eye className="size-3.5" aria-hidden />{n.views.toLocaleString("fr-FR")}</span></td>
+                  <td className="px-4 py-3.5">{n.isPublished ? <Puce label="Publié" tone="success" /> : <Puce label="Brouillon" tone="warning" />}</td>
+                  <td className="px-5 py-3.5"><div className="flex justify-end gap-1"><button type="button" onClick={() => ouvrirEdition(n)} title="Modifier" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Pencil className="size-3.5" aria-hidden /></button><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} title="Voir sur le site" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Eye className="size-3.5" aria-hidden /></button><button type="button" onClick={() => supprimer(n)} title="Supprimer" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="size-3.5" aria-hidden /></button></div></td>
+                </tr>
+              ))}
+              {actualitesFiltrees.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune actualité ne correspond à ces filtres.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2825,11 +3981,48 @@ interface CommuniqueAdmin {
 }
 
 function CommuniquesAdmin() {
+  const confirm = useConfirm();
   const { data: communiques, loading, error, refetch } = useApiList<CommuniqueAdmin>("/communiques?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CommuniqueAdmin | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+
+  function reinitialiser() {
+    setRecherche("");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = communiques.filter((c) => {
+    const correspondRecherche = c.title.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const date = c.createdAt.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondDateDebut && correspondDateFin;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const avecPieceJointe = communiques.filter((c) => c.fileUrl).length;
+  const nouveauxCetteSemaine = communiques.filter((c) => depuisMoinsDuneSemaine(c.createdAt)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `communiques-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Titre", "Pièce jointe", "Date"],
+      resultat.map((c) => [c.title, c.fileUrl ? "Oui" : "Non", formaterDate(c.createdAt)]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -2842,7 +4035,7 @@ function CommuniquesAdmin() {
   }
 
   async function supprimer(c: CommuniqueAdmin) {
-    if (!window.confirm(`Supprimer le communiqué "${c.title}" ?`)) return;
+    if (!(await confirm(`Supprimer le communiqué "${c.title}" ?`))) return;
     try {
       await apiFetch(`/communiques/${c.id}`, { method: "DELETE" });
       toast.success("Communiqué supprimé.");
@@ -2885,16 +4078,35 @@ function CommuniquesAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{communiques.length} communiqué(s)</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouveau communiqué"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <FileCheck2 className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Communiqués</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les communiqués publiés sur le site.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouveau communiqué"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StatTrendCard icon={FileCheck2} tone="primary" value={communiques.length} label="Total" delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={Paperclip} tone="success" value={avecPieceJointe} label="Avec pièce jointe" />
+        <StatTrendCard icon={FileText} tone="warning" value={communiques.length - avecPieceJointe} label="Sans pièce jointe" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5">
           <p className="text-sm font-semibold">{editing ? `Modifier "${editing.title}"` : "Nouveau communiqué"}</p>
           <div className="grid gap-2">
             <Label htmlFor="com-title">Titre *</Label>
@@ -2927,16 +4139,39 @@ function CommuniquesAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Titre", "Date", "Actions"]}
-        lignes={communiques.map((c) => [
-          c.title,
-          formaterDate(c.createdAt),
-          <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
-        ])}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-3 lg:grid-cols-[minmax(12rem,1fr)_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un communiqué…"
+            />
+          </div>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        <TableauAdmin
+          compact
+          codeColumn={false}
+          colonnes={["Titre", "Date", "Actions"]}
+          lignes={resultatPage.map((c) => [
+            c.title,
+            formaterDate(c.createdAt),
+            <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
+          ])}
+        />
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun communiqué ne correspond aux filtres.</p>}
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -2951,15 +4186,49 @@ interface ServiceAdmin {
   isActive: boolean;
   imageUrl: string | null;
   fileUrl: string | null;
+  createdAt: string;
 }
 
 function ServicesAdmin() {
+  const confirm = useConfirm();
   const { data: services, loading, error, refetch } = useApiList<ServiceAdmin>("/services?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ServiceAdmin | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreEtat, setFiltreEtat] = useState<"all" | "actif" | "inactif">("all");
+  const [page, setPage] = useState(1);
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreEtat("all");
+    setPage(1);
+  }
+
+  const resultat = services.filter((s) => {
+    const correspondRecherche = `${s.name} ${s.description ?? ""}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondEtat = filtreEtat === "all" || (filtreEtat === "actif" ? s.isActive : !s.isActive);
+    return correspondRecherche && correspondEtat;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const actifs = services.filter((s) => s.isActive).length;
+  const nouveauxCetteSemaine = services.filter((s) => depuisMoinsDuneSemaine(s.createdAt)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `services-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Service", "Délai", "Coût", "État"],
+      resultat.map((s) => [s.name, s.delai ?? "", s.cost ?? "", s.isActive ? "Actif" : "Inactif"]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -2974,7 +4243,7 @@ function ServicesAdmin() {
   }
 
   async function supprimer(s: ServiceAdmin) {
-    if (!window.confirm(`Supprimer le service "${s.name}" ?`)) return;
+    if (!(await confirm(`Supprimer le service "${s.name}" ?`))) return;
     try {
       await apiFetch(`/services/${s.id}`, { method: "DELETE" });
       toast.success("Service supprimé.");
@@ -3024,16 +4293,35 @@ function ServicesAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{services.length} service(s)</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouveau service"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Layers className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Services</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les services proposés aux usagers.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouveau service"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StatTrendCard icon={Layers} tone="primary" value={services.length} label="Total" delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={actifs} label="Actifs" />
+        <StatTrendCard icon={X} tone="destructive" value={services.length - actifs} label="Inactifs" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
           <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouveau service"}</p>
           <div className="grid gap-2 sm:col-span-2">
             <Label htmlFor="svc-name">Nom du service *</Label>
@@ -3094,17 +4382,46 @@ function ServicesAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Service", "Délai", "État", "Actions"]}
-        lignes={services.map((s) => [
-          s.name,
-          s.delai ?? "—",
-          s.isActive ? <Puce key={s.id} label="Actif" tone="success" /> : <Puce key={s.id} label="Inactif" tone="warning" />,
-          <RowActions key={s.id} onEdit={() => ouvrirEdition(s)} onDelete={() => supprimer(s)} />,
-        ])}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un service…"
+            />
+          </div>
+          <Select value={filtreEtat} onValueChange={(value) => { setFiltreEtat(value as typeof filtreEtat); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les états</SelectItem>
+              <SelectItem value="actif">Actifs</SelectItem>
+              <SelectItem value="inactif">Inactifs</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        <TableauAdmin
+          compact
+          codeColumn={false}
+          colonnes={["Service", "Délai", "État", "Actions"]}
+          lignes={resultatPage.map((s) => [
+            s.name,
+            s.delai ?? "—",
+            s.isActive ? <Puce key={s.id} label="Actif" tone="success" /> : <Puce key={s.id} label="Inactif" tone="warning" />,
+            <RowActions key={s.id} onEdit={() => ouvrirEdition(s)} onDelete={() => supprimer(s)} />,
+          ])}
+        />
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun service ne correspond aux filtres.</p>}
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -3117,6 +4434,16 @@ interface ContactMessageAdmin {
   createdAt: string;
   isRead: boolean;
   isArchived: boolean;
+}
+
+function initiales(nom: string) {
+  return nom
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((partie) => partie[0])
+    .join("")
+    .toUpperCase() || "?";
 }
 
 function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUpdated: () => void }) {
@@ -3163,42 +4490,73 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
   }
 
   return (
-    <div className="border-b border-border py-4 last:border-b-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium">
-            {message.name} <span className="font-normal text-muted-foreground">({message.email})</span>
-          </p>
-          <p className="mt-0.5 text-sm">{message.subject}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{formaterDate(message.createdAt)}</p>
+    <article
+      className={cn(
+        "group relative border-b border-border px-4 py-5 transition-colors last:border-b-0 sm:px-6",
+        !message.isRead && !message.isArchived ? "bg-primary/[0.035]" : "hover:bg-muted/50",
+      )}
+    >
+      {!message.isRead && !message.isArchived && (
+        <span className="absolute left-0 top-6 h-9 w-1 rounded-r-full bg-primary" aria-label="Message non lu" />
+      )}
+      <div className="flex gap-3.5">
+        <div className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold shadow-sm",
+          !message.isRead && !message.isArchived ? "bg-institution text-primary-foreground" : "bg-accent text-primary",
+        )}>
+          {initiales(message.name)}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {message.isArchived ? (
-            <Puce label="Archivé" tone="info" />
-          ) : message.isRead ? (
-            <Puce label="Lu" tone="success" />
-          ) : (
-            <Puce label="Non lu" tone="warning" />
-          )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h3 className={cn("text-sm", !message.isRead && !message.isArchived ? "font-bold" : "font-semibold")}>{message.name}</h3>
+                <span className="max-w-full truncate text-xs text-muted-foreground">{message.email}</span>
+              </div>
+              <p className={cn("mt-1 truncate text-sm", !message.isRead && !message.isArchived ? "font-semibold text-foreground" : "font-medium")}>{message.subject}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <time className="text-xs text-muted-foreground">{formaterDate(message.createdAt)}</time>
+              {message.isArchived ? <Puce label="Archivé" tone="info" /> : !message.isRead ? <Puce label="Nouveau" tone="warning" /> : null}
+            </div>
+          </div>
+
+          <p className="mt-2 line-clamp-2 max-w-4xl text-sm leading-6 text-muted-foreground">{message.message}</p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" onClick={() => setShowReply((v) => !v)} className="h-8 gap-1.5 px-3 text-xs">
+              <Reply className="size-3.5" aria-hidden /> {showReply ? "Fermer la réponse" : "Répondre"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => toggle("isRead")}
+              disabled={toggling}
+              title={message.isRead ? "Marquer comme non lu" : "Marquer comme lu"}
+              className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-50"
+            >
+              {message.isRead ? <Mail className="size-4" aria-hidden /> : <MailOpen className="size-4" aria-hidden />}
+              <span className="sr-only">Marquer comme {message.isRead ? "non lu" : "lu"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => toggle("isArchived")}
+              disabled={toggling}
+              title={message.isArchived ? "Désarchiver" : "Archiver"}
+              className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-50"
+            >
+              <Archive className="size-4" aria-hidden />
+              <span className="sr-only">{message.isArchived ? "Désarchiver" : "Archiver"}</span>
+            </button>
+          </div>
         </div>
-      </div>
-
-      <p className="mt-3 rounded-md bg-surface p-3 text-sm text-muted-foreground">{message.message}</p>
-
-      <div className="mt-3 flex flex-wrap gap-4 text-xs font-semibold">
-        <button onClick={() => setShowReply((v) => !v)} className="text-primary hover:underline">
-          {showReply ? "Annuler" : "Répondre"}
-        </button>
-        <button onClick={() => toggle("isRead")} disabled={toggling} className="text-muted-foreground hover:underline disabled:opacity-50">
-          Marquer {message.isRead ? "non lu" : "lu"}
-        </button>
-        <button onClick={() => toggle("isArchived")} disabled={toggling} className="text-muted-foreground hover:underline disabled:opacity-50">
-          {message.isArchived ? "Désarchiver" : "Archiver"}
-        </button>
       </div>
 
       {showReply && (
-        <form onSubmit={envoyer} className="mt-3 grid gap-2">
+        <form onSubmit={envoyer} className="ml-0 mt-5 grid gap-3 rounded-xl border border-primary/15 bg-surface p-4 sm:ml-[3.4rem]">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Reply className="size-3.5 text-primary" aria-hidden /> Réponse à {message.name}
+          </div>
           <Textarea
             value={reponse}
             onChange={(e) => setReponse(e.target.value)}
@@ -3207,30 +4565,67 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
             placeholder={`Répondre à ${message.name}…`}
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" size="sm" disabled={sending} className="justify-self-start">
-            {sending ? "Envoi…" : "Envoyer la réponse par email"}
+          <Button type="submit" size="sm" disabled={sending} className="justify-self-start gap-1.5">
+            <Send className="size-3.5" aria-hidden /> {sending ? "Envoi…" : "Envoyer par email"}
           </Button>
         </form>
       )}
-    </div>
+    </article>
   );
 }
 
 function MessagesAdmin() {
   const { data: messages, loading, error, refetch } = useApiList<ContactMessageAdmin>("/contact-messages?pageSize=100");
+  const [recherche, setRecherche] = useState("");
+  const [filtre, setFiltre] = useState<"all" | "unread" | "archived">("all");
+
+  const messagesFiltres = messages.filter((message) => {
+    const termes = `${message.name} ${message.email} ${message.subject} ${message.message}`.toLocaleLowerCase("fr");
+    const correspondRecherche = termes.includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondFiltre = filtre === "all" || (filtre === "unread" ? !message.isRead && !message.isArchived : message.isArchived);
+    return correspondRecherche && correspondFiltre;
+  });
+  const nonLus = messages.filter((message) => !message.isRead && !message.isArchived).length;
 
   if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8 rounded-xl border border-border bg-card px-5">
-      {messages.map((m) => (
+    <section className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+      <div className="flex flex-col gap-4 border-b border-border bg-surface/70 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Inbox className="size-4" aria-hidden /></span>
+            <h2 className="font-heading text-base font-semibold">Boîte de réception</h2>
+            {nonLus > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">{nonLus}</span>}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{messages.length} message{messages.length > 1 ? "s" : ""} reçu{messages.length > 1 ? "s" : ""}</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 sm:w-60">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input value={recherche} onChange={(event) => setRecherche(event.target.value)} placeholder="Rechercher un message…" className="h-9 pl-9 text-xs" />
+          </div>
+          <div className="flex rounded-lg bg-muted p-1" aria-label="Filtrer les messages">
+            {([['all', 'Tous'], ['unread', 'Non lus'], ['archived', 'Archivés']] as const).map(([valeur, libelle]) => (
+              <button key={valeur} type="button" onClick={() => setFiltre(valeur)} className={cn("rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors", filtre === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                {libelle}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {messagesFiltres.map((m) => (
         <MessageRow key={m.id} message={m} onUpdated={refetch} />
       ))}
-      {messages.length === 0 && (
-        <p className="py-10 text-center text-sm text-muted-foreground">Aucun message pour l'instant.</p>
+      {messagesFiltres.length === 0 && (
+        <div className="px-5 py-14 text-center">
+          <Inbox className="mx-auto size-8 text-muted-foreground/50" aria-hidden />
+          <p className="mt-3 text-sm font-medium">{messages.length === 0 ? "Votre boîte de réception est vide." : "Aucun message ne correspond à cette recherche."}</p>
+          {messages.length > 0 && <button type="button" onClick={() => { setRecherche(""); setFiltre("all"); }} className="mt-2 text-xs font-semibold text-primary hover:underline">Réinitialiser les filtres</button>}
+        </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -3248,6 +4643,7 @@ interface ReglementationAdmin {
 }
 
 function ReglementationAdmin() {
+  const confirm = useConfirm();
   const { data: textes, loading, error, refetch } = useApiList<ReglementationAdmin>("/regulations?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ReglementationAdmin | null>(null);
@@ -3255,6 +4651,48 @@ function ReglementationAdmin() {
   const [isPopular, setIsPopular] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreCategorie, setFiltreCategorie] = useState("all");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+
+  const categoriesNoms = Array.from(new Set(textes.map((t) => t.category)));
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreCategorie("all");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = textes.filter((t) => {
+    const correspondRecherche = t.name.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondCategorie = filtreCategorie === "all" || t.category === filtreCategorie;
+    const date = t.dateUpload.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondCategorie && correspondDateDebut && correspondDateFin;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const totalVues = textes.reduce((somme, t) => somme + t.views, 0);
+  const misEnAvant = textes.filter((t) => t.isPopular).length;
+  const nouveauxCetteSemaine = textes.filter((t) => depuisMoinsDuneSemaine(t.dateUpload)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `reglementation-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Texte", "Catégorie", "Format", "Vues", "Date de publication"],
+      resultat.map((t) => [t.name, t.category, t.format, t.views, formaterDate(t.dateUpload)]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -3271,7 +4709,7 @@ function ReglementationAdmin() {
   }
 
   async function supprimer(t: ReglementationAdmin) {
-    if (!window.confirm(`Supprimer le texte "${t.name}" ?`)) return;
+    if (!(await confirm(`Supprimer le texte "${t.name}" ?`))) return;
     try {
       await apiFetch(`/regulations/${t.id}`, { method: "DELETE" });
       toast.success("Texte réglementaire supprimé.");
@@ -3321,16 +4759,36 @@ function ReglementationAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{textes.length} texte(s)</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouveau texte"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <ScrollText className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Réglementation</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les textes réglementaires publiés sur le site.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouveau texte"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTrendCard icon={ScrollText} tone="primary" value={textes.length} label="Total" delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={Eye} tone="warning" value={totalVues} label="Vues cumulées" />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={misEnAvant} label="Mis en avant" />
+        <StatTrendCard icon={FileText} tone="primary" value={categoriesNoms.length} label="Catégories" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
           <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouveau texte réglementaire"}</p>
           <div className="grid gap-2 sm:col-span-2">
             <Label htmlFor="reg-name">Nom du texte *</Label>
@@ -3387,19 +4845,49 @@ function ReglementationAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Texte", "Catégorie", "Format", "Publié le", "Vues", "Actions"]}
-        lignes={textes.map((t) => [
-          t.name,
-          t.category,
-          t.format,
-          formaterDate(t.dateUpload),
-          t.views.toLocaleString("fr-FR"),
-          <RowActions key={t.id} onEdit={() => ouvrirEdition(t)} onDelete={() => supprimer(t)} />,
-        ])}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher un texte…"
+            />
+          </div>
+          <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {categoriesNoms.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        <TableauAdmin
+          compact
+          codeColumn={false}
+          colonnes={["Texte", "Catégorie", "Format", "Publié le", "Vues", "Actions"]}
+          lignes={resultatPage.map((t) => [
+            t.name,
+            t.category,
+            t.format,
+            formaterDate(t.dateUpload),
+            t.views.toLocaleString("fr-FR"),
+            <RowActions key={t.id} onEdit={() => ouvrirEdition(t)} onDelete={() => supprimer(t)} />,
+          ])}
+        />
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun texte ne correspond aux filtres.</p>}
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -3413,9 +4901,11 @@ interface ConsultationAdmin {
   endDate: string;
   contactEmail: string;
   fileUrl: string | null;
+  createdAt: string;
 }
 
 function ConsultationsAdmin() {
+  const confirm = useConfirm();
   const { data: consultations, loading, error, refetch } = useApiList<ConsultationAdmin>(
     "/public-consultations?lang=fr&pageSize=100",
   );
@@ -3424,6 +4914,46 @@ function ConsultationsAdmin() {
   const [status, setStatus] = useState<string>("OUVERTE");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState<"all" | ConsultationAdmin["status"]>("all");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [page, setPage] = useState(1);
+
+  function reinitialiser() {
+    setRecherche("");
+    setFiltreStatut("all");
+    setDateDebut("");
+    setDateFin("");
+    setPage(1);
+  }
+
+  const resultat = consultations.filter((c) => {
+    const correspondRecherche = c.title.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondStatut = filtreStatut === "all" || c.status === filtreStatut;
+    const date = c.startDate.slice(0, 10);
+    const correspondDateDebut = !dateDebut || date >= dateDebut;
+    const correspondDateFin = !dateFin || date <= dateFin;
+    return correspondRecherche && correspondStatut && correspondDateDebut && correspondDateFin;
+  });
+  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
+  const pageCourante = Math.min(page, totalPages);
+  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
+  const ouvertes = consultations.filter((c) => c.status === "OUVERTE").length;
+  const cloturees = consultations.filter((c) => c.status === "CLOTUREE").length;
+  const nouvellesCetteSemaine = consultations.filter((c) => depuisMoinsDuneSemaine(c.createdAt)).length;
+
+  function changerPage(p: number) {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+  }
+
+  function exporter() {
+    exporterCsv(
+      `consultations-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Titre", "Statut", "Début", "Fin"],
+      resultat.map((c) => [c.title, c.status, formaterDate(c.startDate), formaterDate(c.endDate)]),
+    );
+  }
 
   function ouvrirCreation() {
     setEditing(null);
@@ -3438,7 +4968,7 @@ function ConsultationsAdmin() {
   }
 
   async function supprimer(c: ConsultationAdmin) {
-    if (!window.confirm(`Supprimer la consultation "${c.title}" ?`)) return;
+    if (!(await confirm(`Supprimer la consultation "${c.title}" ?`))) return;
     try {
       await apiFetch(`/public-consultations/${c.id}`, { method: "DELETE" });
       toast.success("Consultation publique supprimée.");
@@ -3485,16 +5015,35 @@ function ConsultationsAdmin() {
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
-    <div className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">{consultations.length} consultation(s)</p>
-        <Button size="sm" onClick={ouvrirCreation}>
-          {showForm && !editing ? "Annuler" : "+ Nouvelle consultation"}
-        </Button>
+    <section className="mt-8 space-y-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Vote className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-heading text-xl font-semibold">Consultations publiques</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Gérez les consultations soumises à l'avis du public.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
+            <Download className="size-4" aria-hidden /> Exporter
+          </Button>
+          <Button size="sm" onClick={ouvrirCreation}>
+            {showForm && !editing ? "Annuler" : "+ Nouvelle consultation"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StatTrendCard icon={Vote} tone="primary" value={consultations.length} label="Total" delta={nouvellesCetteSemaine} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={ouvertes} label="Ouvertes" />
+        <StatTrendCard icon={X} tone="destructive" value={cloturees} label="Clôturées" />
       </div>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
           <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.title}"` : "Nouvelle consultation publique"}</p>
           <div className="grid gap-2 sm:col-span-2">
             <Label htmlFor="cons-title">Titre *</Label>
@@ -3554,17 +5103,47 @@ function ConsultationsAdmin() {
         </form>
       )}
 
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Consultation", "Période", "Statut", "Actions"]}
-        lignes={consultations.map((c) => [
-          c.title,
-          `${formaterDate(c.startDate)} → ${formaterDate(c.endDate)}`,
-          <StatutBadge key={c.uid} statut={c.status} />,
-          <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
-        ])}
-      />
-    </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_9rem_9rem_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={recherche}
+              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
+              className="h-9 bg-card pl-9 text-xs"
+              placeholder="Rechercher une consultation…"
+            />
+          </div>
+          <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
+            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              {CONSULTATION_STATUTS.map((s) => <SelectItem key={s} value={s}>{s === "OUVERTE" ? "Ouverte" : "Clôturée"}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
+            Réinitialiser
+          </Button>
+        </div>
+
+        <TableauAdmin
+          compact
+          codeColumn={false}
+          colonnes={["Consultation", "Période", "Statut", "Actions"]}
+          lignes={resultatPage.map((c) => [
+            c.title,
+            `${formaterDate(c.startDate)} → ${formaterDate(c.endDate)}`,
+            <StatutBadge key={c.uid} statut={c.status} />,
+            <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
+          ])}
+        />
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune consultation ne correspond aux filtres.</p>}
+
+        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
+      </div>
+    </section>
   );
 }
 
@@ -3757,6 +5336,7 @@ function VoirCompteButton({ user }: { user: UserAdmin }) {
 }
 
 function RolesAdmin() {
+  const confirm = useConfirm();
   const { data: roles, loading, error, refetch } = useApiOne<RoleAdmin[]>("/roles");
   const { data: permissions } = useApiOne<PermissionOption[]>("/permissions");
   const [showForm, setShowForm] = useState(false);
@@ -3822,7 +5402,7 @@ function RolesAdmin() {
   }
 
   async function supprimer(id: number) {
-    if (!window.confirm("Supprimer ce rôle ? Les utilisateurs qui l'ont perdront leurs permissions.")) return;
+    if (!(await confirm("Supprimer ce rôle ? Les utilisateurs qui l'ont perdront leurs permissions."))) return;
     try {
       await apiFetch(`/roles/${id}`, { method: "DELETE" });
       toast.success("Rôle supprimé.");
@@ -3930,103 +5510,33 @@ function EntrepriseDocumentLink({ userId }: { userId: number }) {
   );
 }
 
-/**
- * Bloc listant TOUS les comptes entreprise (en attente, approuvés, rejetés)
- * — affiché dans "Utilisateurs & rôles", pas d'onglet séparé. Les actions
- * Approuver/Rejeter ne s'affichent que pour une demande encore EN_ATTENTE
- * (une décision déjà prise n'est pas révisable, voir
- * UsersService.decideEnterpriseApproval).
- */
-function EntreprisesAdmin() {
-  const { data: entreprises, loading, error, refetch } = useApiList<UserAdmin>(
-    "/users?accountType=ENTREPRISE&pageSize=100",
-  );
-  const [pendingId, setPendingId] = useState<number | null>(null);
+function EnterpriseApprovalActions({ user, onUpdated }: { user: UserAdmin; onUpdated: () => void }) {
+  const [pending, setPending] = useState(false);
 
-  async function approuver(id: number) {
-    setPendingId(id);
+  async function decide(decision: "APPROUVE" | "REJETE") {
+    const reason = decision === "REJETE" ? window.prompt("Motif du rejet (visible par le demandeur) :") : undefined;
+    if (decision === "REJETE" && !reason?.trim()) return;
+    setPending(true);
     try {
-      await apiFetch(`/users/${id}/enterprise-approval`, {
+      await apiFetch(`/users/${user.id}/enterprise-approval`, {
         method: "PATCH",
-        body: JSON.stringify({ decision: "APPROUVE" }),
+        body: JSON.stringify({ decision, ...(reason ? { reason: reason.trim() } : {}) }),
       });
-      toast.success("Compte entreprise validé.");
-      refetch();
+      toast.success(decision === "APPROUVE" ? "Compte entreprise validé." : "Compte entreprise rejeté.");
+      onUpdated();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
     } finally {
-      setPendingId(null);
+      setPending(false);
     }
   }
 
-  async function rejeter(id: number) {
-    const reason = window.prompt("Motif du rejet (visible par le demandeur) :");
-    if (!reason || !reason.trim()) return;
-    setPendingId(id);
-    try {
-      await apiFetch(`/users/${id}/enterprise-approval`, {
-        method: "PATCH",
-        body: JSON.stringify({ decision: "REJETE", reason: reason.trim() }),
-      });
-      toast.success("Compte entreprise rejeté.");
-      refetch();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
-  if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
-
-  const statutPuce: Record<NonNullable<UserAdmin["enterpriseApprovalStatus"]>, { label: string; tone: "success" | "warning" | "info" }> = {
-    EN_ATTENTE: { label: "En attente", tone: "warning" },
-    APPROUVE: { label: "Approuvé", tone: "success" },
-    REJETE: { label: "Rejeté", tone: "info" },
-  };
+  if (user.enterpriseApprovalStatus !== "EN_ATTENTE") return null;
 
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <Building2 className="size-4 text-primary" aria-hidden />
-        <h2 className="font-heading text-lg font-semibold">Comptes entreprise</h2>
-        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
-          {entreprises.length}
-        </span>
-      </div>
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Entreprise", "Demandeur", "Document", "Statut", "Inscrit le", "Actions"]}
-        lignes={entreprises.map((u) => {
-          const statut = u.enterpriseApprovalStatus ? statutPuce[u.enterpriseApprovalStatus] : null;
-          return [
-            u.companyName ?? "—",
-            <div key={u.id} className="flex items-center gap-2">
-              <span>{u.fullname} ({u.email})</span>
-              <VoirCompteButton user={u} />
-            </div>,
-            u.hasCompanyDocument ? <EntrepriseDocumentLink key={u.id} userId={u.id} /> : "—",
-            statut ? <Puce key={u.id} label={statut.label} tone={statut.tone} /> : "—",
-            formaterDate(u.dateJoined),
-            u.enterpriseApprovalStatus === "EN_ATTENTE" ? (
-              <div key={u.id} className="flex items-center gap-2">
-                <Button size="sm" disabled={pendingId === u.id} onClick={() => approuver(u.id)}>
-                  Approuver
-                </Button>
-                <Button size="sm" variant="outline" disabled={pendingId === u.id} onClick={() => rejeter(u.id)}>
-                  Rejeter
-                </Button>
-              </div>
-            ) : (
-              "—"
-            ),
-          ];
-        })}
-      />
-      {entreprises.length === 0 && (
-        <p className="mt-6 text-sm text-muted-foreground">Aucun compte entreprise pour le moment.</p>
-      )}
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      <Button type="button" size="sm" disabled={pending} onClick={() => decide("APPROUVE")} className="h-7 px-2 text-[11px]">Approuver</Button>
+      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => decide("REJETE")} className="h-7 px-2 text-[11px]">Rejeter</Button>
     </div>
   );
 }
@@ -4071,14 +5581,17 @@ function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCr
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-heading text-lg font-semibold">Utilisateurs</h2>
-        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Annuler" : "+ Nouvel utilisateur"}
+        <div>
+          <h2 className="font-heading text-lg font-semibold">Répertoire des comptes</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Gérez les accès, les rôles et le statut de chaque compte.</p>
+        </div>
+        <Button size="sm" className="shrink-0" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? "Annuler" : "+ Ajouter un compte"}
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={creer} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <form onSubmit={creer} className="mt-5 grid gap-4 rounded-xl border border-primary/15 bg-surface p-5 shadow-soft sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="new-user-fullname">Nom complet *</Label>
             <Input id="new-user-fullname" name="fullname" required minLength={2} />
@@ -4118,33 +5631,110 @@ function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCr
 function UtilisateursAdmin() {
   const { data: users, loading, error, refetch } = useApiList<UserAdmin>("/users?pageSize=100");
   const { data: roles } = useApiOne<RoleOption[]>("/roles");
+  const [recherche, setRecherche] = useState("");
+  const [filtreType, setFiltreType] = useState<"all" | UserAdmin["accountType"]>("all");
+  const [filtreEtat, setFiltreEtat] = useState<"all" | "active" | "inactive">("all");
+
+  const comptesFiltres = users.filter((user) => {
+    const texte = `${user.fullname} ${user.email} ${user.companyName ?? ""} ${user.role?.name ?? ""}`.toLocaleLowerCase("fr");
+    return (
+      texte.includes(recherche.trim().toLocaleLowerCase("fr")) &&
+      (filtreType === "all" || user.accountType === filtreType) &&
+      (filtreEtat === "all" || (filtreEtat === "active" ? user.isActive : !user.isActive))
+    );
+  });
+  const comptesEntreprise = users.filter((user) => user.accountType === "ENTREPRISE").length;
+  const comptesActifs = users.filter((user) => user.isActive).length;
+  const enAttente = users.filter((user) => user.enterpriseApprovalStatus === "EN_ATTENTE").length;
 
   if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
     <div className="mt-8 grid gap-6">
-      <section className="rounded-xl border border-border bg-card p-5">
-        <EntreprisesAdmin />
-      </section>
-      <section className="rounded-xl border border-border bg-card p-5">
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+        <div className="bg-institution px-5 py-6 text-primary-foreground sm:px-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 place-items-center rounded-xl bg-primary-foreground/15"><Users className="size-5" aria-hidden /></span>
+              <div>
+                <p className="font-heading text-xs font-semibold tracking-[0.16em] uppercase opacity-80">Administration des accès</p>
+                <h1 className="mt-1 font-heading text-2xl font-semibold">Utilisateurs & rôles</h1>
+                <p className="mt-1 text-sm leading-6 text-primary-foreground/75">Une vue unique de tous les comptes personnels et professionnels.</p>
+              </div>
+            </div>
+            {enAttente > 0 && <span className="rounded-full bg-primary-foreground/15 px-3 py-1.5 text-xs font-semibold">{enAttente} entreprise{enAttente > 1 ? "s" : ""} à valider</span>}
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-primary-foreground/15 sm:grid-cols-4">
+            {[
+              [users.length, "Comptes au total"],
+              [comptesActifs, "Accès actifs"],
+              [comptesEntreprise, "Comptes entreprise"],
+              [roles?.length ?? 0, "Rôles configurés"],
+            ].map(([valeur, libelle]) => (
+              <div key={String(libelle)} className="bg-primary-deep/25 px-4 py-3">
+                <p className="font-heading text-xl font-bold tabular-nums">{valeur}</p>
+                <p className="mt-0.5 text-[11px] text-primary-foreground/70">{libelle}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-5 sm:p-6">
         <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
-        <TableauAdmin
-          codeColumn={false}
-          colonnes={["Utilisateur", "Type", "Rôle", "Inscrit le", "État"]}
-          lignes={users.map((u) => [
-            <div key={u.id} className="flex items-center gap-2">
-              <span>{u.fullname} ({u.email})</span>
-              <VoirCompteButton user={u} />
-            </div>,
-            u.accountType === "ENTREPRISE" ? (u.companyName ?? "Entreprise") : "Particulier",
-            <UserRoleSelect key={u.id} user={u} roles={roles ?? []} onUpdated={refetch} />,
-            formaterDate(u.dateJoined),
-            <UserActiveToggle key={u.id} user={u} onUpdated={refetch} />,
-          ])}
-        />
+          <div className="mt-6 flex flex-col gap-3 border-y border-border py-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-10 pl-9 text-sm" placeholder="Rechercher un nom, e-mail, entreprise ou rôle…" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-lg bg-muted p-1">
+                {([['all', 'Tous'], ['PARTICULIER', 'Particuliers'], ['ENTREPRISE', 'Entreprises']] as const).map(([valeur, libelle]) => (
+                  <button key={valeur} type="button" onClick={() => setFiltreType(valeur)} className={cn("rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors", filtreType === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{libelle}</button>
+                ))}
+              </div>
+              <div className="flex rounded-lg bg-muted p-1">
+                {([['all', 'Tous'], ['active', 'Actifs'], ['inactive', 'Suspendus']] as const).map(([valeur, libelle]) => (
+                  <button key={valeur} type="button" onClick={() => setFiltreEtat(valeur)} className={cn("rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors", filtreEtat === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{libelle}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-xl border border-border">
+            <TableauAdmin
+              codeColumn={false}
+              colonnes={["Compte", "Profil", "Rôle et accès", "Création", "Statut"]}
+              lignes={comptesFiltres.map((u) => [
+                <div key={u.id} className="flex min-w-55 items-center gap-3">
+                  <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg text-xs font-bold", u.isActive ? "bg-accent text-primary" : "bg-muted text-muted-foreground")}>{initiales(u.fullname)}</span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{u.fullname}</p>
+                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                  </div>
+                  <VoirCompteButton user={u} />
+                </div>,
+                <div key={`profile-${u.id}`} className="min-w-32">
+                  <Puce label={u.accountType === "ENTREPRISE" ? "Entreprise" : "Particulier"} tone={u.accountType === "ENTREPRISE" ? "info" : "success"} />
+                  {u.accountType === "ENTREPRISE" && <p className="mt-1 max-w-36 truncate text-xs text-muted-foreground">{u.companyName ?? "—"}</p>}
+                  {u.accountType === "ENTREPRISE" && <EnterpriseApprovalActions user={u} onUpdated={refetch} />}
+                </div>,
+                <UserRoleSelect key={`role-${u.id}`} user={u} roles={roles ?? []} onUpdated={refetch} />,
+                <span key={`date-${u.id}`} className="whitespace-nowrap text-xs text-muted-foreground">{formaterDate(u.dateJoined)}</span>,
+                <div key={`status-${u.id}`} className="flex flex-col items-start gap-1.5"><UserActiveToggle user={u} onUpdated={refetch} />{!u.emailVerified && <span className="text-[10px] font-medium text-warning-foreground">E-mail non vérifié</span>}</div>,
+              ])}
+            />
+          </div>
+          {comptesFiltres.length === 0 && (
+            <div className="py-10 text-center">
+              <Users className="mx-auto size-8 text-muted-foreground/50" aria-hidden />
+              <p className="mt-3 text-sm font-medium">Aucun compte ne correspond aux filtres sélectionnés.</p>
+              <button type="button" onClick={() => { setRecherche(""); setFiltreType("all"); setFiltreEtat("all"); }} className="mt-2 text-xs font-semibold text-primary hover:underline">Réinitialiser les filtres</button>
+            </div>
+          )}
+        </div>
       </section>
-      <section className="rounded-xl border border-border bg-card p-5">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
         <RolesAdmin />
       </section>
     </div>
