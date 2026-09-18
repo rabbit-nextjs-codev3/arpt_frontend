@@ -3570,6 +3570,22 @@ function PagesPubliquesAdmin() {
               { value: "autre", label: { fr: "Autre opérateur", en: "Other operator", ar: "مشغل آخر" } },
             ]}
           />
+          <ListBlockAdmin
+            blockKey="claims.types"
+            title="Natures de réclamation"
+            description="La liste déroulante « Nature de la réclamation » du formulaire."
+            itemLabel={(it) => blockLabel(it.label) || "Nouvelle nature"}
+            fields={[
+              { name: "value", label: "Identifiant (sans espace)", type: "text" },
+              { name: "label", label: "Nom affiché", type: "text", translatable: true },
+            ]}
+            defaultItems={[
+              { value: "qualite", label: { fr: "Qualité de service", en: "Quality of service", ar: "جودة الخدمة" } },
+              { value: "facturation", label: { fr: "Facturation", en: "Billing", ar: "الفوترة" } },
+              { value: "reseau", label: { fr: "Réseau / couverture", en: "Network / coverage", ar: "الشبكة / التغطية" } },
+              { value: "autre", label: { fr: "Autre", en: "Other", ar: "أخرى" } },
+            ]}
+          />
           <ObjectBlockAdmin
             blockKey="claims.guide"
             title="Encart « Droits des consommateurs »"
