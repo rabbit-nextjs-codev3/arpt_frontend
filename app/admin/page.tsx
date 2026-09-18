@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -50,7 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useAuth, ApiError } from "@/lib/auth";
 import { useApiOne, useApiList, useContentBlockRaw } from "@/lib/hooks";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, type PaginatedResult } from "@/lib/api";
 import { formaterDate } from "@/data/mock";
 
 interface MenuItem {
@@ -155,11 +155,143 @@ interface AuditLogEntry {
   actor: { email: string; fullname: string } | null;
 }
 
-interface NotificationAdmin {
+interface NotificationItem {
   id: number;
+  type: string;
   title: string;
+  body: string | null;
   isRead: boolean;
   createdAt: string;
+}
+
+/** Fait le lien entre le type d'événement (voir NotificationsService côté backend) et l'onglet du dashboard où le traiter. */
+const NOTIFICATION_SECTION_BY_TYPE: Record<string, string> = {
+  "submission.created": "marches",
+  "submission.status_changed": "marches",
+  "user.registered": "utilisateurs",
+  "user.enterprise_registered": "utilisateurs",
+  "user.enterprise_status_changed": "utilisateurs",
+  "candidature.created": "carrieres",
+  "candidature.status_changed": "carrieres",
+  "contact_message.created": "messages",
+  "claim.created": "reclamations",
+  "claim.status_changed": "reclamations",
+  "service_request.created": "demandes",
+};
+
+const NOTIFICATIONS_POLL_MS = 30_000;
+
+function NotificationsBell({ onNavigate }: { onNavigate: (section: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let annule = false;
+    async function charger() {
+      try {
+        const res = await apiFetch<{ count: number }>("/notifications/unread-count");
+        if (!annule) setUnread(res.count);
+      } catch {
+        // silencieux — le compteur réessaiera au prochain cycle de polling.
+      }
+    }
+    charger();
+    const interval = setInterval(charger, NOTIFICATIONS_POLL_MS);
+    return () => {
+      annule = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  async function ouvrir() {
+    const prochainEtat = !open;
+    setOpen(prochainEtat);
+    if (!prochainEtat) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch<PaginatedResult<NotificationItem>>("/notifications?pageSize=15");
+      setItems(res.results);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function cliquerNotification(n: NotificationItem) {
+    if (!n.isRead) {
+      setItems((prev) => prev.map((it) => (it.id === n.id ? { ...it, isRead: true } : it)));
+      setUnread((c) => Math.max(0, c - 1));
+      apiFetch(`/notifications/${n.id}/read`, { method: "POST" }).catch(() => {});
+    }
+    setOpen(false);
+    const section = NOTIFICATION_SECTION_BY_TYPE[n.type];
+    if (section) onNavigate(section);
+  }
+
+  async function toutMarquerLu() {
+    setItems((prev) => prev.map((it) => ({ ...it, isRead: true })));
+    setUnread(0);
+    try {
+      await apiFetch("/notifications/read-all", { method: "POST" });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={ouvrir}
+        title="Notifications"
+        className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+      >
+        <Bell className="size-[18px]" aria-hidden />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 grid min-w-[18px] place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-20 mt-2 w-80 rounded-xl border border-border bg-card shadow-lg">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <p className="text-sm font-semibold">Notifications</p>
+            {unread > 0 && (
+              <button type="button" onClick={toutMarquerLu} className="text-xs font-medium text-primary hover:underline">
+                Tout marquer lu
+              </button>
+            )}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {loading && <p className="p-4 text-center text-xs text-muted-foreground">Chargement…</p>}
+            {!loading && items.length === 0 && (
+              <p className="p-4 text-center text-xs text-muted-foreground">Aucune notification.</p>
+            )}
+            {!loading &&
+              items.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => cliquerNotification(n)}
+                  className={cn(
+                    "block w-full border-b border-border px-4 py-3 text-left text-xs transition-colors last:border-0 hover:bg-muted/60",
+                    !n.isRead && "bg-accent/40",
+                  )}
+                >
+                  <p className="font-medium text-foreground">{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-muted-foreground">{n.body}</p>}
+                  <p className="mt-1 text-[10px] text-muted-foreground">{formaterDate(n.createdAt)}</p>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Admin() {
@@ -167,13 +299,8 @@ export default function Admin() {
   const courant = menus.find((m) => m.id === section) ?? menus[0];
   const { user, loading: authLoading, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const staff = Boolean(user?.isStaff);
   const { data: overview } = useApiOne<AdminOverview>(staff ? "/dashboard/admin-overview" : null);
-  const { data: notifications, refetch: refetchNotifications } = useApiList<NotificationAdmin>(
-    staff ? "/notifications?pageSize=8" : null,
-  );
-  const notifsNonLues = notifications.filter((n) => !n.isRead).length;
   const { data: overviewStats } = useApiOne<SectorOverview>(staff ? "/statistics/overview?lang=fr" : null);
   const { data: reclamationsRecentes } = useApiList<ClaimAdmin>(staff ? "/claims?lang=fr&pageSize=3" : null);
   const { data: activiteRecente } = useApiList<AuditLogEntry>(staff ? "/audit-logs?pageSize=5" : null);
@@ -344,74 +471,7 @@ export default function Admin() {
                 <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
               )}
             </button>
-            <div className="relative">
-              <button
-                type="button"
-                title="Notifications"
-                onClick={() => setNotifOpen((v) => !v)}
-                className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-              >
-                <Bell className="size-[18px]" aria-hidden />
-                {notifsNonLues > 0 && (
-                  <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
-                )}
-              </button>
-              {notifOpen && (
-                <div className="absolute top-full right-0 z-20 mt-2 w-80 rounded-md border border-border bg-card p-1.5 shadow-lg">
-                  <div className="flex items-center justify-between px-2.5 py-2">
-                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      Notifications
-                    </span>
-                    {notifsNonLues > 0 && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await apiFetch("/notifications/read-all", { method: "POST" });
-                          refetchNotifications();
-                        }}
-                        className="text-xs font-medium text-primary hover:underline"
-                      >
-                        Tout marquer lu
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        onClick={async () => {
-                          if (n.isRead) return;
-                          await apiFetch(`/notifications/${n.id}/read`, { method: "POST" });
-                          refetchNotifications();
-                        }}
-                        className="flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface"
-                      >
-                        <span
-                          className={
-                            n.isRead
-                              ? "mt-1.5 size-1.5 shrink-0 rounded-full bg-border"
-                              : "mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
-                          }
-                          aria-hidden
-                        />
-                        <span className="min-w-0">
-                          <span className={n.isRead ? "block text-xs text-muted-foreground" : "block text-xs font-medium"}>
-                            {n.title}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {formaterDate(n.createdAt)}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                    {notifications.length === 0 && (
-                      <p className="px-2.5 py-6 text-center text-xs text-muted-foreground">Aucune notification.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationsBell onNavigate={setSection} />
             <LocaleSwitcher className="border-none bg-transparent shadow-none" />
             <div className="mx-1.5 h-6 w-px bg-border" />
             <div className="relative">
@@ -3510,6 +3570,11 @@ interface UserAdmin {
   isStaff: boolean;
   isSuperuser: boolean;
   dateJoined: string;
+  accountType: "PARTICULIER" | "ENTREPRISE";
+  companyName: string | null;
+  hasCompanyDocument: boolean;
+  enterpriseApprovalStatus: "EN_ATTENTE" | "APPROUVE" | "REJETE" | null;
+  rejectionReason: string | null;
 }
 
 interface RoleOption {
@@ -3725,6 +3790,192 @@ function RolesAdmin() {
   );
 }
 
+function EntrepriseDocumentLink({ userId }: { userId: number }) {
+  const [pending, setPending] = useState(false);
+
+  async function voir() {
+    setPending(true);
+    try {
+      const res = await apiFetch<{ url: string }>(`/users/${userId}/company-document`);
+      window.open(res.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Impossible d'ouvrir le document.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <button type="button" onClick={voir} disabled={pending} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+      Voir le document
+    </button>
+  );
+}
+
+function EntreprisesEnAttenteAdmin({ onUpdated }: { onUpdated: () => void }) {
+  const { data: demandes, loading, error, refetch } = useApiList<UserAdmin>(
+    "/users?accountType=ENTREPRISE&enterpriseApprovalStatus=EN_ATTENTE&pageSize=100",
+  );
+  const [pendingId, setPendingId] = useState<number | null>(null);
+
+  function refresh() {
+    refetch();
+    onUpdated();
+  }
+
+  async function approuver(id: number) {
+    setPendingId(id);
+    try {
+      await apiFetch(`/users/${id}/enterprise-approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "APPROUVE" }),
+      });
+      toast.success("Compte entreprise validé.");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function rejeter(id: number) {
+    const reason = window.prompt("Motif du rejet (visible par le demandeur) :");
+    if (!reason || !reason.trim()) return;
+    setPendingId(id);
+    try {
+      await apiFetch(`/users/${id}/enterprise-approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "REJETE", reason: reason.trim() }),
+      });
+      toast.success("Compte entreprise rejeté.");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  if (loading) return null;
+  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (demandes.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <Briefcase className="size-4 text-primary" aria-hidden />
+        <h2 className="font-heading text-lg font-semibold">Comptes entreprise en attente</h2>
+        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+          {demandes.length}
+        </span>
+      </div>
+      <TableauAdmin
+        codeColumn={false}
+        colonnes={["Entreprise", "Demandeur", "Document", "Inscrit le", "Actions"]}
+        lignes={demandes.map((u) => [
+          u.companyName ?? "—",
+          `${u.fullname} (${u.email})`,
+          u.hasCompanyDocument ? <EntrepriseDocumentLink key={u.id} userId={u.id} /> : "—",
+          formaterDate(u.dateJoined),
+          <div key={u.id} className="flex items-center gap-2">
+            <Button size="sm" disabled={pendingId === u.id} onClick={() => approuver(u.id)}>
+              Approuver
+            </Button>
+            <Button size="sm" variant="outline" disabled={pendingId === u.id} onClick={() => rejeter(u.id)}>
+              Rejeter
+            </Button>
+          </div>,
+        ])}
+      />
+    </div>
+  );
+}
+
+function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCreated: () => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const membre = roles.find((r) => r.name === "Membre");
+  const [roleIdOverride, setRoleIdOverride] = useState<string | null>(null);
+  // "Membre" par défaut tant que l'admin n'a pas choisi un autre rôle —
+  // calculé plutôt que synchronisé via effet, roles arrivant après le
+  // premier rendu (useApiOne).
+  const roleId = roleIdOverride ?? (membre ? String(membre.id) : "");
+
+  async function creer(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+    setSubmitting(true);
+    const data = new FormData(event.currentTarget);
+    try {
+      await apiFetch("/users", {
+        method: "POST",
+        body: JSON.stringify({
+          fullname: String(data.get("fullname")),
+          email: String(data.get("email")),
+          roleId: roleId ? Number(roleId) : undefined,
+        }),
+      });
+      toast.success("Utilisateur créé — un email lui a été envoyé pour définir son mot de passe.");
+      setShowForm(false);
+      setRoleIdOverride(null);
+      event.currentTarget.reset();
+      onCreated();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="font-heading text-lg font-semibold">Utilisateurs</h2>
+        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? "Annuler" : "+ Nouvel utilisateur"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={creer} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="new-user-fullname">Nom complet *</Label>
+            <Input id="new-user-fullname" name="fullname" required minLength={2} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="new-user-email">Adresse e-mail *</Label>
+            <Input id="new-user-email" name="email" type="email" required />
+          </div>
+          <div className="grid gap-2 sm:col-span-2">
+            <Label htmlFor="new-user-role">Rôle</Label>
+            <Select value={roleId} onValueChange={setRoleIdOverride}>
+              <SelectTrigger id="new-user-role">
+                <SelectValue placeholder="Membre (par défaut)" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={String(r.id)}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground sm:col-span-2">
+            Aucun mot de passe à saisir : l&apos;utilisateur recevra un email pour définir le sien.
+          </p>
+          {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
+          <Button type="submit" disabled={submitting} className="justify-self-start">
+            {submitting ? "Création…" : "Créer l'utilisateur"}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function UtilisateursAdmin() {
   const { data: users, loading, error, refetch } = useApiList<UserAdmin>("/users?pageSize=100");
   const { data: roles } = useApiOne<RoleOption[]>("/roles");
@@ -3734,13 +3985,15 @@ function UtilisateursAdmin() {
 
   return (
     <div className="mt-8 grid gap-10">
+      <EntreprisesEnAttenteAdmin onUpdated={refetch} />
       <div>
-        <h2 className="font-heading text-lg font-semibold">Utilisateurs</h2>
+        <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
         <TableauAdmin
           codeColumn={false}
-          colonnes={["Utilisateur", "Rôle", "Inscrit le", "État"]}
+          colonnes={["Utilisateur", "Type", "Rôle", "Inscrit le", "État"]}
           lignes={users.map((u) => [
             `${u.fullname} (${u.email})`,
+            u.accountType === "ENTREPRISE" ? (u.companyName ?? "Entreprise") : "Particulier",
             <UserRoleSelect key={u.id} user={u} roles={roles ?? []} onUpdated={refetch} />,
             formaterDate(u.dateJoined),
             <UserActiveToggle key={u.id} user={u} onUpdated={refetch} />,
@@ -3789,6 +4042,9 @@ function AdminLogin() {
           <Button type="submit" disabled={submitting} className="mt-1">
             {submitting ? "Connexion…" : "Se connecter"}
           </Button>
+          <Link href="/mot-de-passe" className="text-center text-xs font-medium text-primary hover:underline">
+            Première connexion ou mot de passe oublié ?
+          </Link>
         </div>
       </form>
     </div>

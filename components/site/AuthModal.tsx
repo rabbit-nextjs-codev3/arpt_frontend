@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Building2, Eye, EyeOff, LockKeyhole, ShieldCheck, User, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useAuth, ApiError } from "@/lib/auth";
 
 const AuthContext = createContext<(() => void) | null>(null);
@@ -89,33 +91,48 @@ function PasswordField({ id, label, confirm = false, signup = false }: { id: str
 function AuthForm({ mode, onSuccess }: { mode: "signin" | "signup"; onSuccess: () => void }) {
   const signup = mode === "signup";
   const id = useId();
-  const { login, register } = useAuth();
+  const { login, register, registerEnterprise } = useAuth();
+  const [accountType, setAccountType] = useState<"particulier" | "entreprise">("particulier");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [enterprisePending, setEnterprisePending] = useState<string | null>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     if (signup && data.get("password") !== data.get("confirmation")) {
       setError("Les mots de passe ne correspondent pas.");
-      event.currentTarget.querySelector<HTMLInputElement>('[name="confirmation"]')?.focus();
+      form.querySelector<HTMLInputElement>('[name="confirmation"]')?.focus();
       return;
     }
     setError("");
     setSubmitting(true);
     try {
-      if (signup) {
+      if (signup && accountType === "entreprise") {
+        const body = new FormData();
+        body.append("email", String(data.get("email")));
+        body.append("fullname", String(data.get("name")));
+        body.append("companyName", String(data.get("companyName")));
+        body.append("password", String(data.get("password")));
+        body.append("password2", String(data.get("confirmation")));
+        const document = data.get("companyDocument");
+        if (document instanceof File && document.size > 0) body.append("companyDocument", document);
+        const res = await registerEnterprise(body);
+        setEnterprisePending(res.detail);
+      } else if (signup) {
         await register(
           String(data.get("name")),
           String(data.get("email")),
           String(data.get("password")),
           String(data.get("confirmation")),
         );
+        onSuccess();
       } else {
         await login(String(data.get("email")), String(data.get("password")), "public");
+        onSuccess();
       }
-      onSuccess();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
       requestAnimationFrame(() => errorRef.current?.focus());
@@ -124,13 +141,73 @@ function AuthForm({ mode, onSuccess }: { mode: "signin" | "signup"; onSuccess: (
     }
   }
 
+  if (enterprisePending) {
+    return (
+      <div className="grid gap-4 text-center">
+        <p className="text-sm leading-6 text-foreground">{enterprisePending}</p>
+        <Button type="button" onClick={() => setEnterprisePending(null)} variant="outline" className="justify-self-center">
+          Fermer
+        </Button>
+      </div>
+    );
+  }
+
   return <form onSubmit={submit} className="grid items-start gap-x-5 gap-y-4 sm:grid-cols-2" onChange={() => setError("")}>
-    {signup && <div className="grid gap-2"><Label htmlFor={`${id}-name`}>Nom complet</Label><Input id={`${id}-name`} name="name" autoComplete="name" required maxLength={120} placeholder="Prénom et nom" className="h-12 rounded-lg bg-card shadow-none" /></div>}
+    {signup && (
+      <div role="radiogroup" aria-label="Type de compte" className="grid grid-cols-2 gap-2 sm:col-span-2">
+        {(["particulier", "entreprise"] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={accountType === type}
+            onClick={() => setAccountType(type)}
+            className={cn(
+              "flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-medium transition-colors",
+              accountType === type
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
+            )}
+          >
+            {type === "particulier" ? <User className="size-4" aria-hidden /> : <Building2 className="size-4" aria-hidden />}
+            {type === "particulier" ? "Particulier" : "Entreprise"}
+          </button>
+        ))}
+      </div>
+    )}
+    {signup && <div className="grid gap-2"><Label htmlFor={`${id}-name`}>{accountType === "entreprise" ? "Nom du responsable" : "Nom complet"}</Label><Input id={`${id}-name`} name="name" autoComplete="name" required maxLength={120} placeholder="Prénom et nom" className="h-12 rounded-lg bg-card shadow-none" /></div>}
+    {signup && accountType === "entreprise" && (
+      <div className="grid gap-2 sm:col-span-2">
+        <Label htmlFor={`${id}-company-name`}>Nom de l&apos;entreprise</Label>
+        <Input id={`${id}-company-name`} name="companyName" required maxLength={200} placeholder="Raison sociale" className="h-12 rounded-lg bg-card shadow-none" />
+      </div>
+    )}
     <div className="grid gap-2"><Label htmlFor={`${id}-email`}>Adresse e-mail</Label><Input id={`${id}-email`} name="email" type="email" autoComplete="email" required maxLength={254} placeholder="vous@exemple.com" className="h-12 rounded-lg bg-card shadow-none" /></div>
     <PasswordField id={`${id}-password`} label="Mot de passe" signup={signup} />
     {signup && <PasswordField id={`${id}-confirm`} label="Confirmer le mot de passe" signup confirm />}
+    {signup && accountType === "entreprise" && (
+      <div className="grid gap-2 sm:col-span-2">
+        <Label htmlFor={`${id}-company-document`}>Document justificatif (RCCM ou équivalent)</Label>
+        <Input id={`${id}-company-document`} name="companyDocument" type="file" required accept=".pdf,.jpg,.jpeg,.png" className="bg-card shadow-none" />
+        <p className="text-xs text-muted-foreground">PDF, JPG ou PNG. Votre compte sera activé après validation par un administrateur.</p>
+      </div>
+    )}
     {error && <p ref={errorRef} tabIndex={-1} role="alert" className="text-sm text-destructive sm:col-span-2">{error}</p>}
     <Button type="submit" disabled={submitting} className="mt-1 h-12 w-full rounded-lg text-sm font-semibold sm:col-span-2">{submitting ? "Veuillez patienter…" : signup ? "Créer mon compte" : "Se connecter"}<ArrowRight className="size-4" aria-hidden /></Button>
-    <p className="text-center text-xs leading-5 text-muted-foreground sm:col-span-2">{signup ? "Créez votre compte pour retrouver vos démarches au même endroit." : "Retrouvez vos dossiers et poursuivez vos démarches."}</p>
+    {signup ? (
+      <p className="text-center text-xs leading-5 text-muted-foreground sm:col-span-2">Créez votre compte pour retrouver vos démarches au même endroit.</p>
+    ) : (
+      <p className="text-center text-xs leading-5 text-muted-foreground sm:col-span-2">
+        Retrouvez vos dossiers et poursuivez vos démarches.
+        <br />
+        <Link href="/mot-de-passe" className="font-medium text-primary hover:underline">
+          Mot de passe oublié ?
+        </Link>
+        {" · "}
+        <Link href="/compte-entreprise" className="font-medium text-primary hover:underline">
+          Compte entreprise rejeté ?
+        </Link>
+      </p>
+    )}
   </form>;
 }
