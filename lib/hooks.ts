@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, type PaginatedResult } from "@/lib/api";
+import { useLocale } from "@/lib/locale-context";
 
 /** Liste paginée côté backend, chargée une fois et exposée telle quelle (pas de pagination UI pour l'instant). */
 export function useApiList<T>(path: string | null) {
@@ -48,8 +49,48 @@ interface ContentBlockRecord<T> {
  * depuis l'admin. Le bloc peut ne pas encore exister en base (404 tant qu'aucun
  * admin ne l'a créé) : dans ce cas on retombe silencieusement sur `fallback`
  * (le contenu par défaut codé en dur) plutôt que d'afficher une erreur.
+ *
+ * Résout côté serveur (`?lang=`) tout champ traduisible `{ fr, en?, ar? }`
+ * du bloc dans la langue courante (voir `useLocale`) — `T` reçoit donc des
+ * chaînes déjà résolues, pas les objets i18n bruts. Refetch automatique au
+ * changement de langue (le Context est partagé avec `LocaleSwitcher`, pas
+ * besoin d'attendre le `router.refresh()`).
  */
 export function useContentBlock<T>(key: string, fallback: T) {
+  const { locale } = useLocale();
+  const [data, setData] = useState<T>(fallback);
+  const [loading, setLoading] = useState(true);
+  const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    let annule = false;
+    setLoading(true);
+    api
+      .get<ContentBlockRecord<T>>(`/content-blocks/${key}?lang=${locale}`)
+      .then((res) => {
+        if (!annule) setData(res.value);
+      })
+      .catch(() => {
+        if (!annule) setData(fallback);
+      })
+      .finally(() => {
+        if (!annule) setLoading(false);
+      });
+    return () => {
+      annule = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, locale, version]);
+
+  return { data, loading, refetch: () => setVersion((v) => v + 1) };
+}
+
+/**
+ * Variante "brute" pour l'admin : ne résout jamais les champs traduisibles
+ * (pas de `?lang=`) — l'éditeur a besoin des objets `{ fr, en, ar }` complets
+ * pour proposer un champ par langue, pas d'une chaîne déjà résolue.
+ */
+export function useContentBlockRaw<T>(key: string, fallback: T) {
   const [data, setData] = useState<T>(fallback);
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);

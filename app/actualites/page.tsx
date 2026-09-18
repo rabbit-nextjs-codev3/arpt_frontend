@@ -2,13 +2,27 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { ArrowRight, CalendarDays, Download, Eye, FileText } from "lucide-react";
 import { PageHero, SectionTitle } from "@/components/site/PageHero";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formaterDate } from "@/data/mock";
-import { useApiList } from "@/lib/hooks";
+import { useApiList, useContentBlock } from "@/lib/hooks";
+import { useLocale } from "@/lib/locale-context";
+
+interface HeroContent {
+  surtitre: string;
+  titre: string;
+  description: string;
+}
+
+const HERO_DEFAUT: HeroContent = {
+  surtitre: "Salle de presse",
+  titre: "Actualités et communiqués",
+  description: "Suivez les décisions, les publications et les événements de l'Autorité.",
+};
 
 interface News {
   id: number;
@@ -36,22 +50,21 @@ function extrait(html: string, maxLength = 160): string {
 }
 
 export default function Actualites() {
-  const { data: actualites, loading, error } = useApiList<News>("/news?lang=fr&pageSize=20");
-  const { data: communiques } = useApiList<Communique>("/communiques?lang=fr&pageSize=10");
+  const t = useTranslations("newsPage");
+  const { locale } = useLocale();
+  const { data: hero } = useContentBlock<HeroContent>("news.hero", HERO_DEFAUT);
+  const { data: actualites, loading, error } = useApiList<News>(`/news?lang=${locale}&pageSize=20`);
+  const { data: communiques } = useApiList<Communique>(`/communiques?lang=${locale}&pageSize=10`);
   const [featured, ...reste] = actualites;
 
   return (
     <>
-      <PageHero
-        surtitre="Salle de presse"
-        titre="Actualités et communiqués"
-        description="Suivez les décisions, les publications et les événements de l'Autorité."
-      />
+      <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
       <section className="section-y">
         <div className="container-content grid gap-12 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-8">
-            {loading && <p className="text-sm text-muted-foreground">Chargement des actualités…</p>}
+            {loading && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
             {error && !loading && <p className="text-sm text-destructive">{error}</p>}
 
             {featured && (
@@ -79,7 +92,7 @@ export default function Actualites() {
                         <CalendarDays className="size-3.5" aria-hidden /> {formaterDate(featured.createdAt)}
                       </span>
                       <span className="inline-flex items-center gap-1.5">
-                        <Eye className="size-3.5" aria-hidden /> {featured.views.toLocaleString("fr-FR")}
+                        <Eye className="size-3.5" aria-hidden /> {featured.views.toLocaleString(locale)}
                       </span>
                     </div>
                     <h2 className="mt-4 text-balance font-heading text-xl font-semibold tracking-tight md:text-2xl">
@@ -87,7 +100,7 @@ export default function Actualites() {
                     </h2>
                     <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{extrait(featured.content)}</p>
                     <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                      Lire l'article
+                      {t("readArticle")}
                       <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
                     </span>
                   </CardContent>
@@ -128,7 +141,7 @@ export default function Actualites() {
                         {extrait(actuality.content)}
                       </p>
                       <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-sm font-semibold text-primary">
-                        Lire l'article <ArrowRight className="size-3.5" aria-hidden />
+                        {t("readArticle")} <ArrowRight className="size-3.5" aria-hidden />
                       </span>
                     </CardContent>
                   </Link>
@@ -137,12 +150,12 @@ export default function Actualites() {
             </div>
 
             {!loading && !error && actualites.length === 0 && (
-              <p className="text-sm text-muted-foreground">Aucune actualité publiée pour l'instant.</p>
+              <p className="text-sm text-muted-foreground">{t("empty")}</p>
             )}
           </div>
 
           <aside>
-            <SectionTitle surtitre="Officiel" titre="Communiqués" />
+            <SectionTitle surtitre={t("official")} titre={t("releases")} />
             <Card className="mt-7">
               <CardContent className="p-0">
                 {communiques.map((c, i) => (
@@ -163,7 +176,7 @@ export default function Actualites() {
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                           >
-                            <Download className="size-3.5" aria-hidden /> Télécharger
+                            <Download className="size-3.5" aria-hidden /> {t("download")}
                           </a>
                         )}
                       </div>
@@ -171,7 +184,7 @@ export default function Actualites() {
                   </div>
                 ))}
                 {communiques.length === 0 && (
-                  <p className="p-5 text-sm text-muted-foreground">Aucun communiqué pour l'instant.</p>
+                  <p className="p-5 text-sm text-muted-foreground">{t("noReleases")}</p>
                 )}
               </CardContent>
             </Card>

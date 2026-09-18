@@ -14,6 +14,7 @@ import {
   Radio,
   ShieldCheck,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { PageHero, SectionTitle } from "@/components/site/PageHero";
 import { MemberCarousel } from "@/components/site/MemberCarousel";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,7 @@ const SUPPORT_DEFAUT: SupportContent = {
 };
 
 export default function APropos() {
+  const t = useTranslations("about");
   const { data: hero } = useContentBlock<HeroContent>("about.hero", HERO_DEFAUT);
   const { data: banner } = useContentBlock<BannerContent>("about.banner", BANNER_DEFAUT);
   const { data: missionsImage } = useContentBlock<ImageContent>("about.missionsImage", MISSIONS_IMAGE_DEFAUT);
@@ -146,7 +148,7 @@ export default function APropos() {
       <section className="relative h-[22rem] w-full overflow-hidden md:h-[28rem]">
         <Image
           src={banner.image}
-          alt="Infrastructure de télécommunications surplombant Conakry"
+          alt={t("bannerAlt")}
           fill
           priority
           sizes="100vw"
@@ -163,14 +165,14 @@ export default function APropos() {
           <div className="relative aspect-4/5 overflow-hidden rounded-2xl border border-border">
             <Image
               src={missionsImage.image}
-              alt="Agent de l'ARPT en mission de contrôle du spectre radioélectrique"
+              alt={t("missionsImageAlt")}
               fill
               sizes="(min-width: 1024px) 40vw, 100vw"
               className="object-cover"
             />
           </div>
           <div>
-            <SectionTitle surtitre="Nos missions" titre="Quatre responsabilités fondamentales" />
+            <SectionTitle surtitre={t("missionsSurtitre")} titre={t("missionsTitre")} />
             <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2">
               {missions.map((m, i) => {
                 const Icone = ICONES_AUTORITE[m.icone] ?? Scale;
@@ -193,9 +195,9 @@ export default function APropos() {
         <div className="container-content grid gap-12 lg:grid-cols-2">
           <div>
             <SectionTitle
-              surtitre="Organisation"
-              titre="Nos directions"
-              description="Les directions qui structurent l'action de l'Autorité, de la planification technique du spectre à la protection des consommateurs."
+              surtitre={t("orgSurtitre")}
+              titre={t("orgTitre")}
+              description={t("orgDescription")}
             />
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {directions.map((d, i) => {
@@ -216,7 +218,7 @@ export default function APropos() {
             </div>
           </div>
           <div>
-            <SectionTitle surtitre="Repères" titre="Quelques dates clés" />
+            <SectionTitle surtitre={t("timelineSurtitre")} titre={t("timelineTitre")} />
             <ol className="mt-8 space-y-6 border-l-2 border-border pl-6">
               {reperes.map((r, i) => (
                 <li key={i} className="relative">
@@ -235,7 +237,7 @@ export default function APropos() {
           <div className="relative h-64 overflow-hidden rounded-2xl border border-border md:h-80">
             <Image
               src={teamImage.image}
-              alt="Équipe dirigeante de l'ARPT"
+              alt={t("teamImageAlt")}
               fill
               sizes="100vw"
               className="object-cover object-top"
@@ -245,27 +247,27 @@ export default function APropos() {
           <div className="mt-12 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
               <SectionTitle
-                surtitre="Direction générale"
-                titre="Une équipe au service du secteur"
-                description="Découvrez les responsables qui portent la mission de l'ARPT et accompagnent la transformation numérique de la Guinée."
+                surtitre={t("teamSurtitre")}
+                titre={t("teamTitre")}
+                description={t("teamDescription")}
               />
               <div className="mt-8">
                 <MemberCarousel members={council} />
               </div>
             </div>
             <aside className="rounded-2xl border border-border bg-surface p-6 lg:p-8">
-              <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">Support ARPT</p>
-              <h2 className="mt-3 font-heading text-2xl font-semibold">Besoin d'un accompagnement ?</h2>
+              <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{t("supportLabel")}</p>
+              <h2 className="mt-3 font-heading text-2xl font-semibold">{t("supportTitle")}</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">{support.description}</p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Button asChild>
                   <Link href="/contact">
-                    Nous contacter <ArrowRight className="size-4" aria-hidden />
+                    {t("contactUs")} <ArrowRight className="size-4" aria-hidden />
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
                   <Link href="/reclamations">
-                    <MessageSquareWarning className="size-4" aria-hidden /> Déposer une réclamation
+                    <MessageSquareWarning className="size-4" aria-hidden /> {t("fileClaim")}
                   </Link>
                 </Button>
               </div>

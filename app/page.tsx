@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -84,16 +85,19 @@ interface SectorOverview {
   kpis: {
     subscribersMillion: number | null;
     penetrationRate: number | null;
-    internetSubscribersMillion: number | null;
-    internetPenetrationRate: number | null;
-    mobileMoneyPenetrationRate: number | null;
-    salariedJobs: number | null;
+    // Colonnes existent côté backend mais aucun outil d'admin ne permet
+    // encore de les renseigner, donc `null` tant qu'aucune valeur n'a été
+    // saisie en base. Optionnels par prudence si le backend omet la clé.
+    internetSubscribersMillion?: number | null;
+    internetPenetrationRate?: number | null;
+    mobileMoneyPenetrationRate?: number | null;
+    salariedJobs?: number | null;
   } | null;
 }
 
 interface ChiffreCle {
-  label: string;
-  valeur: number | null;
+  labelKey: "mobileSubscriptions" | "internetSubscriptions" | "salariedJobs" | "mobilePenetration" | "mobileMoneyPenetration" | "internetPenetration";
+  valeur: number | null | undefined;
   decimales: number;
   suffixe: string;
 }
@@ -101,23 +105,31 @@ interface ChiffreCle {
 function formaterChiffresCles(kpis: SectorOverview["kpis"]): ChiffreCle[] {
   if (!kpis) return [];
   return [
-    { label: "Abonnements mobile", valeur: kpis.subscribersMillion, decimales: 1, suffixe: " M" },
-    { label: "Abonnements internet", valeur: kpis.internetSubscribersMillion, decimales: 1, suffixe: " M" },
-    { label: "Emplois salariés", valeur: kpis.salariedJobs, decimales: 0, suffixe: "" },
-    { label: "Pénétration mobile", valeur: kpis.penetrationRate, decimales: 0, suffixe: " %" },
-    { label: "Pénétration mobile money", valeur: kpis.mobileMoneyPenetrationRate, decimales: 0, suffixe: " %" },
-    { label: "Pénétration internet", valeur: kpis.internetPenetrationRate, decimales: 0, suffixe: " %" },
+    { labelKey: "mobileSubscriptions", valeur: kpis.subscribersMillion, decimales: 1, suffixe: " M" },
+    { labelKey: "internetSubscriptions", valeur: kpis.internetSubscribersMillion, decimales: 1, suffixe: " M" },
+    { labelKey: "salariedJobs", valeur: kpis.salariedJobs, decimales: 0, suffixe: "" },
+    { labelKey: "mobilePenetration", valeur: kpis.penetrationRate, decimales: 0, suffixe: " %" },
+    { labelKey: "mobileMoneyPenetration", valeur: kpis.mobileMoneyPenetrationRate, decimales: 0, suffixe: " %" },
+    { labelKey: "internetPenetration", valeur: kpis.internetPenetrationRate, decimales: 0, suffixe: " %" },
   ];
 }
 
-function ChiffreAnime({ valeur, decimales, suffixe }: { valeur: number | null; decimales: number; suffixe: string }) {
+function ChiffreAnime({
+  valeur,
+  decimales,
+  suffixe,
+}: {
+  valeur: number | null | undefined;
+  decimales: number;
+  suffixe: string;
+}) {
   const ref = useRef<HTMLParagraphElement>(null);
   const [demarre, setDemarre] = useState(false);
   const [affiche, setAffiche] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || valeur === null) return;
+    if (!el || valeur == null) return;
     const observer = new IntersectionObserver(
       ([entree]) => {
         if (entree.isIntersecting) {
@@ -134,7 +146,7 @@ function ChiffreAnime({ valeur, decimales, suffixe }: { valeur: number | null; d
   const [enAnimation, setEnAnimation] = useState(false);
 
   useEffect(() => {
-    if (!demarre || valeur === null) return;
+    if (!demarre || valeur == null) return;
     const duree = 1100;
     const debut = performance.now();
     setEnAnimation(true);
@@ -161,7 +173,7 @@ function ChiffreAnime({ valeur, decimales, suffixe }: { valeur: number | null; d
         enAnimation ? "scale-110" : "scale-100",
       )}
     >
-      {valeur === null
+      {valeur == null
         ? "—"
         : `${affiche.toLocaleString("fr-FR", { minimumFractionDigits: decimales, maximumFractionDigits: decimales })}${suffixe}`}
     </p>
@@ -227,6 +239,7 @@ const GALERIE_DEFAUT: GalerieItem[] = [
 ];
 
 function SectionHeader({ icon: Icon, titre, lienVoirTout }: { icon: typeof Megaphone; titre: string; lienVoirTout?: string }) {
+  const tc = useTranslations("common");
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -237,7 +250,7 @@ function SectionHeader({ icon: Icon, titre, lienVoirTout }: { icon: typeof Megap
       </div>
       {lienVoirTout && (
         <Link href={lienVoirTout} className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline">
-          Voir tout <ArrowRight className="size-3.5" aria-hidden />
+          {tc("viewAll")} <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       )}
     </div>
@@ -245,6 +258,7 @@ function SectionHeader({ icon: Icon, titre, lienVoirTout }: { icon: typeof Megap
 }
 
 export default function Accueil() {
+  const t = useTranslations("home");
   const { data: hero } = useContentBlock<HeroContent>("home.hero", HERO_DEFAUT);
   const { data: raccourcis } = useContentBlock<Raccourci[]>("home.quickLinks", RACCOURCIS_DEFAUT);
   const { data: galerie } = useContentBlock<GalerieItem[]>("home.gallery", GALERIE_DEFAUT);
@@ -272,7 +286,7 @@ export default function Accueil() {
       <section className="relative overflow-hidden bg-institution text-primary-foreground">
         <Image
           src={hero.image}
-          alt="Antenne de télécommunications surplombant Conakry au crépuscule"
+          alt={t("heroAlt")}
           fill
           priority
           sizes="100vw"
@@ -290,7 +304,7 @@ export default function Accueil() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild size="lg" variant="secondary">
               <Link href="/services">
-                Découvrir nos services <ArrowRight className="size-4" aria-hidden />
+                {t("discoverServices")} <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
             <Button
@@ -299,7 +313,7 @@ export default function Accueil() {
               variant="outline"
               className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
             >
-              <Link href="/reclamations">Déposer une réclamation</Link>
+              <Link href="/reclamations">{t("fileClaim")}</Link>
             </Button>
           </div>
         </div>
@@ -310,7 +324,7 @@ export default function Accueil() {
 <section className="border-b border-border bg-surface">
   <div className="container-content pt-10 pb-5">
     <p className="text-center font-heading text-lg sm:text-xl md:text-2xl font-bold tracking-[0.08em] text-primary uppercase">
-      Les chiffres des secteurs régulés
+      {t("sectorFigures")}
     </p>
 
     <div className="mx-auto mt-3 h-1 w-16 rounded-full bg-primary" />
@@ -319,7 +333,7 @@ export default function Accueil() {
   <div className="container-content grid grid-cols-2 divide-y divide-border sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-6">
     {chiffresCles.map((c, i) => (
       <div
-        key={c.label}
+        key={c.labelKey}
         className={cn(
           "px-4 py-8 text-center sm:border-l sm:border-border",
           i === 0 && "sm:border-l-0",
@@ -333,7 +347,7 @@ export default function Accueil() {
         />
 
         <p className="mt-2 text-sm font-medium leading-snug text-muted-foreground">
-          {c.label}
+          {t(`kpi.${c.labelKey}`)}
         </p>
       </div>
     ))}
@@ -345,9 +359,9 @@ export default function Accueil() {
       <section className="section-y bg-surface-fade">
         <div className="container-content">
           <SectionTitle
-            surtitre="Accès rapide"
-            titre="Que souhaitez-vous faire aujourd'hui ?"
-            description="Les démarches les plus consultées par les usagers, les opérateurs et les entreprises."
+            surtitre={t("quickAccess.surtitre")}
+            titre={t("quickAccess.titre")}
+            description={t("quickAccess.description")}
           />
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {raccourcis.map((r) => {
@@ -378,12 +392,12 @@ export default function Accueil() {
         <div className="container-content">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <SectionTitle
-              surtitre="Nos missions au quotidien"
-              titre="Services aux opérateurs et aux entreprises"
-              description="Chaque service précise les pièces à fournir, le délai d'instruction et le coût applicable."
+              surtitre={t("servicesSection.surtitre")}
+              titre={t("servicesSection.titre")}
+              description={t("servicesSection.description")}
             />
             <Button asChild variant="outline">
-              <Link href="/services">Tous les services</Link>
+              <Link href="/services">{t("servicesSection.allServices")}</Link>
             </Button>
           </div>
           <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -391,178 +405,187 @@ export default function Accueil() {
               <article key={s.uid} className="border-t-2 border-primary/30 pt-5">
                 <h3 className="font-heading text-lg font-semibold">{s.name}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.description}</p>
-                <p className="mt-4 text-xs font-medium text-primary">Délai : {s.delai}</p>
+                <p className="mt-4 text-xs font-medium text-primary">{t("servicesSection.delay", { delai: s.delai })}</p>
               </article>
             ))}
             {services.length === 0 && (
-              <p className="text-sm text-muted-foreground">Aucun service publié pour l'instant.</p>
+              <p className="text-sm text-muted-foreground">{t("servicesSection.empty")}</p>
             )}
           </div>
         </div>
       </section>
 
-      {/* News + official sidebar */}
-      <section className="section-y bg-surface">
-        <div className="container-content grid gap-x-12 gap-y-10 lg:grid-cols-[7fr_3fr]">
-          {/* Ligne 1 : Dernières publications | Communiqués officiels — même rangée de grille, donc même hauteur */}
-          <div>
-            <SectionHeader icon={Megaphone} titre="Dernières publications" lienVoirTout="/actualites" />
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {actualites.map((a) => (
-                  <Card key={a.uid} className="overflow-hidden py-0 shadow-sm transition-shadow hover:shadow-md">
-                    <Link href={`/actualites/${a.uid}`} className="group flex h-full flex-col">
-                      <div className="relative">
-                        <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-                          {a.imageUrl && (
-                            <Image
-                              src={a.imageUrl}
-                              alt=""
-                              fill
-                              sizes="(min-width: 1024px) 30vw, 100vw"
-                              className="object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                          )}
-                        </div>
-                        {a.category && (
-                          <Badge variant="secondary" className="absolute -bottom-2.5 left-3 font-semibold shadow-sm">
-                            {a.category}
-                          </Badge>
-                        )}
-                      </div>
-                      <CardContent className="flex flex-1 flex-col p-4">
-                        <h3 className="text-balance font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
-                          {a.title}
-                        </h3>
-                        <div className="mt-auto flex items-center justify-between gap-3 pt-3">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <CalendarDays className="size-3.5" aria-hidden /> {formaterDate(a.createdAt)}
-                          </span>
-                          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                            <ArrowRight className="size-3.5" aria-hidden />
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Link>
-                  </Card>
-                ))}
-                {actualites.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Aucune actualité publiée pour l'instant.</p>
-                )}
-              </div>
-          </div>
-
-          <div className="flex flex-col">
-            <SectionHeader icon={FileText} titre="Communiqués officiels" lienVoirTout="/actualites" />
-            <Card className="mt-5 flex flex-1 flex-col">
-              <CardContent className="flex-1 p-0">
-                {communiques.map((c, i) => (
-                  <div key={c.uid}>
-                    {i > 0 && <Separator />}
-                    <Link href="/actualites" className="flex items-start gap-2.5 p-4 hover:bg-accent/30">
-                      <FileText className="mt-0.5 size-4 shrink-0 text-gold" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium">{c.title}</span>
-                        <span className="mt-1 block text-xs text-muted-foreground">{formaterDate(c.createdAt)}</span>
-                      </span>
-                      <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                    </Link>
-                  </div>
-                ))}
-                {communiques.length === 0 && (
-                  <p className="p-4 text-sm text-muted-foreground">Aucun communiqué pour l'instant.</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Ligne 2 : En images | Textes les plus consultés — même rangée de grille, donc même hauteur */}
-            {galerie.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-                      <Images className="size-4" aria-hidden />
-                    </span>
-                    <h3 className="font-heading text-xl font-semibold">En images</h3>
-                  </div>
-                  {totalPagesGalerie > 1 && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        aria-label="Photos précédentes"
-                        disabled={pageGalerieSure === 0}
-                        onClick={() => setPageGalerie((p) => Math.max(0, p - 1))}
-                        className="grid size-8 place-items-center rounded-full border border-border text-foreground transition-colors hover:bg-muted disabled:opacity-40"
-                      >
-                        <ChevronLeft className="size-4" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Photos suivantes"
-                        disabled={pageGalerieSure >= totalPagesGalerie - 1}
-                        onClick={() => setPageGalerie((p) => Math.min(totalPagesGalerie - 1, p + 1))}
-                        className="grid size-8 place-items-center rounded-full border border-border text-foreground transition-colors hover:bg-muted disabled:opacity-40"
-                      >
-                        <ChevronRight className="size-4" aria-hidden />
-                      </button>
-                    </div>
+{/* News + official sidebar */}
+<section className="section-y bg-surface">
+  <div className="container-content grid gap-8 lg:grid-cols-3">
+    {/* COLONNE GAUCHE (2/3) */}
+    <div className="space-y-10 lg:col-span-2">
+      {/* Block 1 : Dernières publications */}
+      <div>
+        <SectionHeader icon={Megaphone} titre={t("latestPublications")} lienVoirTout="/actualites" />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {actualites.map((a) => (
+            <Card key={a.uid} className="overflow-hidden py-0 shadow-sm transition-shadow hover:shadow-md">
+              <Link href={`/actualites/${a.uid}`} className="group flex h-full flex-col">
+                <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+                  {a.imageUrl && (
+                    <Image
+                      src={a.imageUrl}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 20vw, 100vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
                   )}
                 </div>
-                <div className="mt-6 grid gap-6 sm:grid-cols-2">
-                  {galerieAffichee.map((g, i) => (
-                    <div key={i} className="group relative aspect-[16/8] overflow-hidden rounded-xl border border-border">
-                      <Image
-                        src={g.image}
-                        alt={g.titre}
-                        fill
-                        sizes="(min-width: 640px) 30vw, 100vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" aria-hidden />
-                      <div className="absolute inset-x-0 bottom-0 p-4">
-                        <Badge variant="secondary" className="font-semibold">
-                          {g.categorie}
-                        </Badge>
-                        <p className="mt-2 text-balance text-sm font-semibold text-white">{g.titre}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <CardContent className="flex flex-1 flex-col p-4">
+                  {a.category && (
+                    <Badge variant="secondary" className="mb-2 w-fit text-[11px] font-medium">
+                      {a.category}
+                    </Badge>
+                  )}
+                  <h3 className="line-clamp-2 text-balance font-heading text-xs font-semibold leading-snug transition-colors group-hover:text-primary">
+                    {a.title}
+                  </h3>
+                  <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <CalendarDays className="size-3" aria-hidden /> {formaterDate(a.createdAt)}
+                    </span>
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                      <ArrowRight className="size-3" aria-hidden />
+                    </span>
+                  </div>
+                </CardContent>
+              </Link>
+            </Card>
+          ))}
+          {actualites.length === 0 && (
+            <p className="col-span-full py-4 text-sm text-muted-foreground">{t("noNews")}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Block 2 : En images */}
+      {galerie.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+                <Images className="size-4" aria-hidden />
+              </span>
+              <h3 className="font-heading text-base font-semibold">{t("gallery")}</h3>
+            </div>
+            {totalPagesGalerie > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label={t("previousPhotos")}
+                  disabled={pageGalerieSure === 0}
+                  onClick={() => setPageGalerie((p) => Math.max(0, p - 1))}
+                  className="grid size-7 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-3.5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("nextPhotos")}
+                  disabled={pageGalerieSure >= totalPagesGalerie - 1}
+                  onClick={() => setPageGalerie((p) => Math.min(totalPagesGalerie - 1, p + 1))}
+                  className="grid size-7 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+                >
+                  <ChevronRight className="size-3.5" aria-hidden />
+                </button>
               </div>
             )}
+          </div>
 
-          <div className="flex flex-col">
-            <SectionHeader icon={MessageSquare} titre="Textes les plus consultés" lienVoirTout="/reglementation" />
-            <ul className="mt-6 space-y-3">
-              {textesPopulaires.map((r) => (
-                <li key={r.uid}>
-                  <Link
-                    href="/reglementation"
-                    className="group flex items-start gap-3 text-sm hover:text-primary"
-                  >
-                    <Download className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                    <span className="group-hover:underline">{r.name}</span>
-                  </Link>
-                </li>
-              ))}
-              {textesPopulaires.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aucun texte mis en avant pour le moment.</p>
-              )}
-            </ul>
-            <Button asChild className="mt-5 w-full sm:w-auto lg:mt-auto">
-              <Link href="/reglementation">Consulter la réglementation</Link>
-            </Button>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {galerieAffichee.map((g, i) => (
+              <div key={i} className="group relative aspect-[16/9] overflow-hidden rounded-xl border border-border/60 shadow-sm">
+                <Image
+                  src={g.image}
+                  alt={g.titre}
+                  fill
+                  sizes="(min-width: 640px) 30vw, 100vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" aria-hidden />
+                <div className="absolute inset-x-0 bottom-0 p-3.5">
+                  <Badge variant="secondary" className="mb-1.5 bg-background/90 text-[11px] font-medium backdrop-blur-sm">
+                    {g.categorie}
+                  </Badge>
+                  <p className="line-clamp-1 text-xs font-semibold text-white">{g.titre}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </section>
+      )}
+    </div>
 
+    {/* COLONNE DROITE (1/3) */}
+    <div className="flex flex-col justify-between gap-10">
+      {/* Communiqués officiels */}
+      <div>
+        <SectionHeader icon={FileText} titre={t("officialReleases")} lienVoirTout="/actualites" />
+        <Card className="mt-5">
+          <CardContent className="p-0">
+            {communiques.map((c, i) => (
+              <div key={c.uid}>
+                {i > 0 && <Separator />}
+                <Link href="/actualites" className="flex items-start gap-2.5 p-3.5 hover:bg-accent/30">
+                  <FileText className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 text-xs font-medium leading-snug">{c.title}</span>
+                    <span className="mt-1 block text-[11px] text-muted-foreground">{formaterDate(c.createdAt)}</span>
+                  </span>
+                  <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+              </div>
+            ))}
+            {communiques.length === 0 && (
+              <p className="p-4 text-xs text-muted-foreground">{t("noReleases")}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Textes les plus consultés (Poussé vers le bas) */}
+      <div className="flex flex-1 flex-col justify-between">
+        <div>
+          <SectionHeader icon={MessageSquare} titre={t("mostViewedTexts")} lienVoirTout="/reglementation" />
+          <ul className="mt-5 space-y-3">
+            {textesPopulaires.map((r) => (
+              <li key={r.uid}>
+                <Link
+                  href="/reglementation"
+                  className="group flex items-start gap-2.5 text-xs hover:text-primary"
+                >
+                  <Download className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+                  <span className="line-clamp-2 font-medium group-hover:underline">{r.name}</span>
+                </Link>
+              </li>
+            ))}
+            {textesPopulaires.length === 0 && (
+              <p className="py-2 text-sm leading-relaxed text-muted-foreground">{t("noHighlightedTexts")}</p>
+            )}
+          </ul>
+        </div>
+
+        <Button asChild className="mt-6 w-full text-xs" size="sm">
+          <Link href="/reglementation">{t("browseRegulation")}</Link>
+        </Button>
+      </div>
+    </div>
+  </div>
+</section>
       {/* Tenders + public consultations */}
       <section className="section-y">
         <div className="container-content grid gap-8 lg:grid-cols-2">
           <div>
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-heading text-xl font-semibold">Appels d'offres en cours</h3>
-              <span className="text-sm text-muted-foreground">{offresOuvertes.length} ouvert{offresOuvertes.length > 1 ? "s" : ""}</span>
+              <h3 className="font-heading text-xl font-semibold">{t("ongoingTenders")}</h3>
+              <span className="text-sm text-muted-foreground">{t("openCount", { count: offresOuvertes.length })}</span>
             </div>
             <Card className="mt-6">
               <CardContent className="p-0">
@@ -573,24 +596,24 @@ export default function Accueil() {
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-primary">{a.code}</p>
                         <p className="mt-1 font-medium">{a.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Clôture le {formaterDate(a.limitDate)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{t("closingOn", { date: formaterDate(a.limitDate) })}</p>
                       </div>
                       <StatutBadge statut={a.status} />
                     </div>
                   </div>
                 ))}
                 {offresOuvertes.length === 0 && (
-                  <p className="p-4 text-sm text-muted-foreground">Aucun appel d'offres ouvert pour l'instant.</p>
+                  <p className="p-4 text-sm text-muted-foreground">{t("noOpenTenders")}</p>
                 )}
               </CardContent>
             </Card>
             <Button asChild variant="outline" size="sm" className="mt-4">
-              <Link href="/appels-offres">Tous les appels d'offres</Link>
+              <Link href="/appels-offres">{t("allTenders")}</Link>
             </Button>
           </div>
 
           <div>
-            <h3 className="font-heading text-xl font-semibold">Consultations publiques</h3>
+            <h3 className="font-heading text-xl font-semibold">{t("publicConsultations")}</h3>
             <Card className="mt-6">
               <CardContent className="p-0">
                 {consultations.map((c, i) => (
@@ -600,7 +623,7 @@ export default function Accueil() {
                       <div className="min-w-0">
                         <p className="font-medium">{c.title}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Du {formaterDate(c.startDate)} au {formaterDate(c.endDate)}
+                          {t("dateRange", { start: formaterDate(c.startDate), end: formaterDate(c.endDate) })}
                         </p>
                       </div>
                       <StatutBadge statut={c.status} />
@@ -608,12 +631,12 @@ export default function Accueil() {
                   </div>
                 ))}
                 {consultations.length === 0 && (
-                  <p className="p-4 text-sm text-muted-foreground">Aucune consultation en cours.</p>
+                  <p className="p-4 text-sm text-muted-foreground">{t("noOngoingConsultations")}</p>
                 )}
               </CardContent>
             </Card>
             <Button asChild variant="outline" size="sm" className="mt-4">
-              <Link href="/consultations">Participer aux consultations</Link>
+              <Link href="/consultations">{t("joinConsultations")}</Link>
             </Button>
           </div>
         </div>

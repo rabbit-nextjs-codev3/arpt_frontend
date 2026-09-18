@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AuthTrigger } from "@/components/site/AuthModal";
 import { useApiOne } from "@/lib/hooks";
 
@@ -43,37 +44,8 @@ interface SiteConfigPublic {
   socialLinks: { facebook?: string; twitter?: string; linkedin?: string; youtube?: string };
 }
 
-const colonnes = [
-  {
-    titre: "L'Autorité",
-    liens: [
-      { to: "/a-propos", label: "Missions et organisation" },
-      { to: "/actualites", label: "Actualités et communiqués" },
-      { to: "/statistiques", label: "Observatoire du secteur" },
-      { to: "/carrieres", label: "Carrières" },
-    ],
-  },
-  {
-    titre: "Démarches",
-    liens: [
-      { to: "/services", label: "Nos services" },
-      { to: "/equipements", label: "Équipements homologués" },
-      { to: "/reclamations", label: "Déposer une réclamation" },
-      { to: "/appels-offres", label: "Appels d'offres" },
-    ],
-  },
-  {
-    titre: "Ressources",
-    liens: [
-      { to: "/reglementation", label: "Textes réglementaires" },
-      { to: "/consultations", label: "Consultations publiques" },
-      { to: "/contact", label: "Nous écrire" },
-      { to: "/portail", label: "Portail usager" },
-    ],
-  },
-] as const;
-
 export function Footer() {
+  const t = useTranslations("footer");
   const { data: config } = useApiOne<SiteConfigPublic>("/site-config");
   const reseaux = [
     { icon: FacebookIcon, label: "Facebook", href: config?.socialLinks?.facebook || "#" },
@@ -82,15 +54,42 @@ export function Footer() {
     { icon: YoutubeIcon, label: "YouTube", href: config?.socialLinks?.youtube || "#" },
   ];
 
+  const colonnes = [
+    {
+      titre: t("authorityTitle"),
+      liens: [
+        { to: "/a-propos", label: t("missions") },
+        { to: "/actualites", label: t("newsAndReleases") },
+        { to: "/statistiques", label: t("observatory") },
+        { to: "/carrieres", label: t("careers") },
+      ],
+    },
+    {
+      titre: t("proceduresTitle"),
+      liens: [
+        { to: "/services", label: t("ourServices") },
+        { to: "/equipements", label: t("approvedEquipment") },
+        { to: "/reclamations", label: t("fileClaim") },
+        { to: "/appels-offres", label: t("tenders") },
+      ],
+    },
+    {
+      titre: t("resourcesTitle"),
+      liens: [
+        { to: "/reglementation", label: t("regulatoryTexts") },
+        { to: "/consultations", label: t("publicConsultations") },
+        { to: "/contact", label: t("writeToUs") },
+        { to: "/portail", label: t("userPortal") },
+      ],
+    },
+  ] as const;
+
   return (
     <footer className="mt-auto bg-institution text-primary-foreground">
       <div className="container-content grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <Image src="/images/arpt.png" alt="ARPT" width={140} height={56} className="h-14 w-auto" style={{ width: "auto" }} />
-          <p className="mt-4 text-sm leading-relaxed opacity-85">
-            Autorité de Régulation des Postes et Télécommunications de la République de Guinée. Garante d'un
-            secteur ouvert, concurrentiel et protecteur des usagers.
-          </p>
+          <p className="mt-4 text-sm leading-relaxed opacity-85">{t("description")}</p>
           <div className="mt-5 flex gap-2">
             {reseaux.map((r) => (
               <a
@@ -123,7 +122,7 @@ export function Footer() {
 
       <div className="border-t border-primary-foreground/15">
         <div className="container-content py-5 text-xs opacity-70">
-          © {new Date().getFullYear()} ARPT Guinée — Tous droits réservés.
+          {t("copyright", { year: new Date().getFullYear() })}
         </div>
       </div>
     </footer>
