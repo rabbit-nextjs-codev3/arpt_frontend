@@ -38,14 +38,6 @@
       "titre": "What would you like to do today?",
       "description": "The most consulted procedures for users, operators and businesses."
     },
-    "servicesSection": {
-      "surtitre": "Our day-to-day missions",
-      "titre": "Services for operators and businesses",
-      "description": "Each service specifies the required documents, processing time and applicable cost.",
-      "allServices": "All services",
-      "delay": "Processing time: {delai}",
-      "empty": "No service published yet."
-    },
     "latestPublications": "Latest publications",
     "noNews": "No news published yet.",
     "gallery": "Gallery",
@@ -85,20 +77,9 @@
     "gateContinueAnyway": "I already tried without success, continue anyway",
     "formTitle": "Complaint form",
     "requiredFieldsNote": "Fields marked with an asterisk (*) are required.",
-    "firstname": "First name *",
-    "firstnamePlaceholder": "E.g.: Mamadou",
-    "lastname": "Last name *",
-    "lastnamePlaceholder": "E.g.: Diallo",
-    "email": "Email address *",
-    "phone": "Phone",
+    "claimantNote": "Complaint filed with your account information.",
     "claimType": "Nature of the complaint *",
     "claimTypePlaceholder": "Select the type",
-    "claimTypeOptions": {
-      "quality": "Quality of service",
-      "billing": "Billing",
-      "network": "Network / coverage",
-      "other": "Other"
-    },
     "operator": "Operator concerned *",
     "operatorPlaceholder": "Select the operator",
     "description": "Description of the facts *",

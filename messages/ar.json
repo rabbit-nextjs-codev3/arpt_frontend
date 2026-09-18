@@ -38,14 +38,6 @@
       "titre": "ماذا تريد أن تفعل اليوم؟",
       "description": "الإجراءات الأكثر مراجعة من قبل المستخدمين والمشغلين والشركات."
     },
-    "servicesSection": {
-      "surtitre": "مهامنا اليومية",
-      "titre": "خدمات للمشغلين والشركات",
-      "description": "توضح كل خدمة الوثائق المطلوبة ومدة المعالجة والتكلفة المطبقة.",
-      "allServices": "جميع الخدمات",
-      "delay": "المدة: {delai}",
-      "empty": "لا توجد خدمة منشورة حالياً."
-    },
     "latestPublications": "أحدث المنشورات",
     "noNews": "لا يوجد خبر منشور حالياً.",
     "gallery": "صور",
@@ -85,20 +77,9 @@
     "gateContinueAnyway": "لقد حاولت بالفعل دون جدوى، المتابعة رغم ذلك",
     "formTitle": "استمارة الشكوى",
     "requiredFieldsNote": "الحقول المميزة بنجمة (*) إلزامية.",
-    "firstname": "الاسم الأول *",
-    "firstnamePlaceholder": "مثال: مامادو",
-    "lastname": "اللقب *",
-    "lastnamePlaceholder": "مثال: ديالو",
-    "email": "البريد الإلكتروني *",
-    "phone": "الهاتف",
+    "claimantNote": "الشكوى مودعة بمعلومات حسابك.",
     "claimType": "طبيعة الشكوى *",
     "claimTypePlaceholder": "اختر الطبيعة",
-    "claimTypeOptions": {
-      "quality": "جودة الخدمة",
-      "billing": "الفوترة",
-      "network": "الشبكة / التغطية",
-      "other": "أخرى"
-    },
     "operator": "المشغل المعني *",
     "operatorPlaceholder": "اختر المشغل",
     "description": "وصف الوقائع *",

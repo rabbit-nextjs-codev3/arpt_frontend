@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, CalendarDays, Download, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formaterDate } from "@/data/mock";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, api } from "@/lib/api";
 import { useApiOne, useApiList } from "@/lib/hooks";
 import { useLocale } from "@/lib/locale-context";
 
@@ -31,6 +32,11 @@ export default function TexteReglementaire() {
   const { data: texte, loading, error } = useApiOne<Reglementation>(uid ? `/regulations/${uid}?lang=${locale}` : null);
   const { data: autres } = useApiList<Reglementation>(`/regulations?lang=${locale}&pageSize=10`);
   const related = autres.filter((item) => item.uid !== uid && item.category === texte?.category).slice(0, 5);
+
+  useEffect(() => {
+    if (!uid) return;
+    api.post(`/regulations/${uid}/increment-views`).catch(() => {});
+  }, [uid]);
 
   if (loading) {
     return <div className="container-content section-y text-center text-sm text-muted-foreground">{t("loading")}</div>;

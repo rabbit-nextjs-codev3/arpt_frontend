@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowRight, Eye, Search } from "lucide-react";
+import { ArrowRight, Eye, LibraryBig, Search } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,9 @@ export default function Reglementation() {
 
   useEffect(() => {
     let annule = false;
-    setChargement(true);
+    queueMicrotask(() => {
+      if (!annule) setChargement(true);
+    });
     api
       .get<PaginatedResult<Reglementation>>(`/regulations?lang=${locale}&pageSize=100`)
       .then((res) => {
@@ -88,9 +90,11 @@ export default function Reglementation() {
     <>
       <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
-      <section className="section-y">
+      <section className="section-y bg-surface-fade">
         <div className="container-content">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><LibraryBig className="size-5" aria-hidden /></span><div><h2 className="font-heading text-lg font-semibold">Bibliothèque réglementaire</h2><p className="mt-1 text-sm text-muted-foreground">{resultats.length} texte{resultats.length > 1 ? "s" : ""} disponible{resultats.length > 1 ? "s" : ""}</p></div></div>
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <Input
@@ -101,25 +105,26 @@ export default function Reglementation() {
                 aria-label={t("searchAriaLabel")}
               />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategorie(c)}
-                  className={cn(
-                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                    categorie === c
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
-                  )}
-                >
-                  {c === "Toutes" ? t("allCategories") : c}
-                </button>
-              ))}
-            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategorie(c)}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  categorie === c
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
+                )}
+              >
+                {c === "Toutes" ? t("allCategories") : c}
+              </button>
+            ))}
+          </div>
           </div>
 
-          <div className="mt-8 border-y border-border">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             {chargement && (
               <p className="p-8 text-center text-sm text-muted-foreground">{t("loading")}</p>
             )}
@@ -129,7 +134,7 @@ export default function Reglementation() {
             {!chargement && !erreur && (
               <ul className="divide-y divide-border">
                 {resultats.map((r) => (
-                  <li key={r.uid} className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                  <li key={r.uid} className="grid gap-4 p-5 transition-colors hover:bg-accent/25 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
                       <p className="font-medium">{r.name}</p>
                       {r.description && (

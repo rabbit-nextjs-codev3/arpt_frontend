@@ -38,14 +38,6 @@
       "titre": "Que souhaitez-vous faire aujourd'hui ?",
       "description": "Les démarches les plus consultées par les usagers, les opérateurs et les entreprises."
     },
-    "servicesSection": {
-      "surtitre": "Nos missions au quotidien",
-      "titre": "Services aux opérateurs et aux entreprises",
-      "description": "Chaque service précise les pièces à fournir, le délai d'instruction et le coût applicable.",
-      "allServices": "Tous les services",
-      "delay": "Délai : {delai}",
-      "empty": "Aucun service publié pour l'instant."
-    },
     "latestPublications": "Dernières publications",
     "noNews": "Aucune actualité publiée pour l'instant.",
     "gallery": "En images",
@@ -85,20 +77,9 @@
     "gateContinueAnyway": "J'ai déjà essayé sans succès, continuer quand même",
     "formTitle": "Formulaire de réclamation",
     "requiredFieldsNote": "Les champs marqués d'un astérisque (*) sont obligatoires.",
-    "firstname": "Prénom *",
-    "firstnamePlaceholder": "Ex. : Mamadou",
-    "lastname": "Nom *",
-    "lastnamePlaceholder": "Ex. : Diallo",
-    "email": "Adresse e-mail *",
-    "phone": "Téléphone",
+    "claimantNote": "Réclamation déposée avec les informations de votre compte.",
     "claimType": "Nature de la réclamation *",
     "claimTypePlaceholder": "Sélectionnez la nature",
-    "claimTypeOptions": {
-      "quality": "Qualité de service",
-      "billing": "Facturation",
-      "network": "Réseau / couverture",
-      "other": "Autre"
-    },
     "operator": "Opérateur concerné *",
     "operatorPlaceholder": "Sélectionnez l'opérateur",
     "description": "Description des faits *",

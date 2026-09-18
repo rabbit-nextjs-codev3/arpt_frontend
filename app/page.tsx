@@ -20,6 +20,7 @@ import {
   CalendarDays,
   Megaphone,
   Images,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,21 +74,13 @@ interface PublicConsultation {
   endDate: string;
 }
 
-interface Service {
-  id: number;
-  uid: string;
-  name: string;
-  description: string;
-  delai: string;
-}
-
 interface SectorOverview {
   kpis: {
     subscribersMillion: number | null;
     penetrationRate: number | null;
-    // Colonnes existent côté backend mais aucun outil d'admin ne permet
-    // encore de les renseigner, donc `null` tant qu'aucune valeur n'a été
-    // saisie en base. Optionnels par prudence si le backend omet la clé.
+    // `null` tant qu'aucune valeur n'a été saisie pour le point statistique
+    // le plus récent (voir l'onglet Statistiques > Points statistiques côté
+    // admin). Optionnels par prudence si le backend omet la clé.
     internetSubscribersMillion?: number | null;
     internetPenetrationRate?: number | null;
     mobileMoneyPenetrationRate?: number | null;
@@ -149,7 +142,6 @@ function ChiffreAnime({
     if (!demarre || valeur == null) return;
     const duree = 1100;
     const debut = performance.now();
-    setEnAnimation(true);
     let frame: number;
     const animer = (maintenant: number) => {
       const progres = Math.min(1, (maintenant - debut) / duree);
@@ -161,7 +153,10 @@ function ChiffreAnime({
         setEnAnimation(false);
       }
     };
-    frame = requestAnimationFrame(animer);
+    frame = requestAnimationFrame((maintenant) => {
+      setEnAnimation(true);
+      animer(maintenant);
+    });
     return () => cancelAnimationFrame(frame);
   }, [demarre, valeur]);
 
@@ -257,13 +252,54 @@ function SectionHeader({ icon: Icon, titre, lienVoirTout }: { icon: typeof Megap
   );
 }
 
+function ApercuActualite({ actualite, onClose }: { actualite: News; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClose={onClose}
+      onClick={(event) => { if (event.target === event.currentTarget) dialogRef.current?.close(); }}
+      className="w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-2xl border border-border bg-card p-0 text-card-foreground shadow-lifted backdrop:bg-primary-deep/55 backdrop:backdrop-blur-sm"
+    >
+      <div className="relative min-h-32 bg-institution p-6 text-primary-foreground sm:p-8">
+        {actualite.imageUrl && <Image src={actualite.imageUrl} alt="" fill sizes="42rem" className="object-cover opacity-20" />}
+        <div className="absolute inset-0 bg-primary-deep/45" aria-hidden />
+        <div className="relative pr-10">
+          {actualite.category && <Badge className="bg-primary-foreground/15 text-primary-foreground">{actualite.category}</Badge>}
+          <h2 className="mt-3 font-heading text-xl font-semibold leading-tight sm:text-2xl">{actualite.title}</h2>
+          <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary-foreground/80"><CalendarDays className="size-3.5" aria-hidden /> {formaterDate(actualite.createdAt)}</p>
+        </div>
+        <button type="button" onClick={() => dialogRef.current?.close()} aria-label="Fermer l'aperçu" className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-primary-foreground/15 text-primary-foreground transition-colors hover:bg-primary-foreground/25"><X className="size-4" aria-hidden /></button>
+      </div>
+      <div className="p-6 sm:p-8">
+        <p className="text-sm leading-7 text-muted-foreground">{extrait(actualite.content, 850)}</p>
+        <div className="mt-6 flex justify-end border-t border-border pt-5">
+          <Button asChild>
+            <Link href={`/actualites/${actualite.uid}`} onClick={() => dialogRef.current?.close()}>Lire l&apos;article complet <ArrowRight className="size-4" aria-hidden /></Link>
+          </Button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
 export default function Accueil() {
   const t = useTranslations("home");
   const { data: hero } = useContentBlock<HeroContent>("home.hero", HERO_DEFAUT);
   const { data: raccourcis } = useContentBlock<Raccourci[]>("home.quickLinks", RACCOURCIS_DEFAUT);
   const { data: galerie } = useContentBlock<GalerieItem[]>("home.gallery", GALERIE_DEFAUT);
   const [pageGalerie, setPageGalerie] = useState(0);
-  const { data: services } = useApiList<Service>("/services?lang=fr&pageSize=6");
+  const [actualiteApercu, setActualiteApercu] = useState<News | null>(null);
   const { data: actualites } = useApiList<News>("/news?lang=fr&pageSize=3");
   const { data: communiques } = useApiList<Communique>("/communiques?lang=fr&pageSize=4");
   const { data: reglementations } = useApiList<Reglementation>("/regulations?lang=fr&pageSize=50");
@@ -387,77 +423,52 @@ export default function Accueil() {
         </div>
       </section>
 
-      {/* Services */}
-      <section className="section-y">
-        <div className="container-content">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <SectionTitle
-              surtitre={t("servicesSection.surtitre")}
-              titre={t("servicesSection.titre")}
-              description={t("servicesSection.description")}
-            />
-            <Button asChild variant="outline">
-              <Link href="/services">{t("servicesSection.allServices")}</Link>
-            </Button>
-          </div>
-          <div className="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
-              <article key={s.uid} className="border-t-2 border-primary/30 pt-5">
-                <h3 className="font-heading text-lg font-semibold">{s.name}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{s.description}</p>
-                <p className="mt-4 text-xs font-medium text-primary">{t("servicesSection.delay", { delai: s.delai })}</p>
-              </article>
-            ))}
-            {services.length === 0 && (
-              <p className="text-sm text-muted-foreground">{t("servicesSection.empty")}</p>
-            )}
-          </div>
-        </div>
-      </section>
-
 {/* News + official sidebar */}
 <section className="section-y bg-surface">
   <div className="container-content grid gap-8 lg:grid-cols-3">
     {/* COLONNE GAUCHE (2/3) */}
     <div className="space-y-10 lg:col-span-2">
-      {/* Block 1 : Dernières publications */}
+      {/* Une sélection éditoriale : l'information principale, puis les publications récentes. */}
       <div>
         <SectionHeader icon={Megaphone} titre={t("latestPublications")} lienVoirTout="/actualites" />
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {actualites.map((a) => (
-            <Card key={a.uid} className="overflow-hidden py-0 shadow-sm transition-shadow hover:shadow-md">
-              <Link href={`/actualites/${a.uid}`} className="group flex h-full flex-col">
-                <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-                  {a.imageUrl && (
-                    <Image
-                      src={a.imageUrl}
-                      alt=""
-                      fill
-                      sizes="(min-width: 1024px) 20vw, 100vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  )}
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {actualites[0] && (
+            <article className="group relative min-h-72 overflow-hidden rounded-2xl bg-institution text-primary-foreground shadow-card md:row-span-2">
+              {actualites[0].imageUrl && <Image src={actualites[0].imageUrl} alt="" fill sizes="(min-width: 1024px) 35vw, 100vw" className="object-cover opacity-40 transition-transform duration-700 group-hover:scale-105" />}
+              <div className="absolute inset-0 bg-gradient-to-t from-primary-deep via-primary-deep/75 to-primary-deep/15" aria-hidden />
+              <div className="relative flex min-h-72 flex-col p-5 sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  {actualites[0].category && <Badge className="bg-primary-foreground/15 text-primary-foreground backdrop-blur-sm">{actualites[0].category}</Badge>}
+                  <span className="inline-flex items-center gap-1.5 text-xs text-primary-foreground/75"><CalendarDays className="size-3.5" aria-hidden />{formaterDate(actualites[0].createdAt)}</span>
                 </div>
-                <CardContent className="flex flex-1 flex-col p-4">
-                  {a.category && (
-                    <Badge variant="secondary" className="mb-2 w-fit text-[11px] font-medium">
-                      {a.category}
-                    </Badge>
-                  )}
-                  <h3 className="line-clamp-2 text-balance font-heading text-xs font-semibold leading-snug transition-colors group-hover:text-primary">
-                    {a.title}
-                  </h3>
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <CalendarDays className="size-3" aria-hidden /> {formaterDate(a.createdAt)}
-                    </span>
-                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      <ArrowRight className="size-3" aria-hidden />
-                    </span>
+                <div className="mt-auto">
+                  <h3 className="max-w-lg text-balance font-heading text-xl font-semibold leading-tight sm:text-2xl">{actualites[0].title}</h3>
+                  <p className="mt-3 line-clamp-2 max-w-lg text-sm leading-6 text-primary-foreground/80">{extrait(actualites[0].content, 180)}</p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="secondary"><Link href={`/actualites/${actualites[0].uid}`}>Lire l&apos;article <ArrowRight className="size-3.5" aria-hidden /></Link></Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setActualiteApercu(actualites[0])} className="border-primary-foreground/35 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">Aperçu</Button>
                   </div>
-                </CardContent>
-              </Link>
-            </Card>
+                </div>
+              </div>
+            </article>
+          )}
+          {actualites.slice(1).map((a) => (
+            <article key={a.uid} className="group flex min-h-34 gap-4 rounded-xl border border-border bg-card p-3.5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-card">
+              <div className="relative hidden aspect-square w-24 shrink-0 overflow-hidden rounded-lg bg-muted sm:block">
+                {a.imageUrl && <Image src={a.imageUrl} alt="" fill sizes="6rem" className="object-cover transition-transform duration-500 group-hover:scale-105" />}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-center justify-between gap-2">
+                  {a.category ? <Badge variant="secondary" className="text-[10px]">{a.category}</Badge> : <span />}
+                  <time className="text-[11px] text-muted-foreground">{formaterDate(a.createdAt)}</time>
+                </div>
+                <h3 className="mt-2 line-clamp-2 font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">{a.title}</h3>
+                <div className="mt-auto flex items-center justify-between pt-3">
+                  <button type="button" onClick={() => setActualiteApercu(a)} className="text-xs font-semibold text-primary hover:underline">Aperçu rapide</button>
+                  <Link href={`/actualites/${a.uid}`} aria-label={`Lire ${a.title}`} className="grid size-7 place-items-center rounded-full bg-accent text-primary transition-colors hover:bg-primary hover:text-primary-foreground"><ArrowRight className="size-3.5" aria-hidden /></Link>
+                </div>
+              </div>
+            </article>
           ))}
           {actualites.length === 0 && (
             <p className="col-span-full py-4 text-sm text-muted-foreground">{t("noNews")}</p>
@@ -641,6 +652,7 @@ export default function Accueil() {
           </div>
         </div>
       </section>
+      {actualiteApercu && <ApercuActualite actualite={actualiteApercu} onClose={() => setActualiteApercu(null)} />}
     </>
   );
 }
