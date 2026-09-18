@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   BarChart3,
   Briefcase,
+  Building2,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -98,6 +99,7 @@ const menuGroups: { titre: string; items: MenuItem[] }[] = [
     titre: "Administration",
     items: [
       { id: "utilisateurs", label: "Utilisateurs & rôles", icon: Users },
+      { id: "entreprises", label: "Comptes entreprise", icon: Building2 },
       { id: "config", label: "Configuration du site", icon: Settings },
     ],
   },
@@ -723,6 +725,7 @@ export default function Admin() {
           {section === "reglementation" && <ReglementationAdmin />}
           {section === "consultations" && <ConsultationsAdmin />}
           {section === "utilisateurs" && <UtilisateursAdmin />}
+          {section === "entreprises" && <EntreprisesAdmin />}
           {section === "statistiques" && <StatistiquesAdmin />}
           {section === "config" && <ConfigurationAdmin />}
 
@@ -3888,6 +3891,105 @@ function EntreprisesEnAttenteAdmin({ onUpdated }: { onUpdated: () => void }) {
           </div>,
         ])}
       />
+    </div>
+  );
+}
+
+/**
+ * Vue dédiée listant TOUS les comptes entreprise (en attente, approuvés,
+ * rejetés) — contrairement à EntreprisesEnAttenteAdmin (bloc d'alerte dans
+ * "Utilisateurs & rôles") qui ne montre que les demandes non traitées et
+ * disparaît une fois qu'il n'y en a plus. Les actions Approuver/Rejeter
+ * ne s'affichent que pour une demande encore EN_ATTENTE (une décision déjà
+ * prise n'est pas révisable, voir UsersService.decideEnterpriseApproval).
+ */
+function EntreprisesAdmin() {
+  const { data: entreprises, loading, error, refetch } = useApiList<UserAdmin>(
+    "/users?accountType=ENTREPRISE&pageSize=100",
+  );
+  const [pendingId, setPendingId] = useState<number | null>(null);
+
+  async function approuver(id: number) {
+    setPendingId(id);
+    try {
+      await apiFetch(`/users/${id}/enterprise-approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "APPROUVE" }),
+      });
+      toast.success("Compte entreprise validé.");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function rejeter(id: number) {
+    const reason = window.prompt("Motif du rejet (visible par le demandeur) :");
+    if (!reason || !reason.trim()) return;
+    setPendingId(id);
+    try {
+      await apiFetch(`/users/${id}/enterprise-approval`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision: "REJETE", reason: reason.trim() }),
+      });
+      toast.success("Compte entreprise rejeté.");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
+
+  const statutPuce: Record<NonNullable<UserAdmin["enterpriseApprovalStatus"]>, { label: string; tone: "success" | "warning" | "info" }> = {
+    EN_ATTENTE: { label: "En attente", tone: "warning" },
+    APPROUVE: { label: "Approuvé", tone: "success" },
+    REJETE: { label: "Rejeté", tone: "info" },
+  };
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2">
+        <Building2 className="size-4 text-primary" aria-hidden />
+        <h2 className="font-heading text-lg font-semibold">Comptes entreprise</h2>
+        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+          {entreprises.length}
+        </span>
+      </div>
+      <TableauAdmin
+        codeColumn={false}
+        colonnes={["Entreprise", "Demandeur", "Document", "Statut", "Inscrit le", "Actions"]}
+        lignes={entreprises.map((u) => {
+          const statut = u.enterpriseApprovalStatus ? statutPuce[u.enterpriseApprovalStatus] : null;
+          return [
+            u.companyName ?? "—",
+            `${u.fullname} (${u.email})`,
+            u.hasCompanyDocument ? <EntrepriseDocumentLink key={u.id} userId={u.id} /> : "—",
+            statut ? <Puce key={u.id} label={statut.label} tone={statut.tone} /> : "—",
+            formaterDate(u.dateJoined),
+            u.enterpriseApprovalStatus === "EN_ATTENTE" ? (
+              <div key={u.id} className="flex items-center gap-2">
+                <Button size="sm" disabled={pendingId === u.id} onClick={() => approuver(u.id)}>
+                  Approuver
+                </Button>
+                <Button size="sm" variant="outline" disabled={pendingId === u.id} onClick={() => rejeter(u.id)}>
+                  Rejeter
+                </Button>
+              </div>
+            ) : (
+              "—"
+            ),
+          ];
+        })}
+      />
+      {entreprises.length === 0 && (
+        <p className="mt-6 text-sm text-muted-foreground">Aucun compte entreprise pour le moment.</p>
+      )}
     </div>
   );
 }
