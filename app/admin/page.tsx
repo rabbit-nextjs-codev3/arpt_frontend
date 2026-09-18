@@ -3616,24 +3616,27 @@ function UserRoleSelect({ user, roles, onUpdated }: { user: UserAdmin; roles: Ro
     }
   }
 
-  if (user.isSuperuser) {
-    return <span className="text-xs text-muted-foreground">Super Admin</span>;
-  }
-
   return (
-    <Select value={user.role ? String(user.role.id) : "none"} onValueChange={changer} disabled={pending}>
-      <SelectTrigger className="h-8 w-44 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="none">Aucun (usager)</SelectItem>
-        {roles.map((r) => (
-          <SelectItem key={r.id} value={String(r.id)}>
-            {r.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-2">
+      <Select value={user.role ? String(user.role.id) : "none"} onValueChange={changer} disabled={pending}>
+        <SelectTrigger className="h-8 w-44 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Aucun (usager)</SelectItem>
+          {roles.map((r) => (
+            <SelectItem key={r.id} value={String(r.id)}>
+              {r.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {/* Purement informatif : isSuperuser garde tous les droits quel que soit
+          le rôle choisi ci-dessus (voir PermissionsGuard côté backend), mais
+          reste modifiable ici pour que l'affichage/l'organisation des comptes
+          reste cohérent (ex: filtrage par rôle) même pour un superuser. */}
+      {user.isSuperuser && <span className="text-[10px] whitespace-nowrap text-muted-foreground">Super Admin</span>}
+    </div>
   );
 }
 
