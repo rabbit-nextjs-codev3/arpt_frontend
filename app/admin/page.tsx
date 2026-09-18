@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -49,7 +49,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useAuth, ApiError } from "@/lib/auth";
 import { useApiOne, useApiList, useContentBlock } from "@/lib/hooks";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, type PaginatedResult } from "@/lib/api";
 import { formaterDate } from "@/data/mock";
 
 interface MenuItem {
@@ -152,6 +152,145 @@ interface AuditLogEntry {
   entity: string;
   createdAt: string;
   actor: { email: string; fullname: string } | null;
+}
+
+interface NotificationItem {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+/** Fait le lien entre le type d'événement (voir NotificationsService côté backend) et l'onglet du dashboard où le traiter. */
+const NOTIFICATION_SECTION_BY_TYPE: Record<string, string> = {
+  "submission.created": "marches",
+  "submission.status_changed": "marches",
+  "user.registered": "utilisateurs",
+  "user.enterprise_registered": "utilisateurs",
+  "user.enterprise_status_changed": "utilisateurs",
+  "candidature.created": "carrieres",
+  "candidature.status_changed": "carrieres",
+  "contact_message.created": "messages",
+  "claim.created": "reclamations",
+  "claim.status_changed": "reclamations",
+  "service_request.created": "demandes",
+};
+
+const NOTIFICATIONS_POLL_MS = 30_000;
+
+function NotificationsBell({ onNavigate }: { onNavigate: (section: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let annule = false;
+    async function charger() {
+      try {
+        const res = await apiFetch<{ count: number }>("/notifications/unread-count");
+        if (!annule) setUnread(res.count);
+      } catch {
+        // silencieux — le compteur réessaiera au prochain cycle de polling.
+      }
+    }
+    charger();
+    const interval = setInterval(charger, NOTIFICATIONS_POLL_MS);
+    return () => {
+      annule = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  async function ouvrir() {
+    const prochainEtat = !open;
+    setOpen(prochainEtat);
+    if (!prochainEtat) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch<PaginatedResult<NotificationItem>>("/notifications?pageSize=15");
+      setItems(res.results);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function cliquerNotification(n: NotificationItem) {
+    if (!n.isRead) {
+      setItems((prev) => prev.map((it) => (it.id === n.id ? { ...it, isRead: true } : it)));
+      setUnread((c) => Math.max(0, c - 1));
+      apiFetch(`/notifications/${n.id}/read`, { method: "POST" }).catch(() => {});
+    }
+    setOpen(false);
+    const section = NOTIFICATION_SECTION_BY_TYPE[n.type];
+    if (section) onNavigate(section);
+  }
+
+  async function toutMarquerLu() {
+    setItems((prev) => prev.map((it) => ({ ...it, isRead: true })));
+    setUnread(0);
+    try {
+      await apiFetch("/notifications/read-all", { method: "POST" });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={ouvrir}
+        title="Notifications"
+        className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+      >
+        <Bell className="size-[18px]" aria-hidden />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 grid min-w-[18px] place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-20 mt-2 w-80 rounded-xl border border-border bg-card shadow-lg">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <p className="text-sm font-semibold">Notifications</p>
+            {unread > 0 && (
+              <button type="button" onClick={toutMarquerLu} className="text-xs font-medium text-primary hover:underline">
+                Tout marquer lu
+              </button>
+            )}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {loading && <p className="p-4 text-center text-xs text-muted-foreground">Chargement…</p>}
+            {!loading && items.length === 0 && (
+              <p className="p-4 text-center text-xs text-muted-foreground">Aucune notification.</p>
+            )}
+            {!loading &&
+              items.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => cliquerNotification(n)}
+                  className={cn(
+                    "block w-full border-b border-border px-4 py-3 text-left text-xs transition-colors last:border-0 hover:bg-muted/60",
+                    !n.isRead && "bg-accent/40",
+                  )}
+                >
+                  <p className="font-medium text-foreground">{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-muted-foreground">{n.body}</p>}
+                  <p className="mt-1 text-[10px] text-muted-foreground">{formaterDate(n.createdAt)}</p>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Admin() {
@@ -331,16 +470,7 @@ export default function Admin() {
                 <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
               )}
             </button>
-            <button
-              type="button"
-              title="Notifications"
-              className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-            >
-              <Bell className="size-[18px]" aria-hidden />
-              {!!overview?.reclamations?.ouvertes && (
-                <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
-              )}
-            </button>
+            <NotificationsBell onNavigate={setSection} />
             <div className="mx-1.5 h-6 w-px bg-border" />
             <div className="relative">
               <button

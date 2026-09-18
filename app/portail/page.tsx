@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Bell, Briefcase, FileSignature, MessageSquareWarning, UserRound } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
@@ -9,7 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formaterDate } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
 import { useApiList, useApiOne } from "@/lib/hooks";
+
+/** Fait le lien entre le type d'événement (voir NotificationsService côté backend) et l'onglet où le traiter. */
+const NOTIFICATION_TAB_BY_TYPE: Record<string, string> = {
+  "claim.status_changed": "reclamations",
+  "candidature.status_changed": "candidatures",
+  "submission.status_changed": "soumissions",
+};
 
 interface Claim {
   id: number;
@@ -35,7 +43,9 @@ interface Submission {
 
 interface Notification {
   id: number;
+  type: string;
   title: string;
+  body: string | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -45,7 +55,20 @@ export default function Portail() {
   const { data: reclamations } = useApiOne<Claim[]>(user ? "/claims/me" : null);
   const { data: candidatures } = useApiOne<Candidature[]>(user ? "/candidatures/me" : null);
   const { data: soumissions } = useApiOne<Submission[]>(user ? "/submissions/me" : null);
-  const { data: notifications } = useApiList<Notification>(user ? "/notifications?pageSize=50" : null);
+  const { data: notifications, refetch: refetchNotifications } = useApiList<Notification>(
+    user ? "/notifications?pageSize=50" : null,
+  );
+  const [onglet, setOnglet] = useState("reclamations");
+
+  async function cliquerNotification(n: Notification) {
+    if (!n.isRead) {
+      apiFetch(`/notifications/${n.id}/read`, { method: "POST" })
+        .then(() => refetchNotifications())
+        .catch(() => {});
+    }
+    const cible = NOTIFICATION_TAB_BY_TYPE[n.type];
+    if (cible) setOnglet(cible);
+  }
 
   const mesReclamations = reclamations ?? [];
   const mesCandidatures = candidatures ?? [];
@@ -94,7 +117,7 @@ export default function Portail() {
             ))}
           </dl>
 
-          <Tabs defaultValue="reclamations" className="mt-10">
+          <Tabs value={onglet} onValueChange={setOnglet} className="mt-10">
             <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1">
               <TabsTrigger value="reclamations">Mes réclamations</TabsTrigger>
               <TabsTrigger value="candidatures">Mes candidatures</TabsTrigger>
@@ -147,15 +170,26 @@ export default function Portail() {
 
             <TabsContent value="notifications" className="mt-6">
               <ul className="divide-y divide-border border-y border-border">
-                {notifications.map((n) => (
-                  <li key={n.id} className="flex items-start gap-4 p-5">
-                    <span className={n.isRead ? "mt-1.5 size-2 shrink-0 rounded-full bg-border" : "mt-1.5 size-2 shrink-0 rounded-full bg-primary"} />
-                    <div className="min-w-0">
-                      <p className={n.isRead ? "text-sm text-muted-foreground" : "text-sm font-medium"}>{n.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{formaterDate(n.createdAt)}</p>
-                    </div>
-                  </li>
-                ))}
+                {notifications.map((n) => {
+                  const cliquable = Boolean(NOTIFICATION_TAB_BY_TYPE[n.type]);
+                  return (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={() => cliquerNotification(n)}
+                        disabled={!cliquable && n.isRead}
+                        className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-muted/60 disabled:cursor-default disabled:hover:bg-transparent"
+                      >
+                        <span className={n.isRead ? "mt-1.5 size-2 shrink-0 rounded-full bg-border" : "mt-1.5 size-2 shrink-0 rounded-full bg-primary"} />
+                        <div className="min-w-0">
+                          <p className={n.isRead ? "text-sm text-muted-foreground" : "text-sm font-medium"}>{n.title}</p>
+                          {n.body && <p className="mt-1 text-xs text-muted-foreground">{n.body}</p>}
+                          <p className="mt-1 text-xs text-muted-foreground">{formaterDate(n.createdAt)}</p>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
                 {notifications.length === 0 && (
                   <li className="p-8 text-center text-sm text-muted-foreground">Aucune notification.</li>
                 )}
