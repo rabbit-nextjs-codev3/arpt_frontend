@@ -68,7 +68,7 @@ export function Header() {
               </AuthTrigger>
             </Button>
           )}
-          {user?.isStaff && (
+          {(user?.isStaff || user?.isSuperuser || user?.role) && (
             <Button asChild size="sm" className="hidden md:inline-flex">
               <Link href="/admin">
                 <LayoutDashboard className="size-4" aria-hidden /> {tc("administration")}
@@ -130,7 +130,7 @@ export function Header() {
                   <AuthTrigger>{tc("login")}</AuthTrigger>
                 </Button>
               )}
-              {user?.isStaff && (
+              {(user?.isStaff || user?.isSuperuser || user?.role) && (
                 <Button asChild size="sm" onClick={() => setOuvert(false)}>
                   <Link href="/admin">{tc("administration")}</Link>
                 </Button>

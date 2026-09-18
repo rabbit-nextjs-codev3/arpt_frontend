@@ -301,7 +301,7 @@ export default function Admin() {
   const courant = menus.find((m) => m.id === section) ?? menus[0];
   const { user, loading: authLoading, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const staff = Boolean(user?.isStaff);
+  const staff = Boolean(user?.isStaff || user?.isSuperuser || user?.role);
   const { data: overview } = useApiOne<AdminOverview>(staff ? "/dashboard/admin-overview" : null);
   const { data: overviewStats } = useApiOne<SectorOverview>(staff ? "/statistics/overview?lang=fr" : null);
   const { data: reclamationsRecentes } = useApiList<ClaimAdmin>(staff ? "/claims?lang=fr&pageSize=3" : null);
@@ -375,7 +375,12 @@ export default function Admin() {
     return <div className="grid h-full place-items-center text-sm text-muted-foreground">Chargement…</div>;
   }
 
-  if (!user?.isStaff) {
+  // Doit rester cohérent avec la définition d'un "compte admin" côté backend
+  // (AuthService.login: isAdminAccount = isSuperuser || roleId !== null) —
+  // isStaff seul (jamais renseigné par UsersService.createByAdmin, le flux
+  // d'invitation admin) laissait un compte avec un rôle assigné coincé sur
+  // cet écran de connexion après une authentification pourtant réussie.
+  if (!user?.isStaff && !user?.isSuperuser && !user?.role) {
     return <AdminLogin />;
   }
 
