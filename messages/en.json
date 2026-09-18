@@ -38,14 +38,6 @@
       "titre": "What would you like to do today?",
       "description": "The most consulted procedures for users, operators and businesses."
     },
-    "servicesSection": {
-      "surtitre": "Our day-to-day missions",
-      "titre": "Services for operators and businesses",
-      "description": "Each service specifies the required documents, processing time and applicable cost.",
-      "allServices": "All services",
-      "delay": "Processing time: {delai}",
-      "empty": "No service published yet."
-    },
     "latestPublications": "Latest publications",
     "noNews": "No news published yet.",
     "gallery": "Gallery",

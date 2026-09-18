@@ -38,14 +38,6 @@
       "titre": "Que souhaitez-vous faire aujourd'hui ?",
       "description": "Les démarches les plus consultées par les usagers, les opérateurs et les entreprises."
     },
-    "servicesSection": {
-      "surtitre": "Nos missions au quotidien",
-      "titre": "Services aux opérateurs et aux entreprises",
-      "description": "Chaque service précise les pièces à fournir, le délai d'instruction et le coût applicable.",
-      "allServices": "Tous les services",
-      "delay": "Délai : {delai}",
-      "empty": "Aucun service publié pour l'instant."
-    },
     "latestPublications": "Dernières publications",
     "noNews": "Aucune actualité publiée pour l'instant.",
     "gallery": "En images",
