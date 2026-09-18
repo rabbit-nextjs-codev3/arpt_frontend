@@ -3681,6 +3681,7 @@ function RolesAdmin() {
   const { data: roles, loading, error, refetch } = useApiOne<RoleAdmin[]>("/roles");
   const { data: permissions } = useApiOne<PermissionOption[]>("/permissions");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [nom, setNom] = useState("");
   const [selectedPerms, setSelectedPerms] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -3695,7 +3696,28 @@ function RolesAdmin() {
     });
   }
 
-  async function creer(event: React.FormEvent<HTMLFormElement>) {
+  function ouvrirCreation() {
+    setEditingId(null);
+    setNom("");
+    setSelectedPerms(new Set());
+    setFormError("");
+    setShowForm(true);
+  }
+
+  function ouvrirEdition(r: RoleAdmin) {
+    setEditingId(r.id);
+    setNom(r.name);
+    setSelectedPerms(new Set(r.permissions.map((p) => p.id)));
+    setFormError("");
+    setShowForm(true);
+  }
+
+  function fermerForm() {
+    setShowForm(false);
+    setEditingId(null);
+  }
+
+  async function enregistrer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
     if (nom.trim().length < 2) {
@@ -3704,12 +3726,12 @@ function RolesAdmin() {
     }
     setSubmitting(true);
     try {
-      await apiFetch("/roles", {
-        method: "POST",
+      await apiFetch(editingId ? `/roles/${editingId}` : "/roles", {
+        method: editingId ? "PATCH" : "POST",
         body: JSON.stringify({ name: nom, permissionIds: Array.from(selectedPerms) }),
       });
-      toast.success("Rôle créé.");
-      setShowForm(false);
+      toast.success(editingId ? "Rôle mis à jour." : "Rôle créé.");
+      fermerForm();
       setNom("");
       setSelectedPerms(new Set());
       refetch();
@@ -3725,6 +3747,7 @@ function RolesAdmin() {
     try {
       await apiFetch(`/roles/${id}`, { method: "DELETE" });
       toast.success("Rôle supprimé.");
+      if (editingId === id) fermerForm();
       refetch();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
@@ -3738,13 +3761,13 @@ function RolesAdmin() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-heading text-lg font-semibold">Rôles & permissions</h2>
-        <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+        <Button size="sm" onClick={() => (showForm ? fermerForm() : ouvrirCreation())}>
           {showForm ? "Annuler" : "+ Nouveau rôle"}
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={creer} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
+        <form onSubmit={enregistrer} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
           <div className="grid gap-2 max-w-sm">
             <Label htmlFor="role-name">Nom du rôle *</Label>
             <Input id="role-name" value={nom} onChange={(e) => setNom(e.target.value)} required />
@@ -3766,7 +3789,7 @@ function RolesAdmin() {
           </div>
           {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
           <Button type="submit" disabled={submitting} className="justify-self-start">
-            {submitting ? "Enregistrement…" : "Créer le rôle"}
+            {submitting ? "Enregistrement…" : editingId ? "Enregistrer les modifications" : "Créer le rôle"}
           </Button>
         </form>
       )}
@@ -3776,9 +3799,14 @@ function RolesAdmin() {
           <div key={r.id} className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold">{r.name}</h3>
-              <button onClick={() => supprimer(r.id)} className="text-xs text-destructive hover:underline">
-                Supprimer
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => ouvrirEdition(r)} className="text-xs font-medium text-primary hover:underline">
+                  Modifier
+                </button>
+                <button onClick={() => supprimer(r.id)} className="text-xs text-destructive hover:underline">
+                  Supprimer
+                </button>
+              </div>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{r.permissions.length} permission(s)</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
