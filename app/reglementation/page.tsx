@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowRight, Eye, Search } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,21 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formaterDate } from "@/data/mock";
 import { api, ApiError, type PaginatedResult } from "@/lib/api";
+import { useContentBlock } from "@/lib/hooks";
+import { useLocale } from "@/lib/locale-context";
+
+interface HeroContent {
+  surtitre: string;
+  titre: string;
+  description: string;
+}
+
+const HERO_DEFAUT: HeroContent = {
+  surtitre: "Ressources",
+  titre: "Cadre réglementaire du secteur",
+  description:
+    "Consultez et téléchargez l'ensemble des textes en vigueur applicables aux postes et aux télécommunications.",
+};
 
 interface Reglementation {
   id: number;
@@ -24,6 +40,9 @@ interface Reglementation {
 }
 
 export default function Reglementation() {
+  const t = useTranslations("regulationPage");
+  const { locale } = useLocale();
+  const { data: hero } = useContentBlock<HeroContent>("regulation.hero", HERO_DEFAUT);
   const [categorie, setCategorie] = useState("Toutes");
   const [recherche, setRecherche] = useState("");
   const [textes, setTextes] = useState<Reglementation[]>([]);
@@ -34,12 +53,12 @@ export default function Reglementation() {
     let annule = false;
     setChargement(true);
     api
-      .get<PaginatedResult<Reglementation>>("/regulations?lang=fr&pageSize=100")
+      .get<PaginatedResult<Reglementation>>(`/regulations?lang=${locale}&pageSize=100`)
       .then((res) => {
         if (!annule) setTextes(res.results);
       })
       .catch((err: unknown) => {
-        if (!annule) setErreur(err instanceof ApiError ? err.message : "Impossible de charger les textes.");
+        if (!annule) setErreur(err instanceof ApiError ? err.message : t("loadError"));
       })
       .finally(() => {
         if (!annule) setChargement(false);
@@ -47,10 +66,11 @@ export default function Reglementation() {
     return () => {
       annule = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   const categories = useMemo(
-    () => ["Toutes", ...Array.from(new Set(textes.map((t) => t.category)))],
+    () => ["Toutes", ...Array.from(new Set(textes.map((r) => r.category)))],
     [textes],
   );
 
@@ -66,11 +86,7 @@ export default function Reglementation() {
 
   return (
     <>
-      <PageHero
-        surtitre="Ressources"
-        titre="Cadre réglementaire du secteur"
-        description="Consultez et téléchargez l'ensemble des textes en vigueur applicables aux postes et aux télécommunications."
-      />
+      <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
       <section className="section-y">
         <div className="container-content">
@@ -80,9 +96,9 @@ export default function Reglementation() {
               <Input
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
-                placeholder="Rechercher un texte…"
+                placeholder={t("searchPlaceholder")}
                 className="pl-9"
-                aria-label="Rechercher un texte réglementaire"
+                aria-label={t("searchAriaLabel")}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -97,7 +113,7 @@ export default function Reglementation() {
                       : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
                   )}
                 >
-                  {c}
+                  {c === "Toutes" ? t("allCategories") : c}
                 </button>
               ))}
             </div>
@@ -105,7 +121,7 @@ export default function Reglementation() {
 
           <div className="mt-8 border-y border-border">
             {chargement && (
-              <p className="p-8 text-center text-sm text-muted-foreground">Chargement des textes…</p>
+              <p className="p-8 text-center text-sm text-muted-foreground">{t("loading")}</p>
             )}
             {erreur && !chargement && (
               <p className="p-8 text-center text-sm text-destructive">{erreur}</p>
@@ -125,20 +141,20 @@ export default function Reglementation() {
                         </span>
                         <span>{formaterDate(r.dateUpload)}</span>
                         <span className="inline-flex items-center gap-1">
-                          <Eye className="size-3.5" aria-hidden /> {r.views.toLocaleString("fr-FR")} vues
+                          <Eye className="size-3.5" aria-hidden /> {t("views", { count: r.views.toLocaleString(locale) })}
                         </span>
                         <span>{r.format}</span>
                       </p>
                     </div>
                     <Button asChild variant="outline" size="sm" className="justify-self-start sm:justify-self-end">
                       <Link href={`/reglementation/${r.uid}`}>
-                        Voir plus <ArrowRight className="size-4" aria-hidden />
+                        {t("viewMore")} <ArrowRight className="size-4" aria-hidden />
                       </Link>
                     </Button>
                   </li>
                 ))}
                 {resultats.length === 0 && (
-                  <li className="p-8 text-center text-sm text-muted-foreground">Aucun texte ne correspond à votre recherche.</li>
+                  <li className="p-8 text-center text-sm text-muted-foreground">{t("noResults")}</li>
                 )}
               </ul>
             )}

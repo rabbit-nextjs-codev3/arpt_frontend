@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Bell, Briefcase, FileSignature, MessageSquareWarning, UserRound } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { StatutBadge } from "@/components/site/StatutBadge";
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formaterDate } from "@/data/mock";
 import { useAuth } from "@/lib/auth";
 import { useApiList, useApiOne } from "@/lib/hooks";
+import { useLocale } from "@/lib/locale-context";
 
 interface Claim {
   id: number;
@@ -41,10 +43,12 @@ interface Notification {
 }
 
 export default function Portail() {
+  const t = useTranslations("portalPage");
+  const { locale } = useLocale();
   const { user } = useAuth();
   const { data: reclamations } = useApiOne<Claim[]>(user ? "/claims/me" : null);
-  const { data: candidatures } = useApiOne<Candidature[]>(user ? "/candidatures/me" : null);
-  const { data: soumissions } = useApiOne<Submission[]>(user ? "/submissions/me" : null);
+  const { data: candidatures } = useApiOne<Candidature[]>(user ? `/candidatures/me?lang=${locale}` : null);
+  const { data: soumissions } = useApiOne<Submission[]>(user ? `/submissions/me?lang=${locale}` : null);
   const { data: notifications } = useApiList<Notification>(user ? "/notifications?pageSize=50" : null);
 
   const mesReclamations = reclamations ?? [];
@@ -52,16 +56,16 @@ export default function Portail() {
   const mesSoumissions = soumissions ?? [];
 
   const resume = [
-    { libelle: "Réclamations", valeur: mesReclamations.length, icon: MessageSquareWarning },
-    { libelle: "Candidatures", valeur: mesCandidatures.length, icon: Briefcase },
-    { libelle: "Soumissions", valeur: mesSoumissions.length, icon: FileSignature },
-    { libelle: "Notifications", valeur: notifications.filter((n) => !n.isRead).length, icon: Bell },
+    { libelle: t("summary.claims"), valeur: mesReclamations.length, icon: MessageSquareWarning },
+    { libelle: t("summary.candidatures"), valeur: mesCandidatures.length, icon: Briefcase },
+    { libelle: t("summary.submissions"), valeur: mesSoumissions.length, icon: FileSignature },
+    { libelle: t("summary.notifications"), valeur: notifications.filter((n) => !n.isRead).length, icon: Bell },
   ];
 
   if (!user) {
     return (
       <div className="container-content section-y text-center text-sm text-muted-foreground">
-        Connectez-vous pour accéder à votre portail usager.
+        {t("loginRequired")}
       </div>
     );
   }
@@ -69,9 +73,9 @@ export default function Portail() {
   return (
     <>
       <PageHero
-        surtitre="Espace personnel"
-        titre="Portail usager"
-        description={`Bienvenue, ${user.fullname}. Retrouvez ici l'ensemble de vos dossiers en cours auprès de l'Autorité.`}
+        surtitre={t("surtitre")}
+        titre={t("titre")}
+        description={t("welcome", { name: user.fullname })}
       >
         <div className="inline-flex items-center gap-3 rounded-full bg-primary-foreground/10 px-4 py-2 text-sm">
           <UserRound className="size-4" aria-hidden /> {user.email}
@@ -96,15 +100,15 @@ export default function Portail() {
 
           <Tabs defaultValue="reclamations" className="mt-10">
             <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1">
-              <TabsTrigger value="reclamations">Mes réclamations</TabsTrigger>
-              <TabsTrigger value="candidatures">Mes candidatures</TabsTrigger>
-              <TabsTrigger value="soumissions">Mes soumissions</TabsTrigger>
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="reclamations">{t("tabs.claims")}</TabsTrigger>
+              <TabsTrigger value="candidatures">{t("tabs.candidatures")}</TabsTrigger>
+              <TabsTrigger value="soumissions">{t("tabs.submissions")}</TabsTrigger>
+              <TabsTrigger value="notifications">{t("tabs.notifications")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reclamations" className="mt-6">
               <Tableau
-                colonnes={["Référence", "Nature", "Opérateur", "Date", "Statut"]}
+                colonnes={t.raw("claimsColumns") as string[]}
                 lignes={mesReclamations.map((r) => [
                   `REC-${r.id}`,
                   r.claimType,
@@ -112,36 +116,36 @@ export default function Portail() {
                   formaterDate(r.createdAt),
                   <StatutBadge key={r.id} statut={r.status} />,
                 ])}
-                vide="Aucune réclamation déposée."
-                action={{ to: "/reclamations", label: "Déposer une réclamation" }}
+                vide={t("claimsEmpty")}
+                action={{ to: "/reclamations", label: t("fileClaim") }}
               />
             </TabsContent>
 
             <TabsContent value="candidatures" className="mt-6">
               <Tableau
-                colonnes={["Référence", "Poste", "Date", "Statut"]}
+                colonnes={t.raw("candidaturesColumns") as string[]}
                 lignes={mesCandidatures.map((c) => [
                   `CAND-${c.id}`,
                   c.career.name,
                   formaterDate(c.submittedAt),
                   <StatutBadge key={c.id} statut={c.status} />,
                 ])}
-                vide="Aucune candidature en cours."
-                action={{ to: "/carrieres", label: "Voir les offres" }}
+                vide={t("candidaturesEmpty")}
+                action={{ to: "/carrieres", label: t("viewOffers") }}
               />
             </TabsContent>
 
             <TabsContent value="soumissions" className="mt-6">
               <Tableau
-                colonnes={["Référence", "Appel d'offres", "Date", "Statut"]}
+                colonnes={t.raw("submissionsColumns") as string[]}
                 lignes={mesSoumissions.map((s) => [
                   `SUB-${s.id}`,
                   s.tendersCall.name,
                   formaterDate(s.submittedAt),
                   <StatutBadge key={s.id} statut={s.status} />,
                 ])}
-                vide="Aucune soumission enregistrée."
-                action={{ to: "/appels-offres", label: "Voir les appels d'offres" }}
+                vide={t("submissionsEmpty")}
+                action={{ to: "/appels-offres", label: t("viewTenders") }}
               />
             </TabsContent>
 
@@ -157,7 +161,7 @@ export default function Portail() {
                   </li>
                 ))}
                 {notifications.length === 0 && (
-                  <li className="p-8 text-center text-sm text-muted-foreground">Aucune notification.</li>
+                  <li className="p-8 text-center text-sm text-muted-foreground">{t("noNotifications")}</li>
                 )}
               </ul>
             </TabsContent>

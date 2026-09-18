@@ -1,10 +1,23 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Download } from "lucide-react";
-import { PageHero, SectionTitle } from "@/components/site/PageHero";
-import { Button } from "@/components/ui/button";
-import { useApiList, useApiOne } from "@/lib/hooks";
+import { PageHero } from "@/components/site/PageHero";
+import { useApiOne, useContentBlock } from "@/lib/hooks";
+import { useLocale } from "@/lib/locale-context";
+
+interface HeroContent {
+  surtitre: string;
+  titre: string;
+  description: string;
+}
+
+const HERO_DEFAUT: HeroContent = {
+  surtitre: "Observatoire",
+  titre: "Statistiques du secteur",
+  description:
+    "Indicateurs mensuels et trimestriels consolidés par l'Autorité à partir des déclarations des opérateurs.",
+};
 
 interface Overview {
   year: number;
@@ -19,33 +32,19 @@ interface Overview {
   quarterlySeries: { year: number; quarter: number; revenueBillionGNF: number }[];
 }
 
-interface Report {
-  id: number;
-  title: string;
-  format: string;
-  fileSizeBytes: number;
-  year: number;
-  sector: string;
-  downloadCount: number;
-  fileUrl: string;
-}
-
-const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
-
-function formaterTaille(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
-
 export default function Statistiques() {
-  const { data: overview, loading, error } = useApiOne<Overview>("/statistics/overview?lang=fr");
-  const { data: rapports } = useApiList<Report>("/statistics/reports?lang=fr&pageSize=20");
+  const t = useTranslations("statisticsPage");
+  const { locale } = useLocale();
+  const MOIS = t.raw("months") as string[];
+  const { data: hero } = useContentBlock<HeroContent>("statistics.hero", HERO_DEFAUT);
+  const { data: overview, loading, error } = useApiOne<Overview>(`/statistics/overview?lang=${locale}`);
 
   const indicateurs = overview
     ? [
-        { libelle: "Abonnés mobiles", valeur: `${overview.kpis.subscribersMillion.toLocaleString("fr-FR")} M` },
-        { libelle: "Taux de pénétration", valeur: `${overview.kpis.penetrationRate} %` },
-        { libelle: "Opérateurs actifs", valeur: `${overview.kpis.activeOperators}` },
-        { libelle: "Sites 4G en service", valeur: overview.kpis.active4GSites.toLocaleString("fr-FR") },
+        { libelle: t("mobileSubscribers"), valeur: `${overview.kpis.subscribersMillion.toLocaleString(locale)} M` },
+        { libelle: t("penetrationRate"), valeur: `${overview.kpis.penetrationRate} %` },
+        { libelle: t("activeOperators"), valeur: `${overview.kpis.activeOperators}` },
+        { libelle: t("active4GSites"), valeur: overview.kpis.active4GSites.toLocaleString(locale) },
       ]
     : [];
 
@@ -61,15 +60,11 @@ export default function Statistiques() {
 
   return (
     <>
-      <PageHero
-        surtitre="Observatoire"
-        titre="Statistiques du secteur"
-        description="Indicateurs mensuels et trimestriels consolidés par l'Autorité à partir des déclarations des opérateurs."
-      />
+      <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
       <section className="section-y">
         <div className="container-content">
-          {loading && <p className="text-sm text-muted-foreground">Chargement des statistiques…</p>}
+          {loading && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
           {error && !loading && <p className="text-sm text-destructive">{error}</p>}
 
           {overview && (
@@ -85,8 +80,8 @@ export default function Statistiques() {
 
               <div className="mt-10 grid gap-6 lg:grid-cols-2">
                 <div className="min-w-0 rounded-xl border border-border bg-card p-6">
-                  <h2 className="font-heading text-lg font-semibold">Évolution du parc d'abonnés mobiles</h2>
-                  <p className="text-sm text-muted-foreground">En millions d'abonnés, année {overview.year}</p>
+                  <h2 className="font-heading text-lg font-semibold">{t("subscribersChartTitle")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("subscribersChartSubtitle", { year: overview.year })}</p>
                   <div className="mt-6 h-72">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={abonnesParMois}>
@@ -110,7 +105,7 @@ export default function Statistiques() {
                         <Area
                           type="monotone"
                           dataKey="abonnes"
-                          name="Abonnés (M)"
+                          name={t("subscribersSeriesName")}
                           stroke="var(--color-chart-1)"
                           strokeWidth={2}
                           fill="url(#grad-abonnes)"
@@ -121,8 +116,8 @@ export default function Statistiques() {
                 </div>
 
                 <div className="min-w-0 rounded-xl border border-border bg-card p-6">
-                  <h2 className="font-heading text-lg font-semibold">Chiffre d'affaires du secteur</h2>
-                  <p className="text-sm text-muted-foreground">En milliards de GNF, par trimestre</p>
+                  <h2 className="font-heading text-lg font-semibold">{t("revenueChartTitle")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("revenueChartSubtitle")}</p>
                   <div className="mt-6 h-72">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={caParTrimestre}>
@@ -138,7 +133,7 @@ export default function Statistiques() {
                             fontSize: "0.8rem",
                           }}
                         />
-                        <Bar dataKey="ca" name="CA (Mds GNF)" fill="var(--color-chart-2)" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="ca" name={t("revenueSeriesName")} fill="var(--color-chart-2)" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -146,41 +141,6 @@ export default function Statistiques() {
               </div>
             </>
           )}
-        </div>
-      </section>
-
-      <section className="section-y bg-surface">
-        <div className="container-content">
-          <SectionTitle surtitre="Publications" titre="Rapports sectoriels" description="Documents téléchargeables au format PDF ou Excel." />
-          <div className="mt-8 border-y border-border">
-            <ul className="divide-y divide-border">
-              {rapports.map((r) => (
-                <li key={r.id} className="grid gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                  <div className="min-w-0">
-                    <p className="font-medium">{r.title}</p>
-                    <p className="mt-1.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      <span className="rounded-full bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
-                        {r.sector}
-                      </span>
-                      <span>{r.year}</span>
-                      <span>
-                        {r.format} · {formaterTaille(r.fileSizeBytes)}
-                      </span>
-                      <span>{r.downloadCount.toLocaleString("fr-FR")} téléchargements</span>
-                    </p>
-                  </div>
-                  <Button asChild variant="outline" size="sm" className="justify-self-start sm:justify-self-end">
-                    <a href={r.fileUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="size-4" aria-hidden /> Télécharger
-                    </a>
-                  </Button>
-                </li>
-              ))}
-              {rapports.length === 0 && (
-                <li className="py-8 text-center text-sm text-muted-foreground">Aucun rapport pour l'instant.</li>
-              )}
-            </ul>
-          </div>
         </div>
       </section>
     </>

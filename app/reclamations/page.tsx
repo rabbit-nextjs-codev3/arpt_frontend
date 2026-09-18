@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Building2,
   CheckCircle2,
   FileDown,
+  HelpCircle,
   Info,
   LogIn,
   Mail,
@@ -14,6 +16,8 @@ import {
   Paperclip,
   Phone,
   ShieldAlert,
+  ThumbsDown,
+  ThumbsUp,
   User,
 } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
@@ -80,6 +84,7 @@ const GUIDE_DEFAUT: GuideContent = {
 };
 
 export default function Reclamations() {
+  const t = useTranslations("claims");
   const { user, loading: authLoading, refreshUser } = useAuth();
   const { data: hero } = useContentBlock<HeroContent>("claims.hero", HERO_DEFAUT);
   const { data: etapes } = useContentBlock<StepItem[]>("claims.steps", ETAPES_DEFAUT);
@@ -92,12 +97,17 @@ export default function Reclamations() {
   const [erreur, setErreur] = useState("");
   const [type, setType] = useState("");
   const [operateur, setOperateur] = useState("");
+  // Filtrage préalable — l'ARPT n'intervient qu'en cas d'échec de la
+  // résolution à l'amiable avec l'opérateur. "notYet" ne bloque pas
+  // définitivement (aucun moyen de le vérifier côté serveur) mais rappelle
+  // la marche à suivre en priorité.
+  const [gateStep, setGateStep] = useState<"question" | "notYet" | "form">("question");
 
   async function soumettre(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErreur("");
     if (!type || !operateur) {
-      setErreur("Merci de sélectionner la nature de la réclamation et l'opérateur concerné.");
+      setErreur(t("submitError"));
       return;
     }
     setEnvoiEnCours(true);
@@ -117,9 +127,9 @@ export default function Reclamations() {
     try {
       await apiFetch("/claims", { method: "POST", body });
       setEnvoye(true);
-      toast.success("Votre réclamation a bien été déposée.");
+      toast.success(t("submitSuccess"));
     } catch (err) {
-      setErreur(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setErreur(err instanceof ApiError ? err.message : t("genericError"));
     } finally {
       setEnvoiEnCours(false);
     }
@@ -134,7 +144,7 @@ export default function Reclamations() {
           <aside className="space-y-8 lg:pr-6">
             <div className="border-b border-border pb-8">
               <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-                <Info className="size-5 text-primary" aria-hidden /> Avant de saisir l'Autorité
+                <Info className="size-5 text-primary" aria-hidden /> {t("beforeAuthority")}
               </h2>
               <ol className="mt-4 space-y-4">
                 {etapes.map((e, i) => (
@@ -154,7 +164,7 @@ export default function Reclamations() {
               {rightsDocument?.fileUrl && (
                 <Button asChild variant="outline" size="sm" className="mt-4">
                   <a href={rightsDocument.fileUrl} target="_blank" rel="noreferrer">
-                    <FileDown className="size-4" aria-hidden /> Télécharger le guide
+                    <FileDown className="size-4" aria-hidden /> {t("downloadGuide")}
                   </a>
                 </Button>
               )}
@@ -163,16 +173,14 @@ export default function Reclamations() {
 
           <div className="rounded-xl border border-border bg-card p-6 sm:p-7">
             {authLoading ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">Chargement…</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">{t("loading")}</p>
             ) : !user ? (
               <div className="py-10 text-center">
                 <LogIn className="mx-auto size-12 text-primary" aria-hidden />
-                <h2 className="mt-4 font-heading text-xl font-semibold">Connexion requise</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Pour pouvoir suivre votre dossier, une réclamation doit être rattachée à un compte usager.
-                </p>
+                <h2 className="mt-4 font-heading text-xl font-semibold">{t("loginRequiredTitle")}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{t("loginRequiredBody")}</p>
                 <Button asChild className="mt-6">
-                  <AuthTrigger>Se connecter ou créer un compte</AuthTrigger>
+                  <AuthTrigger>{t("loginOrCreateAccount")}</AuthTrigger>
                 </Button>
               </div>
             ) : !user.emailVerified ? (
@@ -180,47 +188,72 @@ export default function Reclamations() {
             ) : envoye ? (
               <div className="py-10 text-center">
                 <CheckCircle2 className="mx-auto size-12 text-success" aria-hidden />
-                <h2 className="mt-4 font-heading text-xl font-semibold">Réclamation enregistrée</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Une référence de suivi vous a été adressée par courriel. L'instruction débute sous 48 heures ouvrées.
-                </p>
+                <h2 className="mt-4 font-heading text-xl font-semibold">{t("submittedTitle")}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{t("submittedBody")}</p>
                 <Button asChild className="mt-6">
-                  <Link href="/portail">Suivre mon dossier</Link>
+                  <Link href="/portail">{t("trackMyFile")}</Link>
                 </Button>
+              </div>
+            ) : gateStep === "question" ? (
+              <div className="py-10 text-center">
+                <HelpCircle className="mx-auto size-12 text-primary" aria-hidden />
+                <h2 className="mt-4 font-heading text-xl font-semibold">{t("gateQuestion")}</h2>
+                <div className="mx-auto mt-6 flex w-full max-w-sm flex-col gap-3">
+                  <Button onClick={() => setGateStep("form")}>
+                    <ThumbsUp className="size-4" aria-hidden /> {t("gateYes")}
+                  </Button>
+                  <Button variant="outline" onClick={() => setGateStep("notYet")}>
+                    <ThumbsDown className="size-4" aria-hidden /> {t("gateNo")}
+                  </Button>
+                </div>
+              </div>
+            ) : gateStep === "notYet" ? (
+              <div className="py-10 text-center">
+                <HelpCircle className="mx-auto size-12 text-primary" aria-hidden />
+                <h2 className="mt-4 font-heading text-xl font-semibold">{t("gateNotYetTitle")}</h2>
+                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t("gateNotYetBody")}</p>
+                <div className="mx-auto mt-6 flex w-full max-w-sm flex-col gap-3">
+                  <Button onClick={() => setGateStep("question")}>{t("back")}</Button>
+                  <button
+                    type="button"
+                    onClick={() => setGateStep("form")}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {t("gateContinueAnyway")}
+                  </button>
+                </div>
               </div>
             ) : (
               <form className="grid gap-5" onSubmit={soumettre}>
                 <div>
-                  <h2 className="font-heading text-xl font-semibold">Formulaire de réclamation</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Les champs marqués d'un astérisque (*) sont obligatoires.
-                  </p>
+                  <h2 className="font-heading text-xl font-semibold">{t("formTitle")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("requiredFieldsNote")}</p>
                 </div>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="prenom">Prénom *</Label>
+                    <Label htmlFor="prenom">{t("firstname")}</Label>
                     <div className="relative">
                       <User className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                      <Input id="prenom" name="prenom" required maxLength={80} className="pl-10" placeholder="Ex. : Mamadou" />
+                      <Input id="prenom" name="prenom" required maxLength={80} className="pl-10" placeholder={t("firstnamePlaceholder")} />
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="nom">Nom *</Label>
+                    <Label htmlFor="nom">{t("lastname")}</Label>
                     <div className="relative">
                       <User className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                      <Input id="nom" name="nom" required maxLength={80} className="pl-10" placeholder="Ex. : Diallo" />
+                      <Input id="nom" name="nom" required maxLength={80} className="pl-10" placeholder={t("lastnamePlaceholder")} />
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Adresse e-mail *</Label>
+                    <Label htmlFor="email">{t("email")}</Label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                       <Input id="email" name="email" type="email" required maxLength={255} defaultValue={user.email} className="pl-10" placeholder="vous@exemple.com" />
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="tel">Téléphone</Label>
+                    <Label htmlFor="tel">{t("phone")}</Label>
                     <div className="relative">
                       <Phone className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                       <Input id="tel" name="tel" type="tel" maxLength={20} className="pl-10" placeholder="+224 …" />
@@ -230,29 +263,29 @@ export default function Reclamations() {
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="type">Nature de la réclamation *</Label>
+                    <Label htmlFor="type">{t("claimType")}</Label>
                     <div className="relative">
                       <ShieldAlert className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                       <Select value={type} onValueChange={setType} required>
                         <SelectTrigger id="type" className="pl-10">
-                          <SelectValue placeholder="Sélectionnez la nature" />
+                          <SelectValue placeholder={t("claimTypePlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="QUALITE">Qualité de service</SelectItem>
-                          <SelectItem value="FACTURATION">Facturation</SelectItem>
-                          <SelectItem value="RESEAU">Réseau / couverture</SelectItem>
-                          <SelectItem value="AUTRE">Autre</SelectItem>
+                          <SelectItem value="QUALITE">{t("claimTypeOptions.quality")}</SelectItem>
+                          <SelectItem value="FACTURATION">{t("claimTypeOptions.billing")}</SelectItem>
+                          <SelectItem value="RESEAU">{t("claimTypeOptions.network")}</SelectItem>
+                          <SelectItem value="AUTRE">{t("claimTypeOptions.other")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="operateur">Opérateur concerné *</Label>
+                    <Label htmlFor="operateur">{t("operator")}</Label>
                     <div className="relative">
                       <Building2 className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                       <Select value={operateur} onValueChange={setOperateur} required>
                         <SelectTrigger id="operateur" className="pl-10">
-                          <SelectValue placeholder="Sélectionnez l'opérateur" />
+                          <SelectValue placeholder={t("operatorPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                           {Object.entries(OPERATEURS).map(([value, label]) => (
@@ -267,7 +300,7 @@ export default function Reclamations() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="description">Description des faits *</Label>
+                  <Label htmlFor="description">{t("description")}</Label>
                   <div className="relative">
                     <MessageSquare className="pointer-events-none absolute top-3 left-3 size-4 text-muted-foreground" aria-hidden />
                     <Textarea
@@ -277,24 +310,24 @@ export default function Reclamations() {
                       rows={6}
                       maxLength={2000}
                       className="pl-10"
-                      placeholder="Dates, montants, références de dossier, démarches déjà effectuées…"
+                      placeholder={t("descriptionPlaceholder")}
                     />
                   </div>
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="pieces">Pièces justificatives (facultatif)</Label>
+                  <Label htmlFor="pieces">{t("attachments")}</Label>
                   <div className="relative">
                     <Paperclip className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                     <Input id="pieces" name="pieces" type="file" multiple accept=".pdf,.jpg,.png" className="pl-10" />
                   </div>
-                  <p className="text-xs text-muted-foreground">Formats acceptés : PDF, JPG, PNG.</p>
+                  <p className="text-xs text-muted-foreground">{t("acceptedFormats")}</p>
                 </div>
 
                 {erreur && <p className="text-sm text-destructive" role="alert">{erreur}</p>}
 
                 <Button type="submit" size="lg" disabled={envoiEnCours} className="mt-1 justify-self-start">
-                  {envoiEnCours ? "Envoi en cours…" : "Déposer ma réclamation"}
+                  {envoiEnCours ? t("submitting") : t("submit")}
                 </Button>
               </form>
             )}
@@ -306,6 +339,7 @@ export default function Reclamations() {
 }
 
 function VerificationEmail({ email, onVerified }: { email: string; onVerified: () => Promise<void> }) {
+  const t = useTranslations("claims");
   const [otp, setOtp] = useState("");
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [renvoiEnCours, setRenvoiEnCours] = useState(false);
@@ -319,9 +353,9 @@ function VerificationEmail({ email, onVerified }: { email: string; onVerified: (
     try {
       await api.post("/auth/email-verification/verify", { otp });
       await onVerified();
-      toast.success("Adresse e-mail vérifiée.");
+      toast.success(t("verifyEmailSuccess"));
     } catch (err) {
-      setErreur(err instanceof ApiError ? err.message : "Code invalide, réessayez.");
+      setErreur(err instanceof ApiError ? err.message : t("invalidCode"));
     } finally {
       setEnvoiEnCours(false);
     }
@@ -332,9 +366,9 @@ function VerificationEmail({ email, onVerified }: { email: string; onVerified: (
     setInfo("");
     try {
       await api.post("/auth/email-verification/resend");
-      setInfo("Un nouveau code vous a été envoyé.");
+      setInfo(t("resendCodeSuccess"));
     } catch (err) {
-      setErreur(err instanceof ApiError ? err.message : "Impossible d'envoyer le code, réessayez.");
+      setErreur(err instanceof ApiError ? err.message : t("resendCodeError"));
     } finally {
       setRenvoiEnCours(false);
     }
@@ -343,11 +377,8 @@ function VerificationEmail({ email, onVerified }: { email: string; onVerified: (
   return (
     <div className="py-6 text-center">
       <Mail className="mx-auto size-12 text-primary" aria-hidden />
-      <h2 className="mt-4 font-heading text-xl font-semibold">Vérifiez votre adresse e-mail</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Un code à 6 chiffres a été envoyé à {email} lors de votre inscription. Saisissez-le ci-dessous pour pouvoir
-        déposer une réclamation.
-      </p>
+      <h2 className="mt-4 font-heading text-xl font-semibold">{t("verifyEmailTitle")}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">{t("verifyEmailBody", { email })}</p>
       <form onSubmit={verifier} className="mx-auto mt-6 grid max-w-xs gap-3">
         <Input
           value={otp}
@@ -361,7 +392,7 @@ function VerificationEmail({ email, onVerified }: { email: string; onVerified: (
         {erreur && <p className="text-sm text-destructive" role="alert">{erreur}</p>}
         {info && <p className="text-sm text-success">{info}</p>}
         <Button type="submit" disabled={envoiEnCours}>
-          {envoiEnCours ? "Vérification…" : "Vérifier"}
+          {envoiEnCours ? t("verifying") : t("verify")}
         </Button>
         <button
           type="button"
@@ -369,7 +400,7 @@ function VerificationEmail({ email, onVerified }: { email: string; onVerified: (
           disabled={renvoiEnCours}
           className="text-sm font-medium text-primary hover:underline disabled:opacity-50"
         >
-          {renvoiEnCours ? "Envoi…" : "Renvoyer le code"}
+          {renvoiEnCours ? t("resending") : t("resendCode")}
         </button>
       </form>
     </div>

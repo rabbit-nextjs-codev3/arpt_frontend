@@ -2,12 +2,27 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowRight, Building2, CalendarDays, MapPin, Search, Users } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formaterDate } from "@/data/mock";
-import { useApiList } from "@/lib/hooks";
+import { useApiList, useContentBlock } from "@/lib/hooks";
+import { useLocale } from "@/lib/locale-context";
+
+interface HeroContent {
+  surtitre: string;
+  titre: string;
+  description: string;
+}
+
+const HERO_DEFAUT: HeroContent = {
+  surtitre: "Rejoindre l'Autorité",
+  titre: "Carrières à l'ARPT",
+  description:
+    "L'Autorité recrute des profils techniques, juridiques et économiques engagés au service du secteur numérique guinéen.",
+};
 
 interface Career {
   id: number;
@@ -25,7 +40,10 @@ interface Career {
 }
 
 export default function Carrieres() {
-  const { data: offresEmploi, loading, error } = useApiList<Career>("/careers?lang=fr&pageSize=100");
+  const t = useTranslations("careersPage");
+  const { locale } = useLocale();
+  const { data: hero } = useContentBlock<HeroContent>("careers.hero", HERO_DEFAUT);
+  const { data: offresEmploi, loading, error } = useApiList<Career>(`/careers?lang=${locale}&pageSize=100`);
   const [recherche, setRecherche] = useState("");
   const [departement, setDepartement] = useState("Tous");
 
@@ -46,11 +64,7 @@ export default function Carrieres() {
 
   return (
     <>
-      <PageHero
-        surtitre="Rejoindre l'Autorité"
-        titre="Carrières à l'ARPT"
-        description="L'Autorité recrute des profils techniques, juridiques et économiques engagés au service du secteur numérique guinéen."
-      />
+      <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
 
       <section className="pt-8 pb-14 md:pt-10 md:pb-16">
         <div className="container-content">
@@ -60,32 +74,30 @@ export default function Carrieres() {
               <Input
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
-                placeholder="Rechercher une offre…"
+                placeholder={t("searchPlaceholder")}
                 className="pl-9"
-                aria-label="Rechercher une offre d'emploi"
+                aria-label={t("searchAriaLabel")}
               />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Département</span>
-              {departements.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDepartement(d)}
-                  className={cn(
-                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                    departement === d
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary",
-                  )}
-                >
-                  {d}
-                </button>
-              ))}
+            <div className="mt-4 flex items-center gap-2">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("departmentLabel")}</span>
+              <Select value={departement} onValueChange={setDepartement}>
+                <SelectTrigger className="w-48" aria-label={t("departmentFilterAriaLabel")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {departements.map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {d === "Tous" ? t("allDepartments") : d}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {loading && <p className="mt-6 text-sm text-muted-foreground">Chargement…</p>}
+          {loading && <p className="mt-6 text-sm text-muted-foreground">{t("loading")}</p>}
           {error && !loading && <p className="mt-6 text-sm text-destructive">{error}</p>}
 
           <div className="mt-6 grid gap-6">
@@ -102,7 +114,7 @@ export default function Carrieres() {
                     </span>
                     {o.isNew && (
                       <span className="rounded-full bg-gold/20 px-2.5 py-0.5 text-xs font-semibold text-gold-foreground">
-                        Nouveau
+                        {t("new")}
                       </span>
                     )}
                   </div>
@@ -118,10 +130,10 @@ export default function Carrieres() {
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1.5">
-                      <CalendarDays className="size-4" aria-hidden /> Clôture : {formaterDate(o.limitDate)}
+                      <CalendarDays className="size-4" aria-hidden /> {t("deadline", { date: formaterDate(o.limitDate) })}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Users className="size-4" aria-hidden /> {o.candidatCount} candidatures
+                      <Users className="size-4" aria-hidden /> {t("candidatureCount", { count: o.candidatCount })}
                     </span>
                   </div>
                 </div>
@@ -130,14 +142,12 @@ export default function Carrieres() {
                   href={`/carrieres/${o.uid}`}
                   className="inline-flex items-center gap-2 self-start rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 lg:self-center"
                 >
-                  Voir l'offre <ArrowRight className="size-4" aria-hidden />
+                  {t("viewOffer")} <ArrowRight className="size-4" aria-hidden />
                 </Link>
               </article>
             ))}
             {!loading && !error && resultats.length === 0 && (
-              <p className="py-10 text-center text-sm text-muted-foreground">
-                Aucune offre ne correspond à votre recherche.
-              </p>
+              <p className="py-10 text-center text-sm text-muted-foreground">{t("empty")}</p>
             )}
           </div>
         </div>

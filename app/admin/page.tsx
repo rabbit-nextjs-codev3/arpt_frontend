@@ -41,6 +41,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Too
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { toast } from "sonner";
 import { StatutBadge } from "@/components/site/StatutBadge";
+import { LocaleSwitcher } from "@/components/site/LocaleSwitcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,7 +49,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAuth, ApiError } from "@/lib/auth";
-import { useApiOne, useApiList, useContentBlock } from "@/lib/hooks";
+import { useApiOne, useApiList, useContentBlockRaw } from "@/lib/hooks";
 import { apiFetch } from "@/lib/api";
 import { formaterDate } from "@/data/mock";
 
@@ -154,13 +155,25 @@ interface AuditLogEntry {
   actor: { email: string; fullname: string } | null;
 }
 
+interface NotificationAdmin {
+  id: number;
+  title: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export default function Admin() {
   const [section, setSection] = useState<string>("tableau");
   const courant = menus.find((m) => m.id === section) ?? menus[0];
   const { user, loading: authLoading, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const staff = Boolean(user?.isStaff);
   const { data: overview } = useApiOne<AdminOverview>(staff ? "/dashboard/admin-overview" : null);
+  const { data: notifications, refetch: refetchNotifications } = useApiList<NotificationAdmin>(
+    staff ? "/notifications?pageSize=8" : null,
+  );
+  const notifsNonLues = notifications.filter((n) => !n.isRead).length;
   const { data: overviewStats } = useApiOne<SectorOverview>(staff ? "/statistics/overview?lang=fr" : null);
   const { data: reclamationsRecentes } = useApiList<ClaimAdmin>(staff ? "/claims?lang=fr&pageSize=3" : null);
   const { data: activiteRecente } = useApiList<AuditLogEntry>(staff ? "/audit-logs?pageSize=5" : null);
@@ -331,16 +344,75 @@ export default function Admin() {
                 <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
               )}
             </button>
-            <button
-              type="button"
-              title="Notifications"
-              className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-            >
-              <Bell className="size-[18px]" aria-hidden />
-              {!!overview?.reclamations?.ouvertes && (
-                <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
+            <div className="relative">
+              <button
+                type="button"
+                title="Notifications"
+                onClick={() => setNotifOpen((v) => !v)}
+                className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+              >
+                <Bell className="size-[18px]" aria-hidden />
+                {notifsNonLues > 0 && (
+                  <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute top-full right-0 z-20 mt-2 w-80 rounded-md border border-border bg-card p-1.5 shadow-lg">
+                  <div className="flex items-center justify-between px-2.5 py-2">
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Notifications
+                    </span>
+                    {notifsNonLues > 0 && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await apiFetch("/notifications/read-all", { method: "POST" });
+                          refetchNotifications();
+                        }}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Tout marquer lu
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        type="button"
+                        onClick={async () => {
+                          if (n.isRead) return;
+                          await apiFetch(`/notifications/${n.id}/read`, { method: "POST" });
+                          refetchNotifications();
+                        }}
+                        className="flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-surface"
+                      >
+                        <span
+                          className={
+                            n.isRead
+                              ? "mt-1.5 size-1.5 shrink-0 rounded-full bg-border"
+                              : "mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
+                          }
+                          aria-hidden
+                        />
+                        <span className="min-w-0">
+                          <span className={n.isRead ? "block text-xs text-muted-foreground" : "block text-xs font-medium"}>
+                            {n.title}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            {formaterDate(n.createdAt)}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                    {notifications.length === 0 && (
+                      <p className="px-2.5 py-6 text-center text-xs text-muted-foreground">Aucune notification.</p>
+                    )}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
+            <LocaleSwitcher className="border-none bg-transparent shadow-none" />
             <div className="mx-1.5 h-6 w-px bg-border" />
             <div className="relative">
               <button
@@ -1708,23 +1780,125 @@ interface BlockFieldDef {
   type: BlockFieldType;
   options?: { value: string; label: string }[];
   placeholder?: string;
+  /** Uniquement pour type "text"/"textarea" : édité en {fr, en, ar} au lieu d'une chaîne unique. */
+  translatable?: boolean;
 }
 
-type BlockItem = Record<string, string>;
+interface I18nBlockValue {
+  fr: string;
+  en?: string;
+  ar?: string;
+}
 
-function BlockFieldInput({ field, value, onChange }: { field: BlockFieldDef; value: string; onChange: (v: string) => void }) {
+type BlockFieldValue = string | I18nBlockValue;
+type BlockItem = Record<string, BlockFieldValue>;
+
+/** Valeur "vide" adaptée au type du champ — sert de défaut quand une ligne
+ * nouvellement ajoutée n'a encore aucune valeur pour ce champ. */
+function emptyBlockValue(field: BlockFieldDef): BlockFieldValue {
+  return field.translatable ? { fr: "" } : "";
+}
+
+function blockValueIsFilled(v: BlockFieldValue): boolean {
+  return typeof v === "string" ? v.trim() !== "" : Object.values(v).some((s) => (s ?? "").trim() !== "");
+}
+
+/** Chaîne d'affichage pour un `itemLabel` (fr, quelle que soit la langue en cours d'édition dans l'admin). */
+function blockLabel(v: BlockFieldValue | undefined): string {
+  if (v === undefined) return "";
+  return typeof v === "string" ? v : (v.fr ?? "");
+}
+
+const BLOCK_LANGS: { code: keyof I18nBlockValue; label: string }[] = [
+  { code: "fr", label: "FR" },
+  { code: "en", label: "EN" },
+  { code: "ar", label: "AR" },
+];
+
+function TranslatableBlockInput({
+  type,
+  value,
+  placeholder,
+  onChange,
+}: {
+  type: "text" | "textarea";
+  value: I18nBlockValue;
+  placeholder?: string;
+  onChange: (v: I18nBlockValue) => void;
+}) {
+  const [tab, setTab] = useState<keyof I18nBlockValue>("fr");
+  const courant = value[tab] ?? "";
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-1">
+        {BLOCK_LANGS.map((l) => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => setTab(l.code)}
+            className={cn(
+              "rounded px-2 py-0.5 text-xs font-semibold transition-colors",
+              tab === l.code
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-accent",
+            )}
+          >
+            {l.label}
+            {l.code !== "fr" && !value[l.code]?.trim() && <span className="ml-1 opacity-60">·</span>}
+          </button>
+        ))}
+      </div>
+      {type === "textarea" ? (
+        <Textarea
+          rows={2}
+          value={courant}
+          placeholder={placeholder}
+          onChange={(e) => onChange({ ...value, [tab]: e.target.value })}
+        />
+      ) : (
+        <Input
+          value={courant}
+          placeholder={placeholder}
+          onChange={(e) => onChange({ ...value, [tab]: e.target.value })}
+        />
+      )}
+    </div>
+  );
+}
+
+function BlockFieldInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: BlockFieldDef;
+  value: BlockFieldValue;
+  onChange: (v: BlockFieldValue) => void;
+}) {
+  if (field.translatable && (field.type === "text" || field.type === "textarea")) {
+    const i18nValue = typeof value === "string" ? { fr: value } : value;
+    return (
+      <TranslatableBlockInput
+        type={field.type}
+        value={i18nValue}
+        placeholder={field.placeholder}
+        onChange={onChange}
+      />
+    );
+  }
+  const strValue = typeof value === "string" ? value : (value.fr ?? "");
   if (field.type === "textarea") {
-    return <Textarea rows={2} value={value} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />;
+    return <Textarea rows={2} value={strValue} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />;
   }
   if (field.type === "image") {
-    return <ImageField label="" value={value} onChange={onChange} />;
+    return <ImageField label="" value={strValue} onChange={onChange} />;
   }
   if (field.type === "file") {
-    return <FileField label="" value={value} onChange={onChange} />;
+    return <FileField label="" value={strValue} onChange={onChange} />;
   }
   if (field.type === "select") {
     return (
-      <Select value={value || (field.options?.[0]?.value ?? "")} onValueChange={onChange}>
+      <Select value={strValue || (field.options?.[0]?.value ?? "")} onValueChange={onChange}>
         <SelectTrigger>
           <SelectValue />
         </SelectTrigger>
@@ -1738,7 +1912,7 @@ function BlockFieldInput({ field, value, onChange }: { field: BlockFieldDef; val
       </Select>
     );
   }
-  return <Input value={value} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />;
+  return <Input value={strValue} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} />;
 }
 
 function ObjectBlockAdmin({
@@ -1754,7 +1928,7 @@ function ObjectBlockAdmin({
   fields: BlockFieldDef[];
   defaultValue: BlockItem;
 }) {
-  const { data, loading } = useContentBlock<BlockItem>(blockKey, defaultValue);
+  const { data, loading } = useContentBlockRaw<BlockItem>(blockKey, defaultValue);
   if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
   return <ObjectBlockInner blockKey={blockKey} title={title} description={description} fields={fields} initialValue={data} />;
 }
@@ -1823,7 +1997,7 @@ function ListBlockAdmin({
   itemLabel: (item: BlockItem, index: number) => string;
   emptyItem?: BlockItem;
 }) {
-  const { data, loading } = useContentBlock<BlockItem[]>(blockKey, defaultItems);
+  const { data, loading } = useContentBlockRaw<BlockItem[]>(blockKey, defaultItems);
   if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
   return (
     <ListBlockInner
@@ -1859,7 +2033,7 @@ function ListBlockInner({
   const [submitting, setSubmitting] = useState(false);
 
   function ajouter() {
-    const nouveau = emptyItem ?? Object.fromEntries(fields.map((f) => [f.name, ""]));
+    const nouveau = emptyItem ?? Object.fromEntries(fields.map((f) => [f.name, emptyBlockValue(f)]));
     setItems((prev) => [...prev, { ...nouveau }]);
   }
 
@@ -1867,7 +2041,7 @@ function ListBlockInner({
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function modifier(index: number, name: string, v: string) {
+  function modifier(index: number, name: string, v: BlockFieldValue) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, [name]: v } : it)));
   }
 
@@ -1875,7 +2049,7 @@ function ListBlockInner({
     // Une carte ajoutée puis jamais remplie ne doit pas être enregistrée :
     // en plus d'être inutile côté public, plusieurs cartes vides partagent
     // les mêmes clés React (toutes les valeurs à ""), ce qui casse le rendu.
-    const nonVides = items.filter((it) => Object.values(it).some((v) => v.trim() !== ""));
+    const nonVides = items.filter((it) => Object.values(it).some(blockValueIsFilled));
     setSubmitting(true);
     try {
       await apiFetch(`/content-blocks/${blockKey}`, { method: "PUT", body: JSON.stringify({ value: nonVides }) });
@@ -1996,16 +2170,23 @@ function PagesPubliquesAdmin() {
             title="Bandeau d'accueil (hero)"
             description="Titre, texte et image affichés en haut de la page d'accueil."
             fields={[
-              { name: "surtitre", label: "Surtitre", type: "text" },
-              { name: "titre", label: "Titre principal", type: "text" },
-              { name: "description", label: "Description", type: "textarea" },
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre principal", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
               { name: "image", label: "Image de fond", type: "image" },
             ]}
             defaultValue={{
-              surtitre: "République de Guinée",
-              titre: "Réguler pour un secteur numérique fiable et accessible à tous",
-              description:
-                "L'ARPT encadre les marchés des postes et des télécommunications, protège les usagers et accompagne les opérateurs dans leurs démarches administratives.",
+              surtitre: { fr: "République de Guinée", en: "Republic of Guinea", ar: "جمهورية غينيا" },
+              titre: {
+                fr: "Réguler pour un secteur numérique fiable et accessible à tous",
+                en: "Regulating for a reliable digital sector accessible to all",
+                ar: "التنظيم من أجل قطاع رقمي موثوق ومتاح للجميع",
+              },
+              description: {
+                fr: "L'ARPT encadre les marchés des postes et des télécommunications, protège les usagers et accompagne les opérateurs dans leurs démarches administratives.",
+                en: "ARPT oversees the postal and telecommunications markets, protects users, and supports operators with their administrative procedures.",
+                ar: "تشرف الهيئة على أسواق البريد والاتصالات، وتحمي المستخدمين، وترافق المشغلين في إجراءاتهم الإدارية.",
+              },
               image: "/images/hero-arpt.jpg",
             }}
           />
@@ -2013,35 +2194,35 @@ function PagesPubliquesAdmin() {
             blockKey="home.quickLinks"
             title="Cartes d'accès rapide"
             description="Les raccourcis affichés juste sous le bandeau d'accueil."
-            itemLabel={(it) => it.label || "Nouvelle carte"}
+            itemLabel={(it) => blockLabel(it.label) || "Nouvelle carte"}
             fields={[
-              { name: "label", label: "Titre", type: "text" },
-              { name: "texte", label: "Texte", type: "text" },
+              { name: "label", label: "Titre", type: "text", translatable: true },
+              { name: "texte", label: "Texte", type: "text", translatable: true },
               { name: "to", label: "Lien (ex: /services)", type: "text" },
               { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_ACCUEIL },
             ]}
             defaultItems={[
-              { to: "/services", label: "Démarches et services", icone: "services", texte: "Licences, homologations, fréquences" },
-              { to: "/equipements", label: "Équipements homologués", icone: "equipements", texte: "Vérifier un terminal agréé" },
-              { to: "/appels-offres", label: "Appels d'offres", icone: "marches", texte: "Consulter les marchés en cours" },
-              { to: "/carrieres", label: "Carrières", icone: "carrieres", texte: "Rejoindre l'Autorité" },
-              { to: "/reclamations", label: "Réclamations", icone: "reclamations", texte: "Signaler un litige opérateur" },
-              { to: "/statistiques", label: "Observatoire", icone: "statistiques", texte: "Chiffres clés du secteur" },
+              { to: "/services", label: { fr: "Démarches et services", en: "Procedures and services", ar: "الإجراءات والخدمات" }, icone: "services", texte: { fr: "Licences, homologations, fréquences", en: "Licenses, approvals, frequencies", ar: "التراخيص، الاعتمادات، الترددات" } },
+              { to: "/equipements", label: { fr: "Équipements homologués", en: "Approved equipment", ar: "المعدات المعتمدة" }, icone: "equipements", texte: { fr: "Vérifier un terminal agréé", en: "Check an approved device", ar: "التحقق من جهاز معتمد" } },
+              { to: "/appels-offres", label: { fr: "Appels d'offres", en: "Tenders", ar: "المناقصات" }, icone: "marches", texte: { fr: "Consulter les marchés en cours", en: "Browse ongoing contracts", ar: "تصفح الصفقات الجارية" } },
+              { to: "/carrieres", label: { fr: "Carrières", en: "Careers", ar: "الوظائف" }, icone: "carrieres", texte: { fr: "Rejoindre l'Autorité", en: "Join the Authority", ar: "انضم إلى الهيئة" } },
+              { to: "/reclamations", label: { fr: "Réclamations", en: "Complaints", ar: "الشكاوى" }, icone: "reclamations", texte: { fr: "Signaler un litige opérateur", en: "Report a dispute with an operator", ar: "الإبلاغ عن نزاع مع مشغل" } },
+              { to: "/statistiques", label: { fr: "Observatoire", en: "Observatory", ar: "المرصد" }, icone: "statistiques", texte: { fr: "Chiffres clés du secteur", en: "Key sector figures", ar: "الأرقام الرئيسية للقطاع" } },
             ]}
           />
           <ListBlockAdmin
             blockKey="home.gallery"
             title="Galerie « En images »"
             description="Les photos affichées dans la section « En images » de l'accueil."
-            itemLabel={(it) => it.titre || "Nouvelle photo"}
+            itemLabel={(it) => blockLabel(it.titre) || "Nouvelle photo"}
             fields={[
               { name: "image", label: "Photo", type: "image" },
-              { name: "categorie", label: "Catégorie", type: "text" },
-              { name: "titre", label: "Légende", type: "text" },
+              { name: "categorie", label: "Catégorie", type: "text", translatable: true },
+              { name: "titre", label: "Légende", type: "text", translatable: true },
             ]}
             defaultItems={[
-              { image: "/images/hero-arpt.jpg", categorie: "Événements", titre: "Participation de l'ARPT à une conférence internationale" },
-              { image: "/images/group.jpeg", categorie: "Galerie", titre: "Visite officielle à l'ARPT" },
+              { image: "/images/hero-arpt.jpg", categorie: { fr: "Événements", en: "Events", ar: "الفعاليات" }, titre: { fr: "Participation de l'ARPT à une conférence internationale", en: "ARPT's participation in an international conference", ar: "مشاركة الهيئة في مؤتمر دولي" } },
+              { image: "/images/group.jpeg", categorie: { fr: "Galerie", en: "Gallery", ar: "معرض الصور" }, titre: { fr: "Visite officielle à l'ARPT", en: "Official visit to ARPT", ar: "زيارة رسمية إلى الهيئة" } },
             ]}
           />
         </div>
@@ -2054,15 +2235,14 @@ function PagesPubliquesAdmin() {
             blockKey="about.hero"
             title="Bandeau d'introduction"
             fields={[
-              { name: "surtitre", label: "Surtitre", type: "text" },
-              { name: "titre", label: "Titre", type: "text" },
-              { name: "description", label: "Description", type: "textarea" },
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
             ]}
             defaultValue={{
-              surtitre: "L'Autorité",
-              titre: "Une institution au service d'un marché numérique équitable",
-              description:
-                "L'ARPT est l'autorité administrative indépendante chargée de la régulation des secteurs des postes et des télécommunications en République de Guinée.",
+              surtitre: { fr: "L'Autorité", en: "The Authority", ar: "السلطة" },
+              titre: { fr: "Une institution au service d'un marché numérique équitable", en: "An institution serving a fair digital market", ar: "مؤسسة في خدمة سوق رقمي عادل" },
+              description: { fr: "L'ARPT est l'autorité administrative indépendante chargée de la régulation des secteurs des postes et des télécommunications en République de Guinée.", en: "ARPT is the independent administrative authority responsible for regulating the postal and telecommunications sectors in the Republic of Guinea.", ar: "الهيئة هي السلطة الإدارية المستقلة المكلفة بتنظيم قطاعي البريد والاتصالات في جمهورية غينيا." },
             }}
           />
           <ObjectBlockAdmin
@@ -2071,9 +2251,9 @@ function PagesPubliquesAdmin() {
             description="Grande image affichée juste sous le bandeau d'introduction."
             fields={[
               { name: "image", label: "Image", type: "image" },
-              { name: "phrase", label: "Phrase affichée sur l'image", type: "text" },
+              { name: "phrase", label: "Phrase affichée sur l'image", type: "text", translatable: true },
             ]}
-            defaultValue={{ image: "/images/hero-arpt.jpg", phrase: "Réguler les infrastructures qui connectent la Guinée" }}
+            defaultValue={{ image: "/images/hero-arpt.jpg", phrase: { fr: "Réguler les infrastructures qui connectent la Guinée", en: "Regulating the infrastructure that connects Guinea", ar: "تنظيم البنية التحتية التي تربط غينيا" } }}
           />
           <ObjectBlockAdmin
             blockKey="about.missionsImage"
@@ -2085,51 +2265,51 @@ function PagesPubliquesAdmin() {
             blockKey="about.missions"
             title="Nos missions"
             description="Les quatre responsabilités fondamentales affichées sur la page Autorité."
-            itemLabel={(it) => it.titre || "Nouvelle mission"}
+            itemLabel={(it) => blockLabel(it.titre) || "Nouvelle mission"}
             fields={[
               { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_AUTORITE },
-              { name: "titre", label: "Titre", type: "text" },
-              { name: "texte", label: "Texte", type: "textarea" },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "texte", label: "Texte", type: "textarea", translatable: true },
             ]}
             defaultItems={[
-              { icone: "scale", titre: "Garantir une concurrence loyale", texte: "Surveiller les marchés, encadrer les tarifs d'interconnexion et prévenir les pratiques anticoncurrentielles." },
-              { icone: "radio", titre: "Gérer les ressources rares", texte: "Planifier et attribuer le spectre radioélectrique ainsi que les ressources en numérotation." },
-              { icone: "users", titre: "Protéger les consommateurs", texte: "Traiter les réclamations, contrôler la qualité de service et informer les usagers de leurs droits." },
-              { icone: "shield", titre: "Sécuriser le secteur", texte: "Homologuer les équipements, contrôler les opérateurs et veiller au respect du cadre légal." },
+              { icone: "scale", titre: { fr: "Garantir une concurrence loyale", en: "Ensure fair competition", ar: "ضمان منافسة نزيهة" }, texte: { fr: "Surveiller les marchés, encadrer les tarifs d'interconnexion et prévenir les pratiques anticoncurrentielles.", en: "Monitor markets, regulate interconnection tariffs and prevent anti-competitive practices.", ar: "مراقبة الأسواق، وتأطير تعرفات الربط البيني، ومنع الممارسات المنافية للمنافسة." } },
+              { icone: "radio", titre: { fr: "Gérer les ressources rares", en: "Manage scarce resources", ar: "إدارة الموارد النادرة" }, texte: { fr: "Planifier et attribuer le spectre radioélectrique ainsi que les ressources en numérotation.", en: "Plan and allocate the radio spectrum as well as numbering resources.", ar: "تخطيط وتوزيع الطيف الترددي وموارد الترقيم." } },
+              { icone: "users", titre: { fr: "Protéger les consommateurs", en: "Protect consumers", ar: "حماية المستهلكين" }, texte: { fr: "Traiter les réclamations, contrôler la qualité de service et informer les usagers de leurs droits.", en: "Handle complaints, monitor service quality and inform users of their rights.", ar: "معالجة الشكاوى، ومراقبة جودة الخدمة، وإعلام المستخدمين بحقوقهم." } },
+              { icone: "shield", titre: { fr: "Sécuriser le secteur", en: "Secure the sector", ar: "تأمين القطاع" }, texte: { fr: "Homologuer les équipements, contrôler les opérateurs et veiller au respect du cadre légal.", en: "Approve equipment, oversee operators and ensure compliance with the legal framework.", ar: "اعتماد المعدات، ومراقبة المشغلين، والسهر على احترام الإطار القانوني." } },
             ]}
           />
           <ListBlockAdmin
             blockKey="about.directions"
             title="Nos directions"
             description="L'organisation interne de l'Autorité."
-            itemLabel={(it) => it.nom || "Nouvelle direction"}
+            itemLabel={(it) => blockLabel(it.nom) || "Nouvelle direction"}
             fields={[
               { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_AUTORITE },
-              { name: "nom", label: "Nom de la direction", type: "text" },
-              { name: "texte", label: "Texte", type: "textarea" },
+              { name: "nom", label: "Nom de la direction", type: "text", translatable: true },
+              { name: "texte", label: "Texte", type: "textarea", translatable: true },
             ]}
             defaultItems={[
-              { icone: "building", nom: "Direction générale", texte: "Pilotage stratégique, représentation institutionnelle et coordination de l'ensemble des directions." },
-              { icone: "radio", nom: "Direction technique et du spectre", texte: "Planification des fréquences, contrôle du spectre et homologation des équipements radioélectriques." },
-              { icone: "scale", nom: "Direction des affaires juridiques", texte: "Élaboration des textes réglementaires, avis juridiques et suivi des contentieux sectoriels." },
-              { icone: "users", nom: "Direction des consommateurs", texte: "Traitement des réclamations des usagers et actions de sensibilisation sur leurs droits." },
-              { icone: "trending", nom: "Direction de l'économie et des marchés", texte: "Analyse tarifaire, observatoire du secteur et surveillance de la concurrence entre opérateurs." },
-              { icone: "mail", nom: "Direction du secteur postal", texte: "Régulation, autorisation et développement des activités postales et de courrier express." },
+              { icone: "building", nom: { fr: "Direction générale", en: "General Management", ar: "الإدارة العامة" }, texte: { fr: "Pilotage stratégique, représentation institutionnelle et coordination de l'ensemble des directions.", en: "Strategic direction, institutional representation and coordination of all departments.", ar: "القيادة الاستراتيجية والتمثيل المؤسسي وتنسيق جميع المديريات." } },
+              { icone: "radio", nom: { fr: "Direction technique et du spectre", en: "Technical and Spectrum Department", ar: "المديرية التقنية والطيف" }, texte: { fr: "Planification des fréquences, contrôle du spectre et homologation des équipements radioélectriques.", en: "Frequency planning, spectrum monitoring and approval of radio equipment.", ar: "تخطيط الترددات، ومراقبة الطيف، واعتماد الأجهزة اللاسلكية." } },
+              { icone: "scale", nom: { fr: "Direction des affaires juridiques", en: "Legal Affairs Department", ar: "مديرية الشؤون القانونية" }, texte: { fr: "Élaboration des textes réglementaires, avis juridiques et suivi des contentieux sectoriels.", en: "Drafting of regulatory texts, legal opinions and monitoring of sector disputes.", ar: "إعداد النصوص التنظيمية، وإبداء الآراء القانونية، ومتابعة النزاعات القطاعية." } },
+              { icone: "users", nom: { fr: "Direction des consommateurs", en: "Consumer Department", ar: "مديرية المستهلكين" }, texte: { fr: "Traitement des réclamations des usagers et actions de sensibilisation sur leurs droits.", en: "Handling user complaints and awareness actions on their rights.", ar: "معالجة شكاوى المستخدمين وأنشطة التوعية بحقوقهم." } },
+              { icone: "trending", nom: { fr: "Direction de l'économie et des marchés", en: "Economics and Markets Department", ar: "مديرية الاقتصاد والأسواق" }, texte: { fr: "Analyse tarifaire, observatoire du secteur et surveillance de la concurrence entre opérateurs.", en: "Tariff analysis, sector observatory and monitoring of competition between operators.", ar: "تحليل التعرفات، ومرصد القطاع، ومراقبة المنافسة بين المشغلين." } },
+              { icone: "mail", nom: { fr: "Direction du secteur postal", en: "Postal Sector Department", ar: "مديرية القطاع البريدي" }, texte: { fr: "Régulation, autorisation et développement des activités postales et de courrier express.", en: "Regulation, authorization and development of postal and express mail activities.", ar: "تنظيم وترخيص وتطوير أنشطة البريد والبريد السريع." } },
             ]}
           />
           <ListBlockAdmin
             blockKey="about.timeline"
             title="Repères — dates clés"
-            itemLabel={(it) => it.annee || "Nouvelle date"}
+            itemLabel={(it) => blockLabel(it.annee) || "Nouvelle date"}
             fields={[
               { name: "annee", label: "Année", type: "text" },
-              { name: "texte", label: "Texte", type: "text" },
+              { name: "texte", label: "Texte", type: "text", translatable: true },
             ]}
             defaultItems={[
-              { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
-              { annee: "2015", texte: "Adoption de la loi L/2015/018/AN sur les télécommunications et les TIC." },
-              { annee: "2016", texte: "Nouvelle organisation de l'ARPT par décret présidentiel." },
-              { annee: "2026", texte: "Lancement du chantier d'attribution des fréquences 5G." },
+              { annee: "2005", texte: { fr: "Création de l'Autorité de régulation du secteur.", en: "Creation of the sector's regulatory Authority.", ar: "إنشاء هيئة تنظيم القطاع." } },
+              { annee: "2015", texte: { fr: "Adoption de la loi L/2015/018/AN sur les télécommunications et les TIC.", en: "Adoption of Law L/2015/018/AN on telecommunications and ICT.", ar: "اعتماد القانون L/2015/018/AN المتعلق بالاتصالات وتكنولوجيا المعلومات." } },
+              { annee: "2016", texte: { fr: "Nouvelle organisation de l'ARPT par décret présidentiel.", en: "New organization of ARPT by presidential decree.", ar: "تنظيم جديد للهيئة بموجب مرسوم رئاسي." } },
+              { annee: "2026", texte: { fr: "Lancement du chantier d'attribution des fréquences 5G.", en: "Launch of the 5G frequency allocation project.", ar: "إطلاق ورش توزيع ترددات الجيل الخامس." } },
             ]}
           />
           <ObjectBlockAdmin
@@ -2142,26 +2322,29 @@ function PagesPubliquesAdmin() {
             blockKey="about.council"
             title="Direction générale — membres"
             description="Le carrousel des responsables affiché sur la page Autorité."
-            itemLabel={(it) => it.name || "Nouveau membre"}
+            itemLabel={(it) => blockLabel(it.name) || "Nouveau membre"}
             fields={[
               { name: "name", label: "Nom", type: "text" },
-              { name: "role", label: "Fonction", type: "text" },
+              { name: "role", label: "Fonction", type: "text", translatable: true },
               { name: "image", label: "Photo", type: "image" },
             ]}
             defaultItems={[
-              { name: "M. Mamady Doumbouya", role: "Directeur général", image: "/images/arpt/mamady-doumbouya.jpeg" },
-              { name: "M. Adama Condé", role: "Directeur général adjoint", image: "/images/arpt/adama-conde.jpg" },
-              { name: "M. Fany Zeze Camara", role: "Membre", image: "/images/arpt/zeze.jpeg" },
+              { name: "M. Mamady Doumbouya", role: { fr: "Directeur général", en: "Director General", ar: "المدير العام" }, image: "/images/arpt/mamady-doumbouya.jpeg" },
+              { name: "M. Adama Condé", role: { fr: "Directeur général adjoint", en: "Deputy Director General", ar: "نائب المدير العام" }, image: "/images/arpt/adama-conde.jpg" },
+              { name: "M. Fany Zeze Camara", role: { fr: "Membre", en: "Member", ar: "عضو" }, image: "/images/arpt/zeze.jpeg" },
             ]}
           />
           <ObjectBlockAdmin
             blockKey="about.support"
             title="Encart « Besoin d'un accompagnement ? »"
             description="Le téléphone et l'email affichés proviennent de la Configuration du site."
-            fields={[{ name: "description", label: "Texte", type: "textarea" }]}
+            fields={[{ name: "description", label: "Texte", type: "textarea", translatable: true }]}
             defaultValue={{
-              description:
-                "Notre équipe vous oriente vers le bon service pour vos démarches, vos réclamations et vos questions réglementaires.",
+              description: {
+                fr: "Notre équipe vous oriente vers le bon service pour vos démarches, vos réclamations et vos questions réglementaires.",
+                en: "Our team directs you to the right department for your procedures, complaints and regulatory questions.",
+                ar: "يوجهكم فريقنا إلى المصلحة المناسبة لإجراءاتكم وشكاواكم وأسئلتكم التنظيمية.",
+              },
             }}
           />
         </div>
@@ -2174,58 +2357,245 @@ function PagesPubliquesAdmin() {
             blockKey="claims.hero"
             title="Bandeau d'introduction"
             fields={[
-              { name: "surtitre", label: "Surtitre", type: "text" },
-              { name: "titre", label: "Titre", type: "text" },
-              { name: "description", label: "Description", type: "textarea" },
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
             ]}
             defaultValue={{
-              surtitre: "Protection des consommateurs",
-              titre: "Déposer une réclamation",
-              description:
-                "L'ARPT reçoit et instruit les litiges opposant les usagers aux opérateurs de télécommunications et aux opérateurs postaux.",
+              surtitre: { fr: "Protection des consommateurs", en: "Consumer protection", ar: "حماية المستهلك" },
+              titre: { fr: "Déposer une réclamation", en: "File a complaint", ar: "تقديم شكوى" },
+              description: { fr: "L'ARPT reçoit et instruit les litiges opposant les usagers aux opérateurs de télécommunications et aux opérateurs postaux.", en: "ARPT receives and investigates disputes between users and telecommunications or postal operators.", ar: "تتلقى الهيئة وتحقق في النزاعات بين المستخدمين ومشغلي الاتصالات والبريد." },
             }}
           />
           <ListBlockAdmin
             blockKey="claims.steps"
             title="Étapes avant de saisir l'Autorité"
             itemLabel={(it, i) => `Étape ${i + 1}`}
-            fields={[{ name: "texte", label: "Texte", type: "textarea" }]}
+            fields={[{ name: "texte", label: "Texte", type: "textarea", translatable: true }]}
             defaultItems={[
-              { texte: "Contactez d'abord le service client de votre opérateur et conservez la référence du dossier." },
-              { texte: "Si aucune réponse satisfaisante n'est apportée sous 30 jours, saisissez l'ARPT via ce formulaire." },
-              { texte: "Un agent instruit votre dossier et vous informe de l'avancement depuis votre portail usager." },
+              { texte: { fr: "Contactez d'abord le service client de votre opérateur et conservez la référence du dossier.", en: "First contact your operator's customer service and keep the case reference.", ar: "اتصل أولاً بخدمة عملاء مشغلك واحتفظ بمرجع الملف." } },
+              { texte: { fr: "Si aucune réponse satisfaisante n'est apportée sous 30 jours, saisissez l'ARPT via ce formulaire.", en: "If no satisfactory response is given within 30 days, contact ARPT via this form.", ar: "إذا لم تحصل على رد مُرضٍ خلال 30 يوماً، توجه إلى الهيئة عبر هذه الاستمارة." } },
+              { texte: { fr: "Un agent instruit votre dossier et vous informe de l'avancement depuis votre portail usager.", en: "An agent processes your case and keeps you informed of its progress via your user portal.", ar: "يتولى أحد الأعوان معالجة ملفك ويطلعك على تقدمه عبر بوابة المستخدم." } },
             ]}
           />
           <ListBlockAdmin
             blockKey="claims.operators"
             title="Opérateurs concernés"
             description="La liste déroulante « Opérateur concerné » du formulaire."
-            itemLabel={(it) => it.label || "Nouvel opérateur"}
+            itemLabel={(it) => blockLabel(it.label) || "Nouvel opérateur"}
             fields={[
               { name: "value", label: "Identifiant (sans espace)", type: "text" },
-              { name: "label", label: "Nom affiché", type: "text" },
+              { name: "label", label: "Nom affiché", type: "text", translatable: true },
             ]}
             defaultItems={[
-              { value: "orange", label: "Orange Guinée" },
-              { value: "mtn", label: "MTN Guinée" },
-              { value: "cellcom", label: "Cellcom" },
-              { value: "poste", label: "Guinée Poste" },
-              { value: "autre", label: "Autre opérateur" },
+              { value: "orange", label: { fr: "Orange Guinée", en: "Orange Guinée", ar: "Orange Guinée" } },
+              { value: "mtn", label: { fr: "MTN Guinée", en: "MTN Guinée", ar: "MTN Guinée" } },
+              { value: "cellcom", label: { fr: "Cellcom", en: "Cellcom", ar: "Cellcom" } },
+              { value: "poste", label: { fr: "Guinée Poste", en: "Guinea Post", ar: "بريد غينيا" } },
+              { value: "autre", label: { fr: "Autre opérateur", en: "Other operator", ar: "مشغل آخر" } },
             ]}
           />
           <ObjectBlockAdmin
             blockKey="claims.guide"
             title="Encart « Droits des consommateurs »"
             fields={[
-              { name: "titre", label: "Titre", type: "text" },
-              { name: "description", label: "Texte", type: "textarea" },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Texte", type: "textarea", translatable: true },
             ]}
             defaultValue={{
-              titre: "Droits des consommateurs",
-              description: "Guide officiel des droits et recours des usagers des services de télécommunications.",
+              titre: { fr: "Droits des consommateurs", en: "Consumer rights", ar: "حقوق المستهلك" },
+              description: {
+                fr: "Guide officiel des droits et recours des usagers des services de télécommunications.",
+                en: "Official guide to the rights and remedies of telecommunications service users.",
+                ar: "الدليل الرسمي لحقوق وسبل انتصاف مستخدمي خدمات الاتصالات.",
+              },
             }}
           />
           <ConsumerRightsDocumentAdmin />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Réglementation</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="regulation.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Ressources", en: "Resources", ar: "الموارد" },
+              titre: { fr: "Cadre réglementaire du secteur", en: "Sector regulatory framework", ar: "الإطار التنظيمي للقطاع" },
+              description: { fr: "Consultez et téléchargez l'ensemble des textes en vigueur applicables aux postes et aux télécommunications.", en: "Browse and download all texts currently in force applicable to posts and telecommunications.", ar: "اطّلع على جميع النصوص السارية المطبقة على البريد والاتصالات وقم بتحميلها." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Équipements</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="equipment.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Registre public", en: "Public register", ar: "السجل العمومي" },
+              titre: { fr: "Équipements et terminaux homologués", en: "Approved equipment and terminals", ar: "المعدات والأجهزة المعتمدة" },
+              description: { fr: "Avant tout achat ou importation, vérifiez le statut d'homologation d'un équipement radioélectrique auprès de l'ARPT.", en: "Before any purchase or import, check the approval status of a radio equipment with ARPT.", ar: "قبل أي شراء أو استيراد، تحقق من حالة اعتماد الجهاز اللاسلكي لدى الهيئة." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Appels d'offres</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="tenders.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Marchés publics", en: "Public procurement", ar: "الصفقات العمومية" },
+              titre: { fr: "Appels d'offres de l'Autorité", en: "Authority tenders", ar: "مناقصات الهيئة" },
+              description: { fr: "Les avis publiés ci-dessous précisent l'objet du marché, le budget prévisionnel et la date limite de dépôt des plis.", en: "The notices published below specify the subject of the contract, the estimated budget and the submission deadline.", ar: "توضح الإعلانات المنشورة أدناه موضوع الصفقة والميزانية التقديرية والموعد النهائي لإيداع الملفات." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Carrières</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="careers.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Rejoindre l'Autorité", en: "Join the Authority", ar: "انضم إلى الهيئة" },
+              titre: { fr: "Carrières à l'ARPT", en: "Careers at ARPT", ar: "الوظائف في الهيئة" },
+              description: { fr: "L'Autorité recrute des profils techniques, juridiques et économiques engagés au service du secteur numérique guinéen.", en: "The Authority recruits technical, legal and economic profiles committed to serving Guinea's digital sector.", ar: "تعمل الهيئة على توظيف كفاءات تقنية وقانونية واقتصادية ملتزمة بخدمة القطاع الرقمي الغيني." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Actualités</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="news.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Salle de presse", en: "Press room", ar: "غرفة الصحافة" },
+              titre: { fr: "Actualités et communiqués", en: "News and press releases", ar: "الأخبار والبلاغات" },
+              description: {
+                fr: "Suivez les décisions, les publications et les événements de l'Autorité.",
+                en: "Follow the Authority's decisions, publications and events.",
+                ar: "تابع قرارات الهيئة ومنشوراتها وفعالياتها.",
+              },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Services</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="services.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Démarches", en: "Procedures", ar: "الإجراءات" },
+              titre: { fr: "Services aux opérateurs, entreprises et particuliers", en: "Services for operators, businesses and individuals", ar: "خدمات للمشغلين والشركات والأفراد" },
+              description: { fr: "Pour chaque service, retrouvez les pièces exigées, le délai d'instruction et le coût applicable. Les demandes se déposent en ligne depuis le portail usager.", en: "For each service, find the required documents, processing time and applicable cost. Requests are submitted online via the user portal.", ar: "لكل خدمة، تجد الوثائق المطلوبة ومدة المعالجة والتكلفة المطبقة. تُقدَّم الطلبات عبر الإنترنت من خلال بوابة المستخدم." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Contact</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="contact.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Contact", en: "Contact", ar: "اتصل بنا" },
+              titre: { fr: "Nous écrire", en: "Write to us", ar: "راسلنا" },
+              description: { fr: "Une question sur une démarche, un texte réglementaire ou un dossier en cours ? Nos services vous répondent sous cinq jours ouvrés.", en: "A question about a procedure, a regulatory text or an ongoing case? Our teams respond within five business days.", ar: "هل لديك سؤال حول إجراء أو نص تنظيمي أو ملف قيد المعالجة؟ تجيبكم مصالحنا خلال خمسة أيام عمل." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statistiques</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="statistics.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Observatoire", en: "Observatory", ar: "المرصد" },
+              titre: { fr: "Statistiques du secteur", en: "Sector statistics", ar: "إحصائيات القطاع" },
+              description: { fr: "Indicateurs mensuels et trimestriels consolidés par l'Autorité à partir des déclarations des opérateurs.", en: "Monthly and quarterly indicators consolidated by the Authority from operator filings.", ar: "مؤشرات شهرية وفصلية جمعتها الهيئة من تصريحات المشغلين." },
+            }}
+          />
+        </div>
+      </section>
+
+      <section>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Consultations publiques</p>
+        <div className="mt-3 space-y-5">
+          <ObjectBlockAdmin
+            blockKey="consultations.hero"
+            title="Bandeau d'introduction"
+            fields={[
+              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+              { name: "titre", label: "Titre", type: "text", translatable: true },
+              { name: "description", label: "Description", type: "textarea", translatable: true },
+            ]}
+            defaultValue={{
+              surtitre: { fr: "Participation", en: "Participation", ar: "المشاركة" },
+              titre: { fr: "Consultations publiques", en: "Public consultations", ar: "الاستشارات العمومية" },
+              description: { fr: "Avant l'adoption d'un texte structurant, l'Autorité recueille les observations des opérateurs, des associations de consommateurs et du public.", en: "Before adopting a major text, the Authority gathers input from operators, consumer associations and the public.", ar: "قبل اعتماد نص هيكلي، تجمع الهيئة ملاحظات المشغلين وجمعيات المستهلكين والجمهور." },
+            }}
+          />
         </div>
       </section>
     </div>

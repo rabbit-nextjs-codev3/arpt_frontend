@@ -3,29 +3,33 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Menu, X, ShieldCheck, LayoutDashboard, UserRound, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthTrigger } from "@/components/site/AuthModal";
+import { LocaleSwitcher } from "@/components/site/LocaleSwitcher";
 import { useAuth } from "@/lib/auth";
-
-const liens = [
-  { to: "/", label: "Accueil" },
-  { to: "/a-propos", label: "L'Autorité" },
-  { to: "/services", label: "Services" },
-  { to: "/reglementation", label: "Réglementation" },
-  { to: "/equipements", label: "Équipements" },
-  { to: "/appels-offres", label: "Appels d'offres" },
-  { to: "/carrieres", label: "Carrières" },
-  { to: "/actualites", label: "Actualités" },
-  { to: "/statistiques", label: "Statistiques" },
-  { to: "/reclamations", label: "Réclamations" },
-  { to: "/contact", label: "Contact" },
-] as const;
 
 export function Header() {
   const [ouvert, setOuvert] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const t = useTranslations("nav");
+  const tc = useTranslations("common");
+
+  const liens = [
+    { to: "/", label: t("home") },
+    { to: "/a-propos", label: t("about") },
+    { to: "/services", label: t("services") },
+    { to: "/reglementation", label: t("regulation") },
+    { to: "/equipements", label: t("equipment") },
+    { to: "/appels-offres", label: t("tenders") },
+    { to: "/carrieres", label: t("careers") },
+    { to: "/actualites", label: t("news") },
+    { to: "/statistiques", label: t("statistics") },
+    { to: "/reclamations", label: t("claims") },
+    { to: "/contact", label: t("contact") },
+  ] as const;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
@@ -44,6 +48,7 @@ export function Header() {
         </Link>
 
         <div className="flex shrink-0 items-center gap-2">
+          <LocaleSwitcher className="hidden md:flex" />
           {user ? (
             <>
               <Link
@@ -53,20 +58,20 @@ export function Header() {
                 <UserRound className="size-4" aria-hidden /> {user.fullname.split(" ")[0]}
               </Link>
               <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => logout()}>
-                <LogOut className="size-4" aria-hidden /> Déconnexion
+                <LogOut className="size-4" aria-hidden /> {tc("logout")}
               </Button>
             </>
           ) : (
             <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
               <AuthTrigger>
-                <UserRound className="size-4" aria-hidden /> Se connecter
+                <UserRound className="size-4" aria-hidden /> {tc("login")}
               </AuthTrigger>
             </Button>
           )}
           {user?.isStaff && (
             <Button asChild size="sm" className="hidden md:inline-flex">
               <Link href="/admin">
-                <LayoutDashboard className="size-4" aria-hidden /> Administration
+                <LayoutDashboard className="size-4" aria-hidden /> {tc("administration")}
               </Link>
             </Button>
           )}
@@ -74,7 +79,7 @@ export function Header() {
             variant="outline"
             size="icon"
             className="lg:hidden"
-            aria-label="Ouvrir le menu"
+            aria-label={t("openMenu")}
             onClick={() => setOuvert((v) => !v)}
           >
             {ouvert ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -109,22 +114,25 @@ export function Header() {
                 {l.label}
               </Link>
             ))}
+            <div className="mt-2 flex items-center justify-between gap-2 px-1">
+              <LocaleSwitcher />
+            </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {user ? (
                 <>
                   <Button asChild variant="outline" size="sm">
                     <Link href="/portail" onClick={() => setOuvert(false)}>{user.fullname.split(" ")[0]}</Link>
                   </Button>
-                  <Button size="sm" onClick={() => { logout(); setOuvert(false); }}>Déconnexion</Button>
+                  <Button size="sm" onClick={() => { logout(); setOuvert(false); }}>{tc("logout")}</Button>
                 </>
               ) : (
                 <Button asChild variant="outline" size="sm">
-                  <AuthTrigger>Se connecter</AuthTrigger>
+                  <AuthTrigger>{tc("login")}</AuthTrigger>
                 </Button>
               )}
               {user?.isStaff && (
                 <Button asChild size="sm" onClick={() => setOuvert(false)}>
-                  <Link href="/admin">Administration</Link>
+                  <Link href="/admin">{tc("administration")}</Link>
                 </Button>
               )}
             </div>
