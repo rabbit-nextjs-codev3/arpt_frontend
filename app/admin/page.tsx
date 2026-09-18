@@ -99,7 +99,6 @@ const menuGroups: { titre: string; items: MenuItem[] }[] = [
     titre: "Administration",
     items: [
       { id: "utilisateurs", label: "Utilisateurs & rôles", icon: Users },
-      { id: "entreprises", label: "Comptes entreprise", icon: Building2 },
       { id: "config", label: "Configuration du site", icon: Settings },
     ],
   },
@@ -730,7 +729,6 @@ export default function Admin() {
           {section === "reglementation" && <ReglementationAdmin />}
           {section === "consultations" && <ConsultationsAdmin />}
           {section === "utilisateurs" && <UtilisateursAdmin />}
-          {section === "entreprises" && <EntreprisesAdmin />}
           {section === "statistiques" && <StatistiquesAdmin />}
           {section === "config" && <ConfigurationAdmin />}
 
@@ -3851,93 +3849,12 @@ function EntrepriseDocumentLink({ userId }: { userId: number }) {
   );
 }
 
-function EntreprisesEnAttenteAdmin({ onUpdated }: { onUpdated: () => void }) {
-  const { data: demandes, loading, error, refetch } = useApiList<UserAdmin>(
-    "/users?accountType=ENTREPRISE&enterpriseApprovalStatus=EN_ATTENTE&pageSize=100",
-  );
-  const [pendingId, setPendingId] = useState<number | null>(null);
-
-  function refresh() {
-    refetch();
-    onUpdated();
-  }
-
-  async function approuver(id: number) {
-    setPendingId(id);
-    try {
-      await apiFetch(`/users/${id}/enterprise-approval`, {
-        method: "PATCH",
-        body: JSON.stringify({ decision: "APPROUVE" }),
-      });
-      toast.success("Compte entreprise validé.");
-      refresh();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  async function rejeter(id: number) {
-    const reason = window.prompt("Motif du rejet (visible par le demandeur) :");
-    if (!reason || !reason.trim()) return;
-    setPendingId(id);
-    try {
-      await apiFetch(`/users/${id}/enterprise-approval`, {
-        method: "PATCH",
-        body: JSON.stringify({ decision: "REJETE", reason: reason.trim() }),
-      });
-      toast.success("Compte entreprise rejeté.");
-      refresh();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  if (loading) return null;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
-  if (demandes.length === 0) return null;
-
-  return (
-    <div>
-      <div className="flex items-center gap-2">
-        <Briefcase className="size-4 text-primary" aria-hidden />
-        <h2 className="font-heading text-lg font-semibold">Comptes entreprise en attente</h2>
-        <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
-          {demandes.length}
-        </span>
-      </div>
-      <TableauAdmin
-        codeColumn={false}
-        colonnes={["Entreprise", "Demandeur", "Document", "Inscrit le", "Actions"]}
-        lignes={demandes.map((u) => [
-          u.companyName ?? "—",
-          `${u.fullname} (${u.email})`,
-          u.hasCompanyDocument ? <EntrepriseDocumentLink key={u.id} userId={u.id} /> : "—",
-          formaterDate(u.dateJoined),
-          <div key={u.id} className="flex items-center gap-2">
-            <Button size="sm" disabled={pendingId === u.id} onClick={() => approuver(u.id)}>
-              Approuver
-            </Button>
-            <Button size="sm" variant="outline" disabled={pendingId === u.id} onClick={() => rejeter(u.id)}>
-              Rejeter
-            </Button>
-          </div>,
-        ])}
-      />
-    </div>
-  );
-}
-
 /**
- * Vue dédiée listant TOUS les comptes entreprise (en attente, approuvés,
- * rejetés) — contrairement à EntreprisesEnAttenteAdmin (bloc d'alerte dans
- * "Utilisateurs & rôles") qui ne montre que les demandes non traitées et
- * disparaît une fois qu'il n'y en a plus. Les actions Approuver/Rejeter
- * ne s'affichent que pour une demande encore EN_ATTENTE (une décision déjà
- * prise n'est pas révisable, voir UsersService.decideEnterpriseApproval).
+ * Bloc listant TOUS les comptes entreprise (en attente, approuvés, rejetés)
+ * — affiché dans "Utilisateurs & rôles", pas d'onglet séparé. Les actions
+ * Approuver/Rejeter ne s'affichent que pour une demande encore EN_ATTENTE
+ * (une décision déjà prise n'est pas révisable, voir
+ * UsersService.decideEnterpriseApproval).
  */
 function EntreprisesAdmin() {
   const { data: entreprises, loading, error, refetch } = useApiList<UserAdmin>(
@@ -3989,7 +3906,7 @@ function EntreprisesAdmin() {
   };
 
   return (
-    <div className="mt-8">
+    <div>
       <div className="flex items-center gap-2">
         <Building2 className="size-4 text-primary" aria-hidden />
         <h2 className="font-heading text-lg font-semibold">Comptes entreprise</h2>
@@ -4123,7 +4040,7 @@ function UtilisateursAdmin() {
 
   return (
     <div className="mt-8 grid gap-10">
-      <EntreprisesEnAttenteAdmin onUpdated={refetch} />
+      <EntreprisesAdmin />
       <div>
         <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
         <TableauAdmin
