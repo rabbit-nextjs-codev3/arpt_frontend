@@ -1,14 +1,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
-import Link from "next/link";
-import { ArrowRight, Building2, Eye, EyeOff, LockKeyhole, ShieldCheck, User, X } from "lucide-react";
+
+import { ArrowLeft, ArrowRight, Building2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, User, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useAuth, ApiError } from "@/lib/auth";
+import { api } from "@/lib/api";
 
 const AuthContext = createContext<(() => void) | null>(null);
 
@@ -19,6 +20,7 @@ export function AuthTrigger({ children, className }: { children: ReactNode; clas
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"auth" | "forgot">("auth");
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -38,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [open]);
 
   return (
-    <AuthContext.Provider value={() => { trigger.current = document.activeElement as HTMLElement; setOpen(true); }}>
+    <AuthContext.Provider value={() => { trigger.current = document.activeElement as HTMLElement; setView("auth"); setOpen(true); }}>
       {children}
       <dialog
         ref={dialog}
@@ -56,19 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {open && <div className="relative p-6 sm:p-8">
           <button type="button" onClick={() => setOpen(false)} aria-label="Fermer la fenêtre" className="absolute right-3 top-3 grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"><X className="size-5" aria-hidden /></button>
           <div className="mb-5 text-center">
-            <span className="mx-auto mb-3 grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><ShieldCheck className="size-5" strokeWidth={1.7} aria-hidden /></span>
+            <span className="mx-auto mb-3 grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">{view === "auth" ? <ShieldCheck className="size-5" strokeWidth={1.7} aria-hidden /> : <Mail className="size-5" strokeWidth={1.7} aria-hidden />}</span>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Espace usager · ARPT</p>
-            <h2 id={titleId} className="font-heading text-2xl font-semibold tracking-tight">Bienvenue sur votre espace</h2>
-            <p id={descriptionId} className="mt-2 text-sm leading-6 text-muted-foreground">Un seul compte pour vos démarches, vos réclamations et leur suivi.</p>
+            <h2 id={titleId} className="font-heading text-2xl font-semibold tracking-tight">{view === "auth" ? "Bienvenue sur votre espace" : "Mot de passe oublié ?"}</h2>
+            <p id={descriptionId} className="mt-2 text-sm leading-6 text-muted-foreground">{view === "auth" ? "Un seul compte pour vos démarches, vos réclamations et leur suivi." : "Saisissez votre adresse e-mail pour recevoir les instructions de réinitialisation."}</p>
           </div>
-          <Tabs defaultValue="signin" className="w-full">
+          {view === "auth" ? <Tabs defaultValue="signin" className="w-full">
             <TabsList aria-label="Accès au compte" className="mb-5 grid h-12 w-full grid-cols-2 rounded-xl bg-muted p-1">
               <TabsTrigger value="signin" className="h-10 rounded-lg">Connexion</TabsTrigger>
               <TabsTrigger value="signup" className="h-10 rounded-lg">Inscription</TabsTrigger>
             </TabsList>
-            <TabsContent value="signin"><AuthForm mode="signin" onSuccess={() => setOpen(false)} /></TabsContent>
+            <TabsContent value="signin"><AuthForm mode="signin" onSuccess={() => setOpen(false)} onForgot={() => setView("forgot")} /></TabsContent>
             <TabsContent value="signup"><AuthForm mode="signup" onSuccess={() => setOpen(false)} /></TabsContent>
-          </Tabs>
+          </Tabs> : <ForgotPasswordForm onBack={() => setView("auth")} />}
           <p className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="size-3.5" aria-hidden />Votre espace personnel ARPT Guinée</p>
         </div>}
       </dialog>
@@ -88,7 +90,7 @@ function PasswordField({ id, label, confirm = false, signup = false }: { id: str
   </div>;
 }
 
-function AuthForm({ mode, onSuccess }: { mode: "signin" | "signup"; onSuccess: () => void }) {
+function AuthForm({ mode, onSuccess, onForgot }: { mode: "signin" | "signup"; onSuccess: () => void; onForgot?: () => void }) {
   const signup = mode === "signup";
   const id = useId();
   const { login, register, registerEnterprise } = useAuth();
@@ -200,14 +202,50 @@ function AuthForm({ mode, onSuccess }: { mode: "signin" | "signup"; onSuccess: (
       <p className="text-center text-xs leading-5 text-muted-foreground sm:col-span-2">
         Retrouvez vos dossiers et poursuivez vos démarches.
         <br />
-        <Link href="/mot-de-passe" className="font-medium text-primary hover:underline">
+        <button type="button" onClick={onForgot} className="font-medium text-primary hover:underline">
           Mot de passe oublié ?
-        </Link>
-        {" · "}
+        </button>
+        {/* {"  "}
         <Link href="/compte-entreprise" className="font-medium text-primary hover:underline">
           Compte entreprise rejeté ?
-        </Link>
+        </Link> */}
+       
       </p>
     )}
   </form>;
+}
+
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const id = useId();
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await api.post("/auth/forgot-password", { email: String(new FormData(event.currentTarget).get("email")) });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <div className="mx-auto max-w-md">
+    {sent ? <p role="status" className="rounded-xl border border-border bg-muted p-5 text-center text-sm leading-6">Si un compte est associé à cette adresse, vous recevrez un e-mail avec les instructions de réinitialisation.</p> : (
+      <form onSubmit={submit} className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor={id}>Adresse e-mail</Label>
+          <Input id={id} name="email" type="email" autoComplete="email" autoFocus required maxLength={254} placeholder="vous@exemple.com" className="h-12 rounded-lg bg-card shadow-none" />
+        </div>
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <Button type="submit" disabled={loading} className="h-12 w-full rounded-lg text-sm font-semibold">{loading ? "Veuillez patienter…" : "Recevoir les instructions"}<ArrowRight className="size-4" aria-hidden /></Button>
+      </form>
+    )}
+    <button type="button" onClick={onBack} className="mx-auto mt-5 flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-primary hover:underline"><ArrowLeft className="size-4" aria-hidden />Retour à la connexion</button>
+  </div>;
 }
