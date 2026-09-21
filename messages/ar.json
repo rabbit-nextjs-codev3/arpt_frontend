@@ -18,7 +18,8 @@
     "login": "تسجيل الدخول",
     "logout": "تسجيل الخروج",
     "administration": "الإدارة",
-    "viewAll": "عرض الكل"
+    "viewAll": "عرض الكل",
+    "sessionExpired": "انتهت صلاحية جلستك، يُرجى تسجيل الدخول مجدداً."
   },
   "home": {
     "heroAlt": "هوائي اتصالات يطل على كوناكري عند الغسق",
@@ -274,7 +275,20 @@
     "revenueChartTitle": "رقم أعمال القطاع",
     "revenueChartSubtitle": "بمليارات الفرنك الغيني، حسب الفصل",
     "revenueSeriesName": "رقم الأعمال (مليار فرنك)",
-    "months": ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+    "months": [
+      "يناير",
+      "فبراير",
+      "مارس",
+      "أبريل",
+      "مايو",
+      "يونيو",
+      "يوليو",
+      "أغسطس",
+      "سبتمبر",
+      "أكتوبر",
+      "نوفمبر",
+      "ديسمبر"
+    ]
   },
   "contactPage": {
     "defaultAddress": "مبنى الهيئة، المركز التوجيهي كوما، كوناكري، جمهورية غينيا",
@@ -348,13 +362,29 @@
       "submissions": "عروضي المقدمة",
       "notifications": "الإشعارات"
     },
-    "claimsColumns": ["المرجع", "الطبيعة", "المشغل", "التاريخ", "الحالة"],
+    "claimsColumns": [
+      "المرجع",
+      "الطبيعة",
+      "المشغل",
+      "التاريخ",
+      "الحالة"
+    ],
     "claimsEmpty": "لم يتم تقديم أي شكوى.",
     "fileClaim": "تقديم شكوى",
-    "candidaturesColumns": ["المرجع", "المنصب", "التاريخ", "الحالة"],
+    "candidaturesColumns": [
+      "المرجع",
+      "المنصب",
+      "التاريخ",
+      "الحالة"
+    ],
     "candidaturesEmpty": "لا يوجد ترشح جارٍ.",
     "viewOffers": "عرض الوظائف",
-    "submissionsColumns": ["المرجع", "المناقصة", "التاريخ", "الحالة"],
+    "submissionsColumns": [
+      "المرجع",
+      "المناقصة",
+      "التاريخ",
+      "الحالة"
+    ],
     "submissionsEmpty": "لم يتم تسجيل أي عرض.",
     "viewTenders": "عرض المناقصات",
     "noNotifications": "لا يوجد إشعار."
@@ -377,5 +407,937 @@
     "writeToUs": "راسلنا",
     "userPortal": "بوابة المستخدم",
     "copyright": "© {year} هيئة تنظيم البريد والاتصالات غينيا — جميع الحقوق محفوظة."
+  },
+  "admin": {
+    "nav": {
+      "groups": {
+        "overview": "نظرة عامة",
+        "users": "المستخدمون",
+        "siteContent": "محتوى الموقع",
+        "analysis": "التحليلات",
+        "administration": "الإدارة"
+      },
+      "tableau": "لوحة القيادة",
+      "reclamations": "الشكاوى",
+      "demandes": "طلبات الخدمة",
+      "messages": "رسائل الاتصال",
+      "pages": "الصفحات العامة",
+      "services": "الخدمات",
+      "equipements": "التجهيزات",
+      "marches": "طلبات العروض",
+      "carrieres": "التوظيف",
+      "actualites": "الأخبار",
+      "communiques": "البيانات الصحفية",
+      "reglementation": "التنظيم",
+      "consultations": "الاستشارات العامة",
+      "statistiques": "الإحصائيات",
+      "audit": "سجل التدقيق",
+      "utilisateurs": "المستخدمون والأدوار",
+      "config": "إعدادات الموقع"
+    },
+    "sidebar": {
+      "connectedToApi": "متصل بواجهة برمجة تطبيقات الهيئة",
+      "resizeSidebar": "تغيير حجم الشريط الجانبي"
+    },
+    "login": {
+      "title": "إدارة الهيئة",
+      "subtitle": "مخصص لموظفي الهيئة.",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "signingIn": "جارٍ تسجيل الدخول…",
+      "signIn": "تسجيل الدخول",
+      "firstLogin": "أول تسجيل دخول أو نسيت كلمة المرور؟",
+      "genericError": "حدث خطأ، يرجى إعادة المحاولة."
+    },
+    "header": {
+      "searchPlaceholder": "ابحث عن شكوى أو ملف أو مستخدم…",
+      "auditLog": "سجل التدقيق",
+      "messages": "الرسائل",
+      "superAdmin": "المدير العام",
+      "administrator": "المسؤول",
+      "logout": "تسجيل الخروج"
+    },
+    "dashboard": {
+      "subtitle": "بيانات في الوقت الفعلي من واجهة برمجة تطبيقات الهيئة.",
+      "overviewSuffix": "نظرة عامة",
+      "greeting": "مرحباً، {name}.",
+      "heroBody": "إليك الإشارات التي يجب مراقبتها اليوم للحفاظ على طلبات المستخدمين والمحتوى العام في مسارها الصحيح.",
+      "handleClaims": "معالجة الشكاوى",
+      "viewLog": "عرض السجل",
+      "kpi": {
+        "openClaims": "الشكاوى المفتوحة",
+        "serviceRequests": "طلبات الخدمة",
+        "candidatures": "الترشيحات المستلمة",
+        "unreadMessages": "الرسائل غير المقروءة"
+      },
+      "sectorObservatory": "مرصد القطاع · {year}",
+      "sectorKpi": {
+        "mobileSubscribers": "مشتركو الهاتف المحمول",
+        "penetrationRate": "معدل الانتشار",
+        "activeOperators": "المشغلون النشطون",
+        "active4GSites": "مواقع الجيل الرابع العاملة"
+      },
+      "revenue": {
+        "title": "رقم الأعمال المصرح به",
+        "subtitle": "التطور الفصلي · مليار فرنك غيني",
+        "seriesName": "رقم الأعمال (مليار GNF)"
+      },
+      "todo": {
+        "title": "للمعالجة اليوم",
+        "subtitle": "الأولويات التشغيلية",
+        "qualifyClaims": "شكاوى بحاجة إلى تصنيف",
+        "qualifyClaimsDetail": "{count} ملف(ات) مفتوح(ة)",
+        "newServiceRequests": "طلبات خدمة جديدة",
+        "newServiceRequestsDetail": "{count} بانتظار المعالجة",
+        "unreadContactMessages": "رسائل اتصال غير مقروءة",
+        "unreadContactMessagesDetail": "{count} رسالة (رسائل) للمعالجة"
+      },
+      "subscribers": {
+        "title": "قاعدة مشتركي الهاتف المحمول",
+        "subtitle": "التطور الشهري · مليون مشترك",
+        "seriesName": "المشتركون (مليون)"
+      },
+      "contentBreakdown": {
+        "title": "توزيع المحتوى العام",
+        "subtitle": "الأحجام المنشورة حالياً",
+        "news": "الأخبار",
+        "releases": "البيانات الصحفية",
+        "regulations": "النصوص التنظيمية",
+        "consultations": "الاستشارات",
+        "openTenders": "طلبات العروض المفتوحة",
+        "openPositions": "المناصب الشاغرة"
+      },
+      "recentClaims": {
+        "title": "الشكاوى الأخيرة",
+        "subtitle": "آخر بلاغات المستخدمين",
+        "viewAll": "عرض الكل",
+        "columns": [
+          "المرجع",
+          "الطبيعة",
+          "المشغل",
+          "الحالة"
+        ],
+        "empty": "لا توجد شكاوى حالياً."
+      },
+      "recentActivity": {
+        "title": "النشاط الأخير",
+        "subtitle": "سجل آخر الإجراءات",
+        "system": "النظام",
+        "empty": "لا يوجد نشاط حالياً."
+      }
+    },
+    "common": {
+      "loading": "جارٍ التحميل…",
+      "error": "حدث خطأ، يرجى إعادة المحاولة.",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "close": "إغلاق",
+      "view": "عرض",
+      "actions": "الإجراءات",
+      "active": "نشط",
+      "inactive": "معطل",
+      "confirmDelete": "هل تريد حذف هذا العنصر؟",
+      "thisWeek": "هذا الأسبوع",
+      "showingResults": "عرض {start} إلى {end} من أصل {total} نتيجة",
+      "allStatuses": "جميع الحالات",
+      "allCategories": "جميع الفئات",
+      "startDate": "تاريخ البداية",
+      "endDate": "تاريخ النهاية",
+      "reset": "إعادة تعيين",
+      "selectPlaceholder": "اختر…",
+      "category": "الفئة *",
+      "status": "الحالة",
+      "requiredCategory": "يرجى اختيار فئة.",
+      "export": "تصدير",
+      "add": "+ إضافة",
+      "savedContent": "تم حفظ المحتوى.",
+      "noItemsClickAdd": "لا يوجد عنصر. انقر على \"إضافة\"."
+    },
+    "reclamations": {
+      "title": "الشكاوى",
+      "subtitle": "إدارة شكاوى المستخدمين ومتابعة معالجتها.",
+      "export": "تصدير",
+      "stats": {
+        "total": "الإجمالي",
+        "inProgress": "قيد المعالجة",
+        "resolved": "تمت التسوية",
+        "rejected": "مرفوضة"
+      },
+      "searchPlaceholder": "البحث عن مستخدم أو مشغل…",
+      "allStatuses": "جميع الحالات",
+      "allCategories": "جميع الفئات",
+      "startDate": "تاريخ البداية",
+      "endDate": "تاريخ النهاية",
+      "reset": "إعادة تعيين",
+      "selectedCount": "{count} محددة",
+      "deleteSelection": "حذف التحديد",
+      "selectPage": "تحديد الصفحة",
+      "columns": {
+        "user": "المستخدم",
+        "nature": "الطبيعة",
+        "category": "الفئة",
+        "date": "التاريخ",
+        "status": "الحالة"
+      },
+      "selectRow": "تحديد {name}",
+      "natureValue": "شكوى",
+      "viewDetails": "عرض التفاصيل",
+      "detail": {
+        "operator": "المشغل المعني",
+        "fileStatus": "حالة الملف",
+        "description": "الوصف",
+        "rejectionReason": "سبب الرفض",
+        "attachments": "المرفقات"
+      },
+      "noResults": "لا توجد شكوى مطابقة للمرشحات.",
+      "csv": {
+        "headers": [
+          "الاسم الأول",
+          "اللقب",
+          "البريد الإلكتروني",
+          "الهاتف",
+          "المشغل",
+          "الفئة",
+          "الحالة",
+          "التاريخ"
+        ],
+        "filenamePrefix": "الشكاوى"
+      },
+      "confirmDeleteSelection": "حذف {count} شكوى (شكاوى)؟ هذا الإجراء لا رجعة فيه.",
+      "confirmDeleteOne": "حذف شكوى {name}؟",
+      "deletedSelection": "تم حذف الشكوى (الشكاوى).",
+      "deletedOne": "تم حذف الشكوى.",
+      "rejectReasonPrompt": "سبب الرفض (10 أحرف على الأقل):",
+      "rejectReasonRequired": "سبب الرفض مطلوب (10 أحرف كحد أدنى).",
+      "statusUpdated": "تم تحديث الحالة."
+    },
+    "demandes": {
+      "title": "طلبات الخدمة",
+      "subtitle": "إدارة طلبات المستخدمين ومتابعة معالجتها.",
+      "export": "تصدير",
+      "stats": {
+        "total": "الإجمالي",
+        "inProgress": "قيد المعالجة",
+        "processed": "تمت المعالجة",
+        "rejected": "مرفوضة"
+      },
+      "searchPlaceholder": "البحث عن مستخدم أو شركة…",
+      "allStatuses": "جميع الحالات",
+      "allServices": "جميع الخدمات",
+      "startDate": "تاريخ البداية",
+      "endDate": "تاريخ النهاية",
+      "reset": "إعادة تعيين",
+      "selectedCount": "{count} محددة",
+      "deleteSelection": "حذف التحديد",
+      "selectPage": "تحديد الصفحة",
+      "columns": {
+        "requester": "مقدم الطلب",
+        "nature": "الطبيعة",
+        "service": "الخدمة",
+        "date": "التاريخ",
+        "status": "الحالة"
+      },
+      "selectRow": "تحديد {name}",
+      "natureValue": "طلب خدمة",
+      "viewDetails": "عرض التفاصيل",
+      "detail": {
+        "phone": "الهاتف",
+        "fileStatus": "حالة الملف",
+        "message": "الرسالة",
+        "attachments": "المرفقات",
+        "attachment": "المرفق {index}",
+        "replyByEmail": "الرد عبر البريد الإلكتروني"
+      },
+      "noResults": "لا يوجد طلب مطابق للمرشحات.",
+      "csv": {
+        "headers": [
+          "الاسم",
+          "الشركة",
+          "البريد الإلكتروني",
+          "الهاتف",
+          "الخدمة",
+          "الحالة",
+          "التاريخ"
+        ],
+        "filenamePrefix": "طلبات-الخدمة"
+      },
+      "confirmDeleteSelection": "حذف {count} طلب(ات)؟ هذا الإجراء لا رجعة فيه.",
+      "confirmDeleteOne": "حذف طلب {name}؟",
+      "deletedSelection": "تم حذف الطلب (الطلبات).",
+      "deletedOne": "تم حذف الطلب.",
+      "statusUpdated": "تم تحديث الحالة.",
+      "replyPlaceholder": "الرد على {name}…",
+      "sending": "جارٍ الإرسال…",
+      "send": "إرسال",
+      "replySent": "تم إرسال الرد عبر البريد الإلكتروني."
+    },
+    "audit": {
+      "columns": [
+        "الفاعل",
+        "الإجراء",
+        "الكيان",
+        "التوقيت"
+      ],
+      "system": "النظام"
+    },
+    "tenders": {
+      "title": "طلبات العروض",
+      "subtitle": "إدارة طلبات العروض ومتابعة العروض المقدمة.",
+      "newTender": "+ طلب عرض جديد",
+      "editingTitle": "تعديل \"{name}\"",
+      "newTenderTitle": "طلب عرض جديد",
+      "stats": {
+        "total": "الإجمالي",
+        "open": "مفتوحة",
+        "closed": "مغلقة",
+        "cancelled": "ملغاة"
+      },
+      "fields": {
+        "code": "الرمز *",
+        "codePlaceholder": "مثال: AO-2026-020",
+        "title": "العنوان *",
+        "description": "الوصف *",
+        "publicationDate": "تاريخ النشر *",
+        "limitDate": "الموعد النهائي *",
+        "budget": "الميزانية (GNF)",
+        "budgetOptional": "اختياري",
+        "contactName": "اسم جهة الاتصال *",
+        "contactEmail": "بريد جهة الاتصال الإلكتروني *",
+        "file": "ملف طلب العرض (PDF، {hint})",
+        "fileHintKeep": "اتركه فارغاً للاحتفاظ بالملف الحالي",
+        "fileHintOptional": "اختياري"
+      },
+      "searchPlaceholder": "البحث عن طلب عرض…",
+      "columns": {
+        "reference": "المرجع",
+        "title": "العنوان",
+        "category": "الفئة",
+        "limitDate": "الموعد النهائي",
+        "submissions": "العروض المقدمة"
+      },
+      "noResults": "لا يوجد طلب عرض مطابق للمرشحات.",
+      "csv": {
+        "headers": [
+          "المرجع",
+          "العنوان",
+          "الفئة",
+          "الحالة",
+          "الموعد النهائي"
+        ],
+        "filenamePrefix": "طلبات-العروض"
+      },
+      "confirmDelete": "حذف طلب العرض \"{name}\"؟",
+      "deleted": "تم حذف طلب العرض.",
+      "updated": "تم تعديل طلب العرض.",
+      "created": "تم إنشاء طلب العرض."
+    },
+    "careers": {
+      "title": "التوظيف",
+      "subtitle": "إدارة ومتابعة عروض العمل لدى الهيئة.",
+      "newOffer": "+ منصب جديد",
+      "editingTitle": "تعديل \"{name}\"",
+      "newOfferTitle": "منصب عمل جديد",
+      "stats": {
+        "total": "إجمالي المناصب",
+        "inProgress": "مفتوحة",
+        "closed": "مغلقة",
+        "candidatures": "الترشيحات المستلمة"
+      },
+      "fields": {
+        "code": "الرمز *",
+        "codePlaceholder": "مثال: REC-2026-11",
+        "position": "المسمى الوظيفي *",
+        "description": "الوصف *",
+        "department": "القسم *",
+        "location": "الموقع",
+        "locationPlaceholder": "مثال: كوناكري",
+        "salary": "الراتب",
+        "salaryOptional": "اختياري",
+        "publicationDate": "تاريخ النشر *",
+        "limitDate": "الموعد النهائي *",
+        "contactName": "اسم جهة الاتصال *",
+        "contactEmail": "بريد جهة الاتصال الإلكتروني *"
+      },
+      "searchPlaceholder": "البحث عن منصب أو مرجع أو قسم…",
+      "statusInProgress": "مفتوح",
+      "statusClosed": "مغلق",
+      "columns": {
+        "reference": "المرجع",
+        "position": "المنصب",
+        "department": "القسم",
+        "limitDate": "الموعد النهائي",
+        "candidates": "المرشحون",
+        "publication": "النشر"
+      },
+      "isNew": "جديد",
+      "published": "منشور",
+      "noResults": "لا يوجد منصب مطابق للمرشحات.",
+      "csv": {
+        "headers": [
+          "المرجع",
+          "المنصب",
+          "القسم",
+          "الفئة",
+          "الترشيحات",
+          "الموعد النهائي"
+        ],
+        "filenamePrefix": "التوظيف"
+      },
+      "confirmDelete": "حذف المنصب \"{name}\"؟",
+      "deleted": "تم حذف منصب العمل.",
+      "updated": "تم تعديل منصب العمل.",
+      "created": "تم إنشاء منصب العمل."
+    },
+    "equipements": {
+      "title": "التجهيزات",
+      "subtitle": "إدارة التجهيزات المعتمدة وحالتها.",
+      "newEquipment": "+ تجهيز جديد",
+      "editingTitle": "تعديل \"{name}\"",
+      "newEquipmentTitle": "تجهيز جديد",
+      "stats": {
+        "total": "الإجمالي",
+        "approved": "معتمدة",
+        "inProgress": "قيد الدراسة",
+        "forbidden": "ممنوعة"
+      },
+      "statutOptions": {
+        "HOMOLOGUE": "معتمد",
+        "EN_COURS": "قيد الدراسة",
+        "INTERDIT": "ممنوع"
+      },
+      "fields": {
+        "code": "الرمز *",
+        "codePlaceholder": "مثال: EQ-2026-0180",
+        "name": "اسم التجهيز *",
+        "type": "النوع *",
+        "typePlaceholder": "مثال: محطة بيانات",
+        "status": "الحالة *",
+        "brand": "العلامة التجارية *",
+        "model": "الطراز *",
+        "manufacturer": "الصانع *",
+        "homologationNumber": "رقم الاعتماد",
+        "homologationOptional": "اختياري",
+        "validUntil": "صالح حتى",
+        "certificate": "الشهادة (PDF، {hint})",
+        "fileHintKeep": "اتركه فارغاً للاحتفاظ بالملف الحالي",
+        "fileHintOptional": "اختياري"
+      },
+      "requiredFields": "يرجى اختيار حالة وفئة.",
+      "searchPlaceholder": "البحث حسب العلامة أو الطراز أو الرمز…",
+      "columns": {
+        "reference": "المرجع",
+        "equipment": "التجهيز",
+        "brandModel": "العلامة / الطراز",
+        "category": "الفئة",
+        "validity": "الصلاحية"
+      },
+      "noResults": "لا يوجد تجهيز مطابق للمرشحات.",
+      "csv": {
+        "headers": [
+          "الرمز",
+          "التجهيز",
+          "العلامة",
+          "الطراز",
+          "الفئة",
+          "الحالة"
+        ],
+        "filenamePrefix": "التجهيزات"
+      },
+      "confirmDelete": "حذف التجهيز \"{name}\"؟",
+      "deleted": "تم حذف التجهيز.",
+      "updated": "تم تعديل التجهيز.",
+      "created": "تمت إضافة التجهيز بنجاح."
+    },
+    "statistics": {
+      "kpi": {
+        "mobileSubscribers": "مشتركو الهاتف المحمول",
+        "penetrationRate": "معدل الانتشار",
+        "activeOperators": "المشغلون النشطون",
+        "active4GSites": "مواقع الجيل الرابع العاملة"
+      },
+      "chart": {
+        "title": "قاعدة مشتركي الهاتف المحمول",
+        "subtitle": "التطور الشهري · مليون مشترك",
+        "seriesName": "المشتركون (مليون)"
+      },
+      "reports": {
+        "columns": [
+          "التقرير",
+          "القطاع",
+          "السنة",
+          "الصيغة",
+          "التحميلات",
+          "الملف"
+        ],
+        "open": "فتح"
+      },
+      "entries": {
+        "title": "النقاط الإحصائية",
+        "subtitle": "تغذي الأرقام المعروضة في الموقع العام (الصفحة الرئيسية، مرصد القطاع).",
+        "newEntry": "+ نقطة جديدة",
+        "columns": {
+          "period": "الفترة",
+          "mobileSubscribers": "مشتركو الهاتف المحمول",
+          "mobilePenetration": "انتشار الهاتف المحمول",
+          "internetSubscribers": "مشتركو الإنترنت",
+          "mobileMoney": "الدفع عبر الهاتف",
+          "jobs": "الوظائف"
+        },
+        "noResults": "لا توجد نقطة إحصائية حالياً.",
+        "confirmDelete": "حذف هذه النقطة الإحصائية؟",
+        "deleted": "تم حذف النقطة الإحصائية."
+      },
+      "form": {
+        "year": "السنة *",
+        "periodType": "نوع الفترة *",
+        "periodMonth": "شهري (مشتركون، انتشار…)",
+        "periodQuarter": "ربع سنوي (رقم الأعمال)",
+        "month": "الشهر *",
+        "selectMonth": "اختر الشهر",
+        "quarter": "الربع *",
+        "selectQuarter": "اختر الربع",
+        "mobileSubscribers": "مشتركو الهاتف المحمول (مليون)",
+        "mobilePenetration": "انتشار الهاتف المحمول (%)",
+        "internetSubscribers": "مشتركو الإنترنت (مليون)",
+        "internetPenetration": "انتشار الإنترنت (%)",
+        "mobileMoneyPenetration": "انتشار الدفع عبر الهاتف (%)",
+        "salariedJobs": "الوظائف المأجورة",
+        "activeOperators": "المشغلون النشطون",
+        "active4GSites": "مواقع الجيل الرابع العاملة",
+        "revenue": "رقم الأعمال (مليار GNF)",
+        "createEntry": "إنشاء النقطة",
+        "updated": "تم تحديث النقطة الإحصائية.",
+        "created": "تم إنشاء النقطة الإحصائية."
+      }
+    },
+    "config": {
+      "phone": "الهاتف",
+      "phoneSecondary": "هاتف ثانوي",
+      "email": "بريد الاتصال",
+      "address": "العنوان",
+      "hours": "ساعات العمل",
+      "hoursPlaceholder": "مثال: الإثنين – الجمعة، 08:00 – 17:00",
+      "footerText": "نص التذييل",
+      "saved": "تم حفظ الإعدادات.",
+      "uploading": "جارٍ الإرسال…",
+      "imageUploadError": "خطأ في إرسال الصورة.",
+      "fileUploadError": "خطأ في إرسال الملف.",
+      "viewCurrentFile": "عرض الملف الحالي",
+      "appearance": {
+        "title": "مظهر الموقع",
+        "subtitle": "خصص الشعار والألوان المعروضة في كامل الموقع العام.",
+        "logo": "شعار الموقع",
+        "logoHint": "يستبدل الشعار الافتراضي في رأس وتذييل الموقع العام.",
+        "colorsTitle": "ألوان المنصة",
+        "colorsHint": "اختر ألواناً بتباين كافٍ مع النص الأبيض — تظهر معاينة أدناه.",
+        "primary": "اللون الرئيسي",
+        "secondary": "اللون الثانوي",
+        "accent": "لون التمييز",
+        "success": "لون النجاح",
+        "warning": "لون التحذير",
+        "danger": "لون الخطر",
+        "background": "لون الخلفية",
+        "surface": "لون السطح",
+        "textPrimary": "لون النص الرئيسي",
+        "textSecondary": "لون النص الثانوي",
+        "preview": "معاينة",
+        "resetColors": "إعادة تعيين الألوان الافتراضية",
+        "colorsReset": "تمت إعادة تعيين الألوان."
+      }
+    },
+    "publicPages": {
+      "title": "الصفحات العامة",
+      "pages": {
+        "home": "الرئيسية",
+        "about": "الهيئة · نبذة",
+        "claims": "الشكاوى",
+        "regulation": "التنظيم",
+        "equipment": "التجهيزات",
+        "tenders": "طلبات العروض",
+        "careers": "التوظيف",
+        "news": "الأخبار",
+        "services": "الخدمات",
+        "contact": "اتصل بنا",
+        "statistics": "الإحصائيات",
+        "consultations": "الاستشارات العامة"
+      },
+      "editorTitle": "محرر الموقع",
+      "pageLabel": "الصفحة المراد إدارتها",
+      "selectPageHint": "اختر صفحة لتعديل محتواها فقط.",
+      "guide": {
+        "title": "دليل حقوق المستهلك (PDF)",
+        "subtitle": "لا يظهر زر \"تحميل الدليل\" في الموقع إلا بعد إرسال ملف هنا.",
+        "viewCurrent": "عرض الدليل الحالي",
+        "updated": "تم تحديث الدليل.",
+        "uploadError": "خطأ في إرسال الملف.",
+        "uploading": "جارٍ الإرسال…"
+      }
+    },
+    "news": {
+      "title": "أحدث الأخبار",
+      "subtitle": "استعرض وأدر منشورات الموقع.",
+      "newArticle": "+ خبر جديد",
+      "editingTitle": "تعديل \"{name}\"",
+      "newArticleTitle": "خبر جديد",
+      "searchPlaceholder": "البحث عن خبر…",
+      "statusPublished": "منشور",
+      "statusDraft": "مسودة",
+      "sortRecent": "التاريخ (الأحدث)",
+      "sortViews": "الأكثر مشاهدة",
+      "fields": {
+        "articleTitle": "العنوان *",
+        "content": "المحتوى *",
+        "category": "الفئة",
+        "categoryPlaceholder": "مثال: التنظيم، طلبات العروض، فعالية…",
+        "image": "الصورة {hint}",
+        "imageHintKeep": "(اتركها فارغة للاحتفاظ بالحالية)",
+        "publishImmediately": "النشر فوراً"
+      },
+      "imageRequired": "الصورة إلزامية.",
+      "columns": {
+        "title": "العنوان",
+        "category": "الفئة",
+        "date": "التاريخ",
+        "views": "المشاهدات",
+        "status": "الحالة"
+      },
+      "readMore": "قراءة المزيد",
+      "viewOnSite": "عرض على الموقع",
+      "noResults": "لا يوجد خبر مطابق لهذه المرشحات.",
+      "csv": {
+        "headers": [
+          "العنوان",
+          "الفئة",
+          "التاريخ",
+          "المشاهدات",
+          "الحالة"
+        ],
+        "filename": "اخبار-الهيئة.csv"
+      },
+      "confirmDelete": "حذف الخبر \"{name}\"؟",
+      "deleted": "تم حذف الخبر.",
+      "updated": "تم تعديل الخبر.",
+      "created": "تم إنشاء الخبر."
+    },
+    "communiques": {
+      "title": "البيانات الصحفية",
+      "subtitle": "إدارة البيانات الصحفية المنشورة في الموقع.",
+      "newRelease": "+ بيان جديد",
+      "editingTitle": "تعديل \"{name}\"",
+      "newReleaseTitle": "بيان صحفي جديد",
+      "stats": {
+        "total": "الإجمالي",
+        "withAttachment": "بمرفق",
+        "withoutAttachment": "بدون مرفق"
+      },
+      "fields": {
+        "title": "العنوان *",
+        "content": "المحتوى *",
+        "file": "المستند المرفق (PDF، {hint})",
+        "fileHintKeep": "اتركه فارغاً للاحتفاظ بالملف الحالي",
+        "fileHintOptional": "اختياري"
+      },
+      "viewCurrentDocument": "عرض المستند الحالي",
+      "searchPlaceholder": "البحث عن بيان صحفي…",
+      "columns": {
+        "title": "العنوان",
+        "date": "التاريخ"
+      },
+      "noResults": "لا يوجد بيان مطابق للمرشحات.",
+      "csv": {
+        "headers": [
+          "العنوان",
+          "المرفق",
+          "التاريخ"
+        ],
+        "filenamePrefix": "البيانات-الصحفية",
+        "yes": "نعم",
+        "no": "لا"
+      },
+      "confirmDelete": "حذف البيان \"{name}\"؟",
+      "deleted": "تم حذف البيان.",
+      "updated": "تم تعديل البيان.",
+      "created": "تم إنشاء البيان."
+    },
+    "services": {
+      "title": "الخدمات",
+      "subtitle": "إدارة الخدمات المقدمة للمستخدمين.",
+      "newService": "+ خدمة جديدة",
+      "editingTitle": "تعديل \"{name}\"",
+      "newServiceTitle": "خدمة جديدة",
+      "stats": {
+        "total": "الإجمالي",
+        "active": "نشطة",
+        "inactive": "غير نشطة"
+      },
+      "fields": {
+        "name": "اسم الخدمة *",
+        "description": "الوصف",
+        "delay": "مدة المعالجة",
+        "delayPlaceholder": "مثال: 5 أيام عمل",
+        "cost": "التكلفة (GNF)",
+        "costOptional": "اختياري",
+        "requiredDocuments": "الوثائق المطلوبة (مفصولة بفواصل)",
+        "requiredDocumentsPlaceholder": "مثال: بطاقة الهوية، إثبات السكن",
+        "image": "الصورة {hint}",
+        "imageHintKeep": "(اتركها فارغة للاحتفاظ بالحالية)",
+        "imageHintOptional": "(اختياري)",
+        "file": "استمارة للتحميل (PDF، {hint})",
+        "fileHintKeep": "اتركه فارغاً للاحتفاظ بالملف الحالي",
+        "fileHintOptional": "اختياري",
+        "activeLabel": "خدمة نشطة"
+      },
+      "viewCurrentFile": "عرض الملف الحالي",
+      "searchPlaceholder": "البحث عن خدمة…",
+      "allStates": "جميع الحالات",
+      "columns": {
+        "service": "الخدمة",
+        "delay": "المدة",
+        "state": "الحالة"
+      },
+      "noResults": "لا توجد خدمة مطابقة للمرشحات.",
+      "csv": {
+        "headers": [
+          "الخدمة",
+          "المدة",
+          "التكلفة",
+          "الحالة"
+        ],
+        "filenamePrefix": "الخدمات"
+      },
+      "confirmDelete": "حذف الخدمة \"{name}\"؟",
+      "deleted": "تم حذف الخدمة.",
+      "updated": "تم تعديل الخدمة.",
+      "created": "تم إنشاء الخدمة."
+    },
+    "messages": {
+      "inbox": "صندوق الوارد",
+      "receivedCount": "{count, plural, other {# رسالة مستلمة}}",
+      "searchPlaceholder": "البحث عن رسالة…",
+      "filterAll": "الكل",
+      "filterUnread": "غير مقروءة",
+      "filterArchived": "مؤرشفة",
+      "unreadLabel": "رسالة غير مقروءة",
+      "archived": "مؤرشفة",
+      "new": "جديدة",
+      "reply": "رد",
+      "closeReply": "إغلاق الرد",
+      "markUnread": "وضع علامة غير مقروءة",
+      "markRead": "وضع علامة مقروءة",
+      "markAs": "وضع علامة {state}",
+      "stateUnread": "غير مقروءة",
+      "stateRead": "مقروءة",
+      "unarchive": "إلغاء الأرشفة",
+      "archive": "أرشفة",
+      "replyTo": "الرد على {name}",
+      "replyPlaceholder": "الرد على {name}…",
+      "sending": "جارٍ الإرسال…",
+      "sendByEmail": "إرسال عبر البريد الإلكتروني",
+      "replySent": "تم إرسال الرد عبر البريد الإلكتروني.",
+      "emptyInbox": "صندوق الوارد فارغ.",
+      "noSearchResults": "لا توجد رسالة مطابقة لهذا البحث.",
+      "resetFilters": "إعادة تعيين المرشحات",
+      "delete": "حذف",
+      "confirmDelete": "حذف هذه الرسالة؟ هذا الإجراء نهائي.",
+      "deleted": "تم حذف الرسالة."
+    },
+    "regulation": {
+      "title": "التنظيم",
+      "subtitle": "إدارة النصوص التنظيمية المنشورة في الموقع.",
+      "newText": "+ نص جديد",
+      "editingTitle": "تعديل \"{name}\"",
+      "newTextTitle": "نص تنظيمي جديد",
+      "stats": {
+        "total": "الإجمالي",
+        "totalViews": "إجمالي المشاهدات",
+        "featured": "مُبرز",
+        "categories": "الفئات"
+      },
+      "fields": {
+        "name": "اسم النص *",
+        "description": "الوصف",
+        "descriptionPlaceholder": "ملخص من سطرين إلى ثلاثة أسطر لمحتوى هذا النص، يُعرض للمستخدمين في صفحة التنظيم.",
+        "sitePreview": "معاينة في الموقع",
+        "noDescriptionYet": "لم يتم إدخال وصف بعد.",
+        "category": "الفئة *",
+        "categoryPlaceholder": "مثال: قانون، مرسوم، قرار…",
+        "publicationDate": "تاريخ النشر *",
+        "featureLabel": "إبراز في \"النصوص الأكثر مشاهدة\" (الصفحة الرئيسية)",
+        "file": "الملف (PDF) {hint}",
+        "fileHintKeep": "(اتركه فارغاً للاحتفاظ بالملف الحالي)"
+      },
+      "viewCurrentFile": "عرض الملف الحالي",
+      "fileRequired": "ملف النص إلزامي.",
+      "searchPlaceholder": "البحث عن نص…",
+      "columns": {
+        "text": "النص",
+        "category": "الفئة",
+        "format": "الصيغة",
+        "publishedOn": "نُشر في",
+        "views": "المشاهدات"
+      },
+      "noResults": "لا يوجد نص مطابق للمرشحات.",
+      "csv": {
+        "headers": [
+          "النص",
+          "الفئة",
+          "الصيغة",
+          "المشاهدات",
+          "تاريخ النشر"
+        ],
+        "filenamePrefix": "التنظيم"
+      },
+      "confirmDelete": "حذف النص \"{name}\"؟",
+      "deleted": "تم حذف النص التنظيمي.",
+      "updated": "تم تعديل النص التنظيمي.",
+      "created": "تم إنشاء النص التنظيمي."
+    },
+    "consultations": {
+      "title": "الاستشارات العامة",
+      "subtitle": "إدارة الاستشارات المعروضة لرأي الجمهور.",
+      "newConsultation": "+ استشارة جديدة",
+      "editingTitle": "تعديل \"{name}\"",
+      "newConsultationTitle": "استشارة عامة جديدة",
+      "stats": {
+        "total": "الإجمالي",
+        "open": "مفتوحة",
+        "closed": "مغلقة"
+      },
+      "fields": {
+        "title": "العنوان *",
+        "description": "الوصف *",
+        "status": "الحالة",
+        "startDate": "تاريخ البداية *",
+        "endDate": "تاريخ النهاية *",
+        "contactEmail": "بريد الاتصال الإلكتروني *",
+        "file": "المستند المرفق (PDF، {hint})",
+        "fileHintKeep": "اتركه فارغاً للاحتفاظ بالملف الحالي",
+        "fileHintOptional": "اختياري"
+      },
+      "viewCurrentDocument": "عرض المستند الحالي",
+      "searchPlaceholder": "البحث عن استشارة…",
+      "columns": {
+        "consultation": "الاستشارة",
+        "period": "الفترة"
+      },
+      "noResults": "لا توجد استشارة مطابقة للمرشحات.",
+      "csv": {
+        "headers": [
+          "العنوان",
+          "الحالة",
+          "البداية",
+          "النهاية"
+        ],
+        "filenamePrefix": "الاستشارات"
+      },
+      "confirmDelete": "حذف الاستشارة \"{name}\"؟",
+      "deleted": "تم حذف الاستشارة العامة.",
+      "updated": "تم تعديل الاستشارة العامة.",
+      "created": "تم إنشاء الاستشارة العامة."
+    },
+    "users": {
+      "roleSelect": {
+        "noRole": "بدون (مستخدم)",
+        "roleUpdated": "تم تحديث الدور.",
+        "superAdmin": "مسؤول عام"
+      },
+      "activeToggle": {
+        "deactivated": "تم تعطيل الحساب.",
+        "activated": "تم تفعيل الحساب."
+      },
+      "enterpriseStatus": {
+        "EN_ATTENTE": "قيد الانتظار",
+        "APPROUVE": "موافق عليه",
+        "REJETE": "مرفوض"
+      },
+      "detail": {
+        "title": "تفاصيل الحساب",
+        "name": "الاسم",
+        "email": "البريد الإلكتروني",
+        "emailVerified": "البريد الإلكتروني موثّق",
+        "yes": "نعم",
+        "no": "لا",
+        "accountType": "نوع الحساب",
+        "enterprise": "شركة",
+        "individual": "فرد",
+        "companyName": "الاسم التجاري",
+        "enterpriseStatus": "حالة الشركة",
+        "rejectionReason": "سبب الرفض",
+        "document": "المستند",
+        "role": "الدور",
+        "state": "الحالة",
+        "joinedOn": "تاريخ التسجيل",
+        "notAvailable": "—"
+      },
+      "document": {
+        "viewDocument": "عرض المستند",
+        "openError": "تعذر فتح المستند."
+      },
+      "approval": {
+        "rejectPrompt": "سبب الرفض (مرئي لصاحب الطلب):",
+        "approved": "تمت الموافقة على حساب الشركة.",
+        "rejected": "تم رفض حساب الشركة.",
+        "approve": "الموافقة",
+        "reject": "رفض"
+      },
+      "create": {
+        "title": "دليل الحسابات",
+        "subtitle": "إدارة الوصول والأدوار وحالة كل حساب.",
+        "addAccount": "+ إضافة حساب",
+        "fullname": "الاسم الكامل *",
+        "email": "البريد الإلكتروني *",
+        "role": "الدور",
+        "roleDefaultPlaceholder": "عضو (افتراضي)",
+        "noPasswordHint": "لا حاجة لإدخال كلمة مرور: سيتلقى المستخدم بريداً إلكترونياً لتحديد كلمة مروره.",
+        "creating": "جارٍ الإنشاء…",
+        "submit": "إنشاء المستخدم",
+        "created": "تم إنشاء المستخدم — تم إرسال بريد إلكتروني إليه لتحديد كلمة المرور.",
+        "errorGeneric": "حدث خطأ، يُرجى إعادة المحاولة."
+      },
+      "list": {
+        "eyebrow": "إدارة الوصول",
+        "title": "المستخدمون والأدوار",
+        "subtitle": "رؤية موحدة لجميع الحسابات الشخصية والمهنية.",
+        "pendingEnterprises": "{count, plural, other {# شركة بانتظار الموافقة}}",
+        "statTotal": "إجمالي الحسابات",
+        "statActive": "الوصول النشط",
+        "statEnterprise": "حسابات الشركات",
+        "statRoles": "الأدوار المُعدة",
+        "searchPlaceholder": "البحث عن اسم أو بريد إلكتروني أو شركة أو دور…",
+        "typeAll": "الكل",
+        "typeIndividual": "أفراد",
+        "typeEnterprise": "شركات",
+        "stateAll": "الكل",
+        "stateActive": "نشطة",
+        "stateInactive": "معلّقة",
+        "columns": {
+          "account": "الحساب",
+          "profile": "الملف الشخصي",
+          "roleAccess": "الدور والوصول",
+          "created": "الإنشاء",
+          "status": "الحالة"
+        },
+        "emailNotVerified": "البريد الإلكتروني غير موثّق",
+        "noResults": "لا يوجد حساب مطابق للمرشحات المحددة."
+      }
+    },
+    "roles": {
+      "title": "الأدوار والصلاحيات",
+      "newRole": "+ دور جديد",
+      "nameLabel": "اسم الدور *",
+      "permissionsLabel": "الصلاحيات",
+      "submitCreate": "إنشاء الدور",
+      "submitEdit": "حفظ التعديلات",
+      "nameTooShort": "يجب أن يتكوّن اسم الدور من حرفين على الأقل.",
+      "roleUpdated": "تم تحديث الدور.",
+      "roleCreated": "تم إنشاء الدور.",
+      "confirmDelete": "حذف هذا الدور؟ سيفقد المستخدمون الذين يملكونه هذه الصلاحيات.",
+      "roleDeleted": "تم حذف الدور.",
+      "permissionCount": "{count, plural, other {# صلاحية}}",
+      "noRolesYet": "لا يوجد دور حتى الآن."
+    }
   }
 }

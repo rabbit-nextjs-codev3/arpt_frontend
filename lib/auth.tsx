@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, apiFetch, ApiError } from "@/lib/api";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { api, apiFetch, ApiError, SESSION_EXPIRED_EVENT } from "@/lib/api";
 
 export interface AuthUser {
   id: number;
@@ -41,6 +43,7 @@ const ACCESS_KEY = "arpt_access_token";
 const REFRESH_KEY = "arpt_refresh_token";
 
 export function AuthStateProvider({ children }: { children: ReactNode }) {
+  const t = useTranslations("common");
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +61,22 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // apiFetch (lib/api.ts) a déjà purgé les tokens en localStorage au moment
+  // où ce 401 survient — reste à faire retomber l'UI sur un état déconnecté.
+  // Ne notifie que s'il y avait effectivement une session ouverte (sinon un
+  // simple mauvais mot de passe sur le formulaire de connexion déclencherait
+  // aussi ce toast, ce qui n'a pas de sens tant qu'on n'était pas connecté).
+  useEffect(() => {
+    function handleSessionExpired() {
+      setUser((previous) => {
+        if (previous) toast.error(t("sessionExpired"));
+        return null;
+      });
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [t]);
 
   const login = useCallback(async (email: string, password: string, context: "admin" | "public" = "public") => {
     const res = await api.post<LoginResponse>("/auth/login", { email, password, context });

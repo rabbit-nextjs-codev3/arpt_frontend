@@ -18,7 +18,8 @@
     "login": "Log in",
     "logout": "Log out",
     "administration": "Administration",
-    "viewAll": "View all"
+    "viewAll": "View all",
+    "sessionExpired": "Your session has expired, please sign in again."
   },
   "home": {
     "heroAlt": "Telecommunications antenna overlooking Conakry at dusk",
@@ -274,7 +275,20 @@
     "revenueChartTitle": "Sector revenue",
     "revenueChartSubtitle": "In billions of GNF, per quarter",
     "revenueSeriesName": "Revenue (Bn GNF)",
-    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    "months": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ]
   },
   "contactPage": {
     "defaultAddress": "ARPT Building, Koloma Directional Center, Conakry, Republic of Guinea",
@@ -348,13 +362,29 @@
       "submissions": "My submissions",
       "notifications": "Notifications"
     },
-    "claimsColumns": ["Reference", "Type", "Operator", "Date", "Status"],
+    "claimsColumns": [
+      "Reference",
+      "Type",
+      "Operator",
+      "Date",
+      "Status"
+    ],
     "claimsEmpty": "No complaint filed.",
     "fileClaim": "File a complaint",
-    "candidaturesColumns": ["Reference", "Position", "Date", "Status"],
+    "candidaturesColumns": [
+      "Reference",
+      "Position",
+      "Date",
+      "Status"
+    ],
     "candidaturesEmpty": "No ongoing application.",
     "viewOffers": "View offers",
-    "submissionsColumns": ["Reference", "Tender", "Date", "Status"],
+    "submissionsColumns": [
+      "Reference",
+      "Tender",
+      "Date",
+      "Status"
+    ],
     "submissionsEmpty": "No submission recorded.",
     "viewTenders": "View tenders",
     "noNotifications": "No notification."
@@ -377,5 +407,937 @@
     "writeToUs": "Write to us",
     "userPortal": "User portal",
     "copyright": "© {year} ARPT Guinea — All rights reserved."
+  },
+  "admin": {
+    "nav": {
+      "groups": {
+        "overview": "Overview",
+        "users": "Users",
+        "siteContent": "Site content",
+        "analysis": "Analytics",
+        "administration": "Administration"
+      },
+      "tableau": "Dashboard",
+      "reclamations": "Claims",
+      "demandes": "Service requests",
+      "messages": "Contact messages",
+      "pages": "Public pages",
+      "services": "Services",
+      "equipements": "Equipment",
+      "marches": "Tenders",
+      "carrieres": "Careers",
+      "actualites": "News",
+      "communiques": "Press releases",
+      "reglementation": "Regulation",
+      "consultations": "Public consultations",
+      "statistiques": "Statistics",
+      "audit": "Audit log",
+      "utilisateurs": "Users & roles",
+      "config": "Site configuration"
+    },
+    "sidebar": {
+      "connectedToApi": "Connected to the ARPT API",
+      "resizeSidebar": "Resize sidebar"
+    },
+    "login": {
+      "title": "ARPT Administration",
+      "subtitle": "Restricted to Authority staff.",
+      "email": "Email address",
+      "password": "Password",
+      "signingIn": "Signing in…",
+      "signIn": "Sign in",
+      "firstLogin": "First login or forgot your password?",
+      "genericError": "Something went wrong, please try again."
+    },
+    "header": {
+      "searchPlaceholder": "Search a claim, a case, a user…",
+      "auditLog": "Audit log",
+      "messages": "Messages",
+      "superAdmin": "Super Admin",
+      "administrator": "Administrator",
+      "logout": "Log out"
+    },
+    "dashboard": {
+      "subtitle": "Real-time data from the ARPT API.",
+      "overviewSuffix": "Overview",
+      "greeting": "Hello, {name}.",
+      "heroBody": "Here are today's signals to watch to keep user requests and public content on track.",
+      "handleClaims": "Handle claims",
+      "viewLog": "View the log",
+      "kpi": {
+        "openClaims": "Open claims",
+        "serviceRequests": "Service requests",
+        "candidatures": "Applications received",
+        "unreadMessages": "Unread messages"
+      },
+      "sectorObservatory": "Sector observatory · {year}",
+      "sectorKpi": {
+        "mobileSubscribers": "Mobile subscribers",
+        "penetrationRate": "Penetration rate",
+        "activeOperators": "Active operators",
+        "active4GSites": "4G sites in service"
+      },
+      "revenue": {
+        "title": "Declared revenue",
+        "subtitle": "Quarterly trend · billion GNF",
+        "seriesName": "Revenue (Bn GNF)"
+      },
+      "todo": {
+        "title": "To handle today",
+        "subtitle": "Operational priorities",
+        "qualifyClaims": "Claims to qualify",
+        "qualifyClaimsDetail": "{count} open case(s)",
+        "newServiceRequests": "New service requests",
+        "newServiceRequestsDetail": "{count} awaiting processing",
+        "unreadContactMessages": "Unread contact messages",
+        "unreadContactMessagesDetail": "{count} message(s) to handle"
+      },
+      "subscribers": {
+        "title": "Mobile subscriber base",
+        "subtitle": "Monthly trend · million subscribers",
+        "seriesName": "Subscribers (M)"
+      },
+      "contentBreakdown": {
+        "title": "Public content breakdown",
+        "subtitle": "Currently published volumes",
+        "news": "News",
+        "releases": "Press releases",
+        "regulations": "Regulations",
+        "consultations": "Consultations",
+        "openTenders": "Open tenders",
+        "openPositions": "Open positions"
+      },
+      "recentClaims": {
+        "title": "Recent claims",
+        "subtitle": "Latest user reports",
+        "viewAll": "View all",
+        "columns": [
+          "Reference",
+          "Type",
+          "Operator",
+          "Status"
+        ],
+        "empty": "No claims yet."
+      },
+      "recentActivity": {
+        "title": "Recent activity",
+        "subtitle": "Log of the latest actions",
+        "system": "System",
+        "empty": "No activity yet."
+      }
+    },
+    "common": {
+      "loading": "Loading…",
+      "error": "Error, please try again.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "close": "Close",
+      "view": "View",
+      "actions": "Actions",
+      "active": "Active",
+      "inactive": "Disabled",
+      "confirmDelete": "Delete this item?",
+      "thisWeek": "this week",
+      "showingResults": "Showing {start} to {end} of {total} results",
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "reset": "Reset",
+      "selectPlaceholder": "Select…",
+      "category": "Category *",
+      "status": "Status",
+      "requiredCategory": "Please select a category.",
+      "export": "Export",
+      "add": "+ Add",
+      "savedContent": "Content saved.",
+      "noItemsClickAdd": "No items yet. Click \"Add\"."
+    },
+    "reclamations": {
+      "title": "Claims",
+      "subtitle": "Manage user claims and track how they're handled.",
+      "export": "Export",
+      "stats": {
+        "total": "Total",
+        "inProgress": "In progress",
+        "resolved": "Resolved",
+        "rejected": "Rejected"
+      },
+      "searchPlaceholder": "Search a user, an operator…",
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "reset": "Reset",
+      "selectedCount": "{count} selected",
+      "deleteSelection": "Delete selection",
+      "selectPage": "Select page",
+      "columns": {
+        "user": "User",
+        "nature": "Type",
+        "category": "Category",
+        "date": "Date",
+        "status": "Status"
+      },
+      "selectRow": "Select {name}",
+      "natureValue": "Claim",
+      "viewDetails": "View details",
+      "detail": {
+        "operator": "Operator concerned",
+        "fileStatus": "Case status",
+        "description": "Description",
+        "rejectionReason": "Rejection reason",
+        "attachments": "Attachments"
+      },
+      "noResults": "No claims match the filters.",
+      "csv": {
+        "headers": [
+          "First name",
+          "Last name",
+          "Email",
+          "Phone",
+          "Operator",
+          "Category",
+          "Status",
+          "Date"
+        ],
+        "filenamePrefix": "claims"
+      },
+      "confirmDeleteSelection": "Delete {count} claim(s)? This action is irreversible.",
+      "confirmDeleteOne": "Delete the claim from {name}?",
+      "deletedSelection": "Claim(s) deleted.",
+      "deletedOne": "Claim deleted.",
+      "rejectReasonPrompt": "Rejection reason (at least 10 characters):",
+      "rejectReasonRequired": "Rejection reason required (10 characters minimum).",
+      "statusUpdated": "Status updated."
+    },
+    "demandes": {
+      "title": "Service requests",
+      "subtitle": "Manage user requests and track how they're handled.",
+      "export": "Export",
+      "stats": {
+        "total": "Total",
+        "inProgress": "In progress",
+        "processed": "Processed",
+        "rejected": "Rejected"
+      },
+      "searchPlaceholder": "Search a user, a company…",
+      "allStatuses": "All statuses",
+      "allServices": "All services",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "reset": "Reset",
+      "selectedCount": "{count} selected",
+      "deleteSelection": "Delete selection",
+      "selectPage": "Select page",
+      "columns": {
+        "requester": "Requester",
+        "nature": "Type",
+        "service": "Service",
+        "date": "Date",
+        "status": "Status"
+      },
+      "selectRow": "Select {name}",
+      "natureValue": "Service request",
+      "viewDetails": "View details",
+      "detail": {
+        "phone": "Phone",
+        "fileStatus": "Case status",
+        "message": "Message",
+        "attachments": "Attachments",
+        "attachment": "Attachment {index}",
+        "replyByEmail": "Reply by email"
+      },
+      "noResults": "No requests match the filters.",
+      "csv": {
+        "headers": [
+          "Name",
+          "Company",
+          "Email",
+          "Phone",
+          "Service",
+          "Status",
+          "Date"
+        ],
+        "filenamePrefix": "service-requests"
+      },
+      "confirmDeleteSelection": "Delete {count} request(s)? This action is irreversible.",
+      "confirmDeleteOne": "Delete the request from {name}?",
+      "deletedSelection": "Request(s) deleted.",
+      "deletedOne": "Request deleted.",
+      "statusUpdated": "Status updated.",
+      "replyPlaceholder": "Reply to {name}…",
+      "sending": "Sending…",
+      "send": "Send",
+      "replySent": "Reply sent by email."
+    },
+    "audit": {
+      "columns": [
+        "Actor",
+        "Action",
+        "Entity",
+        "Timestamp"
+      ],
+      "system": "System"
+    },
+    "tenders": {
+      "title": "Tenders",
+      "subtitle": "Manage tenders and track submissions.",
+      "newTender": "+ New tender",
+      "editingTitle": "Edit \"{name}\"",
+      "newTenderTitle": "New tender",
+      "stats": {
+        "total": "Total",
+        "open": "Open",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      },
+      "fields": {
+        "code": "Code *",
+        "codePlaceholder": "E.g.: AO-2026-020",
+        "title": "Title *",
+        "description": "Description *",
+        "publicationDate": "Publication date *",
+        "limitDate": "Deadline *",
+        "budget": "Budget (GNF)",
+        "budgetOptional": "Optional",
+        "contactName": "Contact name *",
+        "contactEmail": "Contact email *",
+        "file": "Tender file (PDF, {hint})",
+        "fileHintKeep": "leave empty to keep the current one",
+        "fileHintOptional": "optional"
+      },
+      "searchPlaceholder": "Search a tender…",
+      "columns": {
+        "reference": "Reference",
+        "title": "Title",
+        "category": "Category",
+        "limitDate": "Deadline",
+        "submissions": "Submissions"
+      },
+      "noResults": "No tenders match the filters.",
+      "csv": {
+        "headers": [
+          "Reference",
+          "Title",
+          "Category",
+          "Status",
+          "Deadline"
+        ],
+        "filenamePrefix": "tenders"
+      },
+      "confirmDelete": "Delete the tender \"{name}\"?",
+      "deleted": "Tender deleted.",
+      "updated": "Tender updated.",
+      "created": "Tender created."
+    },
+    "careers": {
+      "title": "Careers",
+      "subtitle": "Manage and track ARPT job openings.",
+      "newOffer": "+ New position",
+      "editingTitle": "Edit \"{name}\"",
+      "newOfferTitle": "New job position",
+      "stats": {
+        "total": "Total positions",
+        "inProgress": "Open",
+        "closed": "Closed",
+        "candidatures": "Applications received"
+      },
+      "fields": {
+        "code": "Code *",
+        "codePlaceholder": "E.g.: REC-2026-11",
+        "position": "Job title *",
+        "description": "Description *",
+        "department": "Department *",
+        "location": "Location",
+        "locationPlaceholder": "E.g.: Conakry",
+        "salary": "Salary",
+        "salaryOptional": "Optional",
+        "publicationDate": "Publication date *",
+        "limitDate": "Deadline *",
+        "contactName": "Contact name *",
+        "contactEmail": "Contact email *"
+      },
+      "searchPlaceholder": "Search a position, a reference, a department…",
+      "statusInProgress": "Open",
+      "statusClosed": "Closed",
+      "columns": {
+        "reference": "Reference",
+        "position": "Position",
+        "department": "Department",
+        "limitDate": "Deadline",
+        "candidates": "Candidates",
+        "publication": "Published"
+      },
+      "isNew": "New",
+      "published": "Published",
+      "noResults": "No positions match the filters.",
+      "csv": {
+        "headers": [
+          "Reference",
+          "Position",
+          "Department",
+          "Category",
+          "Applications",
+          "Deadline"
+        ],
+        "filenamePrefix": "careers"
+      },
+      "confirmDelete": "Delete the position \"{name}\"?",
+      "deleted": "Job position deleted.",
+      "updated": "Job position updated.",
+      "created": "Job position created."
+    },
+    "equipements": {
+      "title": "Equipment",
+      "subtitle": "Manage approved equipment and its status.",
+      "newEquipment": "+ New equipment",
+      "editingTitle": "Edit \"{name}\"",
+      "newEquipmentTitle": "New equipment",
+      "stats": {
+        "total": "Total",
+        "approved": "Approved",
+        "inProgress": "In review",
+        "forbidden": "Forbidden"
+      },
+      "statutOptions": {
+        "HOMOLOGUE": "Approved",
+        "EN_COURS": "Under review",
+        "INTERDIT": "Forbidden"
+      },
+      "fields": {
+        "code": "Code *",
+        "codePlaceholder": "E.g.: EQ-2026-0180",
+        "name": "Equipment name *",
+        "type": "Type *",
+        "typePlaceholder": "E.g.: Data terminal",
+        "status": "Status *",
+        "brand": "Brand *",
+        "model": "Model *",
+        "manufacturer": "Manufacturer *",
+        "homologationNumber": "Approval number",
+        "homologationOptional": "Optional",
+        "validUntil": "Valid until",
+        "certificate": "Certificate (PDF, {hint})",
+        "fileHintKeep": "leave empty to keep the current one",
+        "fileHintOptional": "optional"
+      },
+      "requiredFields": "Please select a status and a category.",
+      "searchPlaceholder": "Search by brand, model or code…",
+      "columns": {
+        "reference": "Reference",
+        "equipment": "Equipment",
+        "brandModel": "Brand / model",
+        "category": "Category",
+        "validity": "Validity"
+      },
+      "noResults": "No equipment matches the filters.",
+      "csv": {
+        "headers": [
+          "Code",
+          "Equipment",
+          "Brand",
+          "Model",
+          "Category",
+          "Status"
+        ],
+        "filenamePrefix": "equipment"
+      },
+      "confirmDelete": "Delete the equipment \"{name}\"?",
+      "deleted": "Equipment deleted.",
+      "updated": "Equipment updated.",
+      "created": "Equipment added successfully."
+    },
+    "statistics": {
+      "kpi": {
+        "mobileSubscribers": "Mobile subscribers",
+        "penetrationRate": "Penetration rate",
+        "activeOperators": "Active operators",
+        "active4GSites": "4G sites in service"
+      },
+      "chart": {
+        "title": "Mobile subscriber base",
+        "subtitle": "Monthly trend · million subscribers",
+        "seriesName": "Subscribers (M)"
+      },
+      "reports": {
+        "columns": [
+          "Report",
+          "Sector",
+          "Year",
+          "Format",
+          "Downloads",
+          "File"
+        ],
+        "open": "Open"
+      },
+      "entries": {
+        "title": "Data points",
+        "subtitle": "Feed the figures shown on the public site (home page, sector observatory).",
+        "newEntry": "+ New data point",
+        "columns": {
+          "period": "Period",
+          "mobileSubscribers": "Mobile subscribers",
+          "mobilePenetration": "Mobile penetration",
+          "internetSubscribers": "Internet subscribers",
+          "mobileMoney": "Mobile money",
+          "jobs": "Jobs"
+        },
+        "noResults": "No data points yet.",
+        "confirmDelete": "Delete this data point?",
+        "deleted": "Data point deleted."
+      },
+      "form": {
+        "year": "Year *",
+        "periodType": "Period type *",
+        "periodMonth": "Monthly (subscribers, penetration…)",
+        "periodQuarter": "Quarterly (revenue)",
+        "month": "Month *",
+        "selectMonth": "Select the month",
+        "quarter": "Quarter *",
+        "selectQuarter": "Select the quarter",
+        "mobileSubscribers": "Mobile subscribers (M)",
+        "mobilePenetration": "Mobile penetration (%)",
+        "internetSubscribers": "Internet subscribers (M)",
+        "internetPenetration": "Internet penetration (%)",
+        "mobileMoneyPenetration": "Mobile money penetration (%)",
+        "salariedJobs": "Salaried jobs",
+        "activeOperators": "Active operators",
+        "active4GSites": "4G sites in service",
+        "revenue": "Revenue (billion GNF)",
+        "createEntry": "Create data point",
+        "updated": "Data point updated.",
+        "created": "Data point created."
+      }
+    },
+    "config": {
+      "phone": "Phone",
+      "phoneSecondary": "Secondary phone",
+      "email": "Contact email",
+      "address": "Address",
+      "hours": "Opening hours",
+      "hoursPlaceholder": "E.g.: Monday – Friday, 8:00 AM – 5:00 PM",
+      "footerText": "Footer text",
+      "saved": "Configuration saved.",
+      "uploading": "Uploading…",
+      "imageUploadError": "Error uploading the image.",
+      "fileUploadError": "Error uploading the file.",
+      "viewCurrentFile": "View current file",
+      "appearance": {
+        "title": "Site appearance",
+        "subtitle": "Customize the logo and colors shown across the entire public site.",
+        "logo": "Site logo",
+        "logoHint": "Replaces the default logo in the public site's header and footer.",
+        "colorsTitle": "Platform colors",
+        "colorsHint": "Pick colors with enough contrast against white text — a preview is shown below.",
+        "primary": "Primary color",
+        "secondary": "Secondary color",
+        "accent": "Accent color",
+        "success": "Success color",
+        "warning": "Warning color",
+        "danger": "Danger color",
+        "background": "Background color",
+        "surface": "Surface color",
+        "textPrimary": "Primary text color",
+        "textSecondary": "Secondary text color",
+        "preview": "Preview",
+        "resetColors": "Reset to default colors",
+        "colorsReset": "Colors reset."
+      }
+    },
+    "publicPages": {
+      "title": "Public pages",
+      "pages": {
+        "home": "Home",
+        "about": "The Authority · About",
+        "claims": "Claims",
+        "regulation": "Regulation",
+        "equipment": "Equipment",
+        "tenders": "Tenders",
+        "careers": "Careers",
+        "news": "News",
+        "services": "Services",
+        "contact": "Contact",
+        "statistics": "Statistics",
+        "consultations": "Public consultations"
+      },
+      "editorTitle": "Site editor",
+      "pageLabel": "Page to manage",
+      "selectPageHint": "Select a page to edit only its content.",
+      "guide": {
+        "title": "Consumer rights guide (PDF)",
+        "subtitle": "The \"Download the guide\" button only appears on the site once a file is uploaded here.",
+        "viewCurrent": "View current guide",
+        "updated": "Guide updated.",
+        "uploadError": "Error uploading the file.",
+        "uploading": "Uploading…"
+      }
+    },
+    "news": {
+      "title": "Latest news",
+      "subtitle": "Find and manage the site's news articles.",
+      "newArticle": "+ New article",
+      "editingTitle": "Edit \"{name}\"",
+      "newArticleTitle": "New article",
+      "searchPlaceholder": "Search a news article…",
+      "statusPublished": "Published",
+      "statusDraft": "Draft",
+      "sortRecent": "Date (recent)",
+      "sortViews": "Most viewed",
+      "fields": {
+        "articleTitle": "Title *",
+        "content": "Content *",
+        "category": "Category",
+        "categoryPlaceholder": "E.g.: Regulation, Tenders, Event…",
+        "image": "Image {hint}",
+        "imageHintKeep": "(leave empty to keep the current one)",
+        "publishImmediately": "Publish immediately"
+      },
+      "imageRequired": "An image is required.",
+      "columns": {
+        "title": "Title",
+        "category": "Category",
+        "date": "Date",
+        "views": "Views",
+        "status": "Status"
+      },
+      "readMore": "Read more",
+      "viewOnSite": "View on site",
+      "noResults": "No news match these filters.",
+      "csv": {
+        "headers": [
+          "Title",
+          "Category",
+          "Date",
+          "Views",
+          "Status"
+        ],
+        "filename": "arpt-news.csv"
+      },
+      "confirmDelete": "Delete the article \"{name}\"?",
+      "deleted": "Article deleted.",
+      "updated": "Article updated.",
+      "created": "Article created."
+    },
+    "communiques": {
+      "title": "Press releases",
+      "subtitle": "Manage the press releases published on the site.",
+      "newRelease": "+ New release",
+      "editingTitle": "Edit \"{name}\"",
+      "newReleaseTitle": "New press release",
+      "stats": {
+        "total": "Total",
+        "withAttachment": "With attachment",
+        "withoutAttachment": "Without attachment"
+      },
+      "fields": {
+        "title": "Title *",
+        "content": "Content *",
+        "file": "Attached document (PDF, {hint})",
+        "fileHintKeep": "leave empty to keep the current one",
+        "fileHintOptional": "optional"
+      },
+      "viewCurrentDocument": "View current document",
+      "searchPlaceholder": "Search a press release…",
+      "columns": {
+        "title": "Title",
+        "date": "Date"
+      },
+      "noResults": "No press releases match the filters.",
+      "csv": {
+        "headers": [
+          "Title",
+          "Attachment",
+          "Date"
+        ],
+        "filenamePrefix": "press-releases",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "confirmDelete": "Delete the press release \"{name}\"?",
+      "deleted": "Press release deleted.",
+      "updated": "Press release updated.",
+      "created": "Press release created."
+    },
+    "services": {
+      "title": "Services",
+      "subtitle": "Manage the services offered to users.",
+      "newService": "+ New service",
+      "editingTitle": "Edit \"{name}\"",
+      "newServiceTitle": "New service",
+      "stats": {
+        "total": "Total",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Service name *",
+        "description": "Description",
+        "delay": "Processing time",
+        "delayPlaceholder": "E.g.: 5 business days",
+        "cost": "Cost (GNF)",
+        "costOptional": "Optional",
+        "requiredDocuments": "Required documents (comma-separated)",
+        "requiredDocumentsPlaceholder": "E.g.: ID card, Proof of address",
+        "image": "Image {hint}",
+        "imageHintKeep": "(leave empty to keep the current one)",
+        "imageHintOptional": "(optional)",
+        "file": "Downloadable form (PDF, {hint})",
+        "fileHintKeep": "leave empty to keep the current one",
+        "fileHintOptional": "optional",
+        "activeLabel": "Active service"
+      },
+      "viewCurrentFile": "View current file",
+      "searchPlaceholder": "Search a service…",
+      "allStates": "All states",
+      "columns": {
+        "service": "Service",
+        "delay": "Delay",
+        "state": "State"
+      },
+      "noResults": "No services match the filters.",
+      "csv": {
+        "headers": [
+          "Service",
+          "Delay",
+          "Cost",
+          "State"
+        ],
+        "filenamePrefix": "services"
+      },
+      "confirmDelete": "Delete the service \"{name}\"?",
+      "deleted": "Service deleted.",
+      "updated": "Service updated.",
+      "created": "Service created."
+    },
+    "messages": {
+      "inbox": "Inbox",
+      "receivedCount": "{count, plural, one {# message received} other {# messages received}}",
+      "searchPlaceholder": "Search a message…",
+      "filterAll": "All",
+      "filterUnread": "Unread",
+      "filterArchived": "Archived",
+      "unreadLabel": "Unread message",
+      "archived": "Archived",
+      "new": "New",
+      "reply": "Reply",
+      "closeReply": "Close reply",
+      "markUnread": "Mark as unread",
+      "markRead": "Mark as read",
+      "markAs": "Mark as {state}",
+      "stateUnread": "unread",
+      "stateRead": "read",
+      "unarchive": "Unarchive",
+      "archive": "Archive",
+      "replyTo": "Reply to {name}",
+      "replyPlaceholder": "Reply to {name}…",
+      "sending": "Sending…",
+      "sendByEmail": "Send by email",
+      "replySent": "Reply sent by email.",
+      "emptyInbox": "Your inbox is empty.",
+      "noSearchResults": "No messages match this search.",
+      "resetFilters": "Reset filters",
+      "delete": "Delete",
+      "confirmDelete": "Delete this message? This action is permanent.",
+      "deleted": "Message deleted."
+    },
+    "regulation": {
+      "title": "Regulation",
+      "subtitle": "Manage the regulatory texts published on the site.",
+      "newText": "+ New text",
+      "editingTitle": "Edit \"{name}\"",
+      "newTextTitle": "New regulatory text",
+      "stats": {
+        "total": "Total",
+        "totalViews": "Total views",
+        "featured": "Featured",
+        "categories": "Categories"
+      },
+      "fields": {
+        "name": "Text name *",
+        "description": "Description",
+        "descriptionPlaceholder": "2-3 line summary of this text's content, shown to users on the Regulation page.",
+        "sitePreview": "Site preview",
+        "noDescriptionYet": "No description entered yet.",
+        "category": "Category *",
+        "categoryPlaceholder": "E.g.: Law, Decree, Order…",
+        "publicationDate": "Publication date *",
+        "featureLabel": "Feature in \"Most viewed texts\" (home page)",
+        "file": "File (PDF) {hint}",
+        "fileHintKeep": "(leave empty to keep the current one)"
+      },
+      "viewCurrentFile": "View current file",
+      "fileRequired": "The text's file is required.",
+      "searchPlaceholder": "Search a text…",
+      "columns": {
+        "text": "Text",
+        "category": "Category",
+        "format": "Format",
+        "publishedOn": "Published on",
+        "views": "Views"
+      },
+      "noResults": "No texts match the filters.",
+      "csv": {
+        "headers": [
+          "Text",
+          "Category",
+          "Format",
+          "Views",
+          "Publication date"
+        ],
+        "filenamePrefix": "regulation"
+      },
+      "confirmDelete": "Delete the text \"{name}\"?",
+      "deleted": "Regulatory text deleted.",
+      "updated": "Regulatory text updated.",
+      "created": "Regulatory text created."
+    },
+    "consultations": {
+      "title": "Public consultations",
+      "subtitle": "Manage the consultations open for public feedback.",
+      "newConsultation": "+ New consultation",
+      "editingTitle": "Edit \"{name}\"",
+      "newConsultationTitle": "New public consultation",
+      "stats": {
+        "total": "Total",
+        "open": "Open",
+        "closed": "Closed"
+      },
+      "fields": {
+        "title": "Title *",
+        "description": "Description *",
+        "status": "Status",
+        "startDate": "Start date *",
+        "endDate": "End date *",
+        "contactEmail": "Contact email *",
+        "file": "Attached document (PDF, {hint})",
+        "fileHintKeep": "leave empty to keep the current one",
+        "fileHintOptional": "optional"
+      },
+      "viewCurrentDocument": "View current document",
+      "searchPlaceholder": "Search a consultation…",
+      "columns": {
+        "consultation": "Consultation",
+        "period": "Period"
+      },
+      "noResults": "No consultations match the filters.",
+      "csv": {
+        "headers": [
+          "Title",
+          "Status",
+          "Start",
+          "End"
+        ],
+        "filenamePrefix": "consultations"
+      },
+      "confirmDelete": "Delete the consultation \"{name}\"?",
+      "deleted": "Public consultation deleted.",
+      "updated": "Public consultation updated.",
+      "created": "Public consultation created."
+    },
+    "users": {
+      "roleSelect": {
+        "noRole": "None (member)",
+        "roleUpdated": "Role updated.",
+        "superAdmin": "Super Admin"
+      },
+      "activeToggle": {
+        "deactivated": "Account deactivated.",
+        "activated": "Account activated."
+      },
+      "enterpriseStatus": {
+        "EN_ATTENTE": "Pending",
+        "APPROUVE": "Approved",
+        "REJETE": "Rejected"
+      },
+      "detail": {
+        "title": "Account details",
+        "name": "Name",
+        "email": "Email",
+        "emailVerified": "Email verified",
+        "yes": "Yes",
+        "no": "No",
+        "accountType": "Account type",
+        "enterprise": "Enterprise",
+        "individual": "Individual",
+        "companyName": "Company name",
+        "enterpriseStatus": "Enterprise status",
+        "rejectionReason": "Rejection reason",
+        "document": "Document",
+        "role": "Role",
+        "state": "Status",
+        "joinedOn": "Joined on",
+        "notAvailable": "—"
+      },
+      "document": {
+        "viewDocument": "View document",
+        "openError": "Unable to open the document."
+      },
+      "approval": {
+        "rejectPrompt": "Rejection reason (visible to the applicant):",
+        "approved": "Enterprise account approved.",
+        "rejected": "Enterprise account rejected.",
+        "approve": "Approve",
+        "reject": "Reject"
+      },
+      "create": {
+        "title": "Account directory",
+        "subtitle": "Manage access, roles and the status of each account.",
+        "addAccount": "+ Add an account",
+        "fullname": "Full name *",
+        "email": "Email address *",
+        "role": "Role",
+        "roleDefaultPlaceholder": "Member (default)",
+        "noPasswordHint": "No password to enter: the user will receive an email to set their own.",
+        "creating": "Creating…",
+        "submit": "Create user",
+        "created": "User created — an email was sent so they can set their password.",
+        "errorGeneric": "An error occurred, please try again."
+      },
+      "list": {
+        "eyebrow": "Access administration",
+        "title": "Users & roles",
+        "subtitle": "A single view of all personal and business accounts.",
+        "pendingEnterprises": "{count, plural, one {# enterprise to review} other {# enterprises to review}}",
+        "statTotal": "Total accounts",
+        "statActive": "Active accesses",
+        "statEnterprise": "Enterprise accounts",
+        "statRoles": "Configured roles",
+        "searchPlaceholder": "Search a name, email, company or role…",
+        "typeAll": "All",
+        "typeIndividual": "Individuals",
+        "typeEnterprise": "Enterprises",
+        "stateAll": "All",
+        "stateActive": "Active",
+        "stateInactive": "Suspended",
+        "columns": {
+          "account": "Account",
+          "profile": "Profile",
+          "roleAccess": "Role & access",
+          "created": "Created",
+          "status": "Status"
+        },
+        "emailNotVerified": "Email not verified",
+        "noResults": "No accounts match the selected filters."
+      }
+    },
+    "roles": {
+      "title": "Roles & permissions",
+      "newRole": "+ New role",
+      "nameLabel": "Role name *",
+      "permissionsLabel": "Permissions",
+      "submitCreate": "Create role",
+      "submitEdit": "Save changes",
+      "nameTooShort": "The role name must be at least 2 characters long.",
+      "roleUpdated": "Role updated.",
+      "roleCreated": "Role created.",
+      "confirmDelete": "Delete this role? Users who have it will lose these permissions.",
+      "roleDeleted": "Role deleted.",
+      "permissionCount": "{count, plural, one {# permission} other {# permissions}}",
+      "noRolesYet": "No roles yet."
+    }
   }
 }

@@ -9,11 +9,17 @@ import { Button } from "@/components/ui/button";
 import { AuthTrigger } from "@/components/site/AuthModal";
 import { LocaleSwitcher } from "@/components/site/LocaleSwitcher";
 import { useAuth } from "@/lib/auth";
+import { useApiOne } from "@/lib/hooks";
+
+interface SiteConfigPublic {
+  logoKey?: string | null;
+}
 
 export function Header() {
   const [ouvert, setOuvert] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { data: config } = useApiOne<SiteConfigPublic>("/site-config");
   const t = useTranslations("nav");
   const tc = useTranslations("common");
 
@@ -36,9 +42,14 @@ export function Header() {
 
       <div className="container-content flex items-center justify-between gap-4 py-3">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-md bg-institution text-primary-foreground">
-            <ShieldCheck className="size-6" aria-hidden />
-          </span>
+          {config?.logoKey ? (
+            // eslint-disable-next-line @next/next/no-img-element -- logo provenant de MinIO (hôte dynamique, non listable dans next.config.js images.domains)
+            <img src={config.logoKey} alt="ARPT" className="size-11 shrink-0 rounded-md object-contain" />
+          ) : (
+            <span className="grid size-11 shrink-0 place-items-center rounded-md bg-institution text-primary-foreground">
+              <ShieldCheck className="size-6" aria-hidden />
+            </span>
+          )}
           <span className="min-w-0">
             <span className="block font-heading text-lg leading-none font-bold tracking-tight">ARPT</span>
             <span className="block truncate text-[0.7rem] text-muted-foreground">

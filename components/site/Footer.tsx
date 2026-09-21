@@ -42,6 +42,7 @@ function YoutubeIcon({ className }: { className?: string }) {
 
 interface SiteConfigPublic {
   socialLinks: { facebook?: string; twitter?: string; linkedin?: string; youtube?: string };
+  logoKey?: string | null;
 }
 
 export function Footer() {
@@ -88,7 +89,12 @@ export function Footer() {
     <footer className="mt-auto bg-institution text-primary-foreground">
       <div className="container-content grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Image src="/images/arpt.png" alt="ARPT" width={140} height={56} className="h-14 w-auto" style={{ width: "auto" }} />
+          {config?.logoKey ? (
+            // eslint-disable-next-line @next/next/no-img-element -- logo provenant de MinIO (hôte dynamique, non listable dans next.config.js images.domains)
+            <img src={config.logoKey} alt="ARPT" className="h-14 w-auto" />
+          ) : (
+            <Image src="/images/arpt.png" alt="ARPT" width={140} height={56} className="h-14 w-auto" style={{ width: "auto" }} />
+          )}
           <p className="mt-4 text-sm leading-relaxed opacity-85">{t("description")}</p>
           <div className="mt-5 flex gap-2">
             {reseaux.map((r) => (

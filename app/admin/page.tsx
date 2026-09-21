@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   AlertCircle,
   Archive,
@@ -65,50 +66,52 @@ import { formaterDate } from "@/data/mock";
 
 interface MenuItem {
   id: string;
-  label: string;
   icon: typeof LayoutDashboard;
   badgeKey?: "reclamationsOuvertes" | "demandesNouvelles" | "messagesNonLus";
 }
 
-const menuGroups: { titre: string; items: MenuItem[] }[] = [
+// titreKey/id résolus via t(`nav.groups.${titreKey}`) / t(`nav.${id}`)
+// (namespace "admin", voir messages/*.json) plutôt que du texte en dur —
+// menuGroups vit hors composant donc ne peut pas appeler useTranslations().
+const menuGroups: { titreKey: string; items: MenuItem[] }[] = [
   {
-    titre: "Vue d'ensemble",
-    items: [{ id: "tableau", label: "Tableau de bord", icon: LayoutDashboard }],
+    titreKey: "overview",
+    items: [{ id: "tableau", icon: LayoutDashboard }],
   },
   {
-    titre: "Usagers",
+    titreKey: "users",
     items: [
-      { id: "reclamations", label: "Réclamations", icon: MessageSquareWarning, badgeKey: "reclamationsOuvertes" },
-      { id: "demandes", label: "Demandes de service", icon: FileText, badgeKey: "demandesNouvelles" },
-      { id: "messages", label: "Messages de contact", icon: Inbox, badgeKey: "messagesNonLus" },
+      { id: "reclamations", icon: MessageSquareWarning, badgeKey: "reclamationsOuvertes" },
+      { id: "demandes", icon: FileText, badgeKey: "demandesNouvelles" },
+      { id: "messages", icon: Inbox, badgeKey: "messagesNonLus" },
     ],
   },
   {
-    titre: "Contenu du site",
+    titreKey: "siteContent",
     items: [
-      { id: "pages", label: "Pages publiques", icon: LayoutTemplate },
-      { id: "services", label: "Services", icon: Layers },
-      { id: "equipements", label: "Équipements", icon: Radio },
-      { id: "marches", label: "Appels d'offres", icon: Gavel },
-      { id: "carrieres", label: "Recrutements", icon: Briefcase },
-      { id: "actualites", label: "Actualités", icon: Newspaper },
-      { id: "communiques", label: "Communiqués", icon: FileCheck2 },
-      { id: "reglementation", label: "Réglementation", icon: ScrollText },
-      { id: "consultations", label: "Consultations publiques", icon: Vote },
+      { id: "pages", icon: LayoutTemplate },
+      { id: "services", icon: Layers },
+      { id: "equipements", icon: Radio },
+      { id: "marches", icon: Gavel },
+      { id: "carrieres", icon: Briefcase },
+      { id: "actualites", icon: Newspaper },
+      { id: "communiques", icon: FileCheck2 },
+      { id: "reglementation", icon: ScrollText },
+      { id: "consultations", icon: Vote },
     ],
   },
   {
-    titre: "Analyse",
+    titreKey: "analysis",
     items: [
-      { id: "statistiques", label: "Statistiques", icon: BarChart3 },
-      { id: "audit", label: "Journal d'audit", icon: History },
+      { id: "statistiques", icon: BarChart3 },
+      { id: "audit", icon: History },
     ],
   },
   {
-    titre: "Administration",
+    titreKey: "administration",
     items: [
-      { id: "utilisateurs", label: "Utilisateurs & rôles", icon: Users },
-      { id: "config", label: "Configuration du site", icon: Settings },
+      { id: "utilisateurs", icon: Users },
+      { id: "config", icon: Settings },
     ],
   },
 ];
@@ -369,6 +372,7 @@ function NotificationsBell({ onNavigate }: { onNavigate: (section: string) => vo
 }
 
 export default function Admin() {
+  const t = useTranslations("admin");
   const [section, setSection] = useState<string>("tableau");
   const courant = menus.find((m) => m.id === section) ?? menus[0];
   const { user, loading: authLoading, logout } = useAuth();
@@ -389,10 +393,10 @@ export default function Admin() {
 
   const kpisReels = overview
     ? [
-        { libelle: "Réclamations ouvertes", valeur: overview.reclamations?.ouvertes ?? "—" },
-        { libelle: "Demandes de service", valeur: overview.demandesService?.total ?? "—" },
-        { libelle: "Candidatures reçues", valeur: overview.candidatures?.total ?? "—" },
-        { libelle: "Messages non lus", valeur: overview.messagesContact?.nonLus ?? "—" },
+        { libelle: t("dashboard.kpi.openClaims"), valeur: overview.reclamations?.ouvertes ?? "—" },
+        { libelle: t("dashboard.kpi.serviceRequests"), valeur: overview.demandesService?.total ?? "—" },
+        { libelle: t("dashboard.kpi.candidatures"), valeur: overview.candidatures?.total ?? "—" },
+        { libelle: t("dashboard.kpi.unreadMessages"), valeur: overview.messagesContact?.nonLus ?? "—" },
       ]
     : [];
 
@@ -413,10 +417,10 @@ export default function Admin() {
   // properties of null).
   const indicateursSectoriels = overviewStats?.kpis
     ? [
-        { libelle: "Abonnés mobiles", valeur: overviewStats.kpis.subscribersMillion != null ? `${overviewStats.kpis.subscribersMillion.toLocaleString("fr-FR")} M` : "—", icon: Smartphone },
-        { libelle: "Taux de pénétration", valeur: overviewStats.kpis.penetrationRate != null ? `${overviewStats.kpis.penetrationRate} %` : "—", icon: TrendingUp },
-        { libelle: "Opérateurs actifs", valeur: overviewStats.kpis.activeOperators != null ? `${overviewStats.kpis.activeOperators}` : "—", icon: Users },
-        { libelle: "Sites 4G en service", valeur: overviewStats.kpis.active4GSites != null ? overviewStats.kpis.active4GSites.toLocaleString("fr-FR") : "—", icon: TowerControl },
+        { libelle: t("dashboard.sectorKpi.mobileSubscribers"), valeur: overviewStats.kpis.subscribersMillion != null ? `${overviewStats.kpis.subscribersMillion.toLocaleString("fr-FR")} M` : "—", icon: Smartphone },
+        { libelle: t("dashboard.sectorKpi.penetrationRate"), valeur: overviewStats.kpis.penetrationRate != null ? `${overviewStats.kpis.penetrationRate} %` : "—", icon: TrendingUp },
+        { libelle: t("dashboard.sectorKpi.activeOperators"), valeur: overviewStats.kpis.activeOperators != null ? `${overviewStats.kpis.activeOperators}` : "—", icon: Users },
+        { libelle: t("dashboard.sectorKpi.active4GSites"), valeur: overviewStats.kpis.active4GSites != null ? overviewStats.kpis.active4GSites.toLocaleString("fr-FR") : "—", icon: TowerControl },
       ]
     : [];
 
@@ -428,20 +432,20 @@ export default function Admin() {
   const actionsReelles = overview
     ? [
         {
-          label: "Réclamations à qualifier",
-          detail: `${overview.reclamations?.ouvertes ?? 0} dossier(s) ouvert(s)`,
+          label: t("dashboard.todo.qualifyClaims"),
+          detail: t("dashboard.todo.qualifyClaimsDetail", { count: overview.reclamations?.ouvertes ?? 0 }),
           icon: AlertCircle,
           tone: "text-warning",
         },
         {
-          label: "Demandes de service nouvelles",
-          detail: `${overview.demandesService?.nouvelles ?? 0} en attente de traitement`,
+          label: t("dashboard.todo.newServiceRequests"),
+          detail: t("dashboard.todo.newServiceRequestsDetail", { count: overview.demandesService?.nouvelles ?? 0 }),
           icon: Clock3,
           tone: "text-primary",
         },
         {
-          label: "Messages de contact non lus",
-          detail: `${overview.messagesContact?.nonLus ?? 0} message(s) à traiter`,
+          label: t("dashboard.todo.unreadContactMessages"),
+          detail: t("dashboard.todo.unreadContactMessagesDetail", { count: overview.messagesContact?.nonLus ?? 0 }),
           icon: Newspaper,
           tone: "text-chart-2",
         },
@@ -449,7 +453,7 @@ export default function Admin() {
     : [];
 
   if (authLoading) {
-    return <div className="grid h-full place-items-center text-sm text-muted-foreground">Chargement…</div>;
+    return <div className="grid h-full place-items-center text-sm text-muted-foreground">{t("common.loading")}</div>;
   }
 
   // Doit rester cohérent avec la définition d'un "compte admin" côté backend
@@ -470,16 +474,16 @@ export default function Admin() {
             <div className="flex items-center gap-3">
               <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">A</div>
               <div className="min-w-0">
-                <p className="font-heading text-sm font-semibold tracking-wide uppercase">Administration</p>
+                <p className="font-heading text-sm font-semibold tracking-wide uppercase">{t("nav.groups.administration")}</p>
                 <p className="mt-1 truncate text-xs opacity-60">{user.email}</p>
               </div>
             </div>
           </div>
           <nav className="grid gap-4 px-3 py-5">
             {menuGroups.map((group) => (
-              <div key={group.titre} className="grid gap-1">
+              <div key={group.titreKey} className="grid gap-1">
                 <p className="px-3 pb-1 text-[10px] font-semibold tracking-[0.14em] text-sidebar-foreground/45 uppercase">
-                  {group.titre}
+                  {t(`nav.groups.${group.titreKey}`)}
                 </p>
                 {group.items.map((menu) => {
                   const badgeValue = menu.badgeKey
@@ -505,7 +509,7 @@ export default function Admin() {
                       )}
                     >
                       <menu.icon className="size-4 shrink-0" aria-hidden />
-                      <span className="truncate">{menu.label}</span>
+                      <span className="truncate">{t(`nav.${menu.id}`)}</span>
                       {!!badgeValue && (
                         <span className="ml-auto rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-gold-foreground">
                           {badgeValue}
@@ -518,11 +522,11 @@ export default function Admin() {
             ))}
           </nav>
           <div className="mt-auto border-t border-sidebar-border px-5 py-5">
-            <div className="flex items-center gap-2 text-xs text-sidebar-foreground/70"><span className="size-2 rounded-full bg-sidebar-primary" />Connecté à l'API ARPT</div>
+            <div className="flex items-center gap-2 text-xs text-sidebar-foreground/70"><span className="size-2 rounded-full bg-sidebar-primary" />{t("sidebar.connectedToApi")}</div>
           </div>
         </aside>
       </Panel>
-      <Separator className="group relative w-2 shrink-0 bg-border/70 transition-colors hover:bg-primary/40 focus-visible:bg-primary/60" aria-label="Redimensionner la barre latérale">
+      <Separator className="group relative w-2 shrink-0 bg-border/70 transition-colors hover:bg-primary/40 focus-visible:bg-primary/60" aria-label={t("sidebar.resizeSidebar")}>
         <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
       </Separator>
       <Panel id="content" defaultSize="82" minSize="55" className="h-full min-w-0 overflow-y-auto">
@@ -532,7 +536,7 @@ export default function Admin() {
             <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
               type="text"
-              placeholder="Rechercher une réclamation, un dossier, un usager…"
+              placeholder={t("header.searchPlaceholder")}
               className="w-full border-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
@@ -540,7 +544,7 @@ export default function Admin() {
             <button
               type="button"
               onClick={() => setSection("audit")}
-              title="Journal d'audit"
+              title={t("header.auditLog")}
               className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
             >
               <History className="size-[18px]" aria-hidden />
@@ -548,7 +552,7 @@ export default function Admin() {
             <button
               type="button"
               onClick={() => setSection("messages")}
-              title="Messages"
+              title={t("header.messages")}
               className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
             >
               <MessageSquare className="size-[18px]" aria-hidden />
@@ -571,7 +575,7 @@ export default function Admin() {
                 <span className="hidden text-left sm:block">
                   <span className="block text-xs leading-tight font-semibold">{user.fullname}</span>
                   <span className="block text-[11px] leading-tight text-muted-foreground">
-                    {user.isSuperuser ? "Super Admin" : (user.role?.name ?? "Administrateur")}
+                    {user.isSuperuser ? t("header.superAdmin") : (user.role?.name ?? t("header.administrator"))}
                   </span>
                 </span>
                 <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
@@ -586,7 +590,7 @@ export default function Admin() {
                     onClick={() => logout()}
                     className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
                   >
-                    <LogOut className="size-4" aria-hidden /> Déconnexion
+                    <LogOut className="size-4" aria-hidden /> {t("header.logout")}
                   </button>
                 </div>
               )}
@@ -597,8 +601,8 @@ export default function Admin() {
         <div className="min-w-0 bg-surface-fade p-6 lg:p-10">
           <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-bold">{courant.label}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Données en temps réel depuis l'API ARPT.</p>
+              <h1 className="truncate text-2xl font-bold">{t(`nav.${courant.id}`)}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
             </div>
 
           </header>
@@ -608,13 +612,13 @@ export default function Admin() {
               <section className="relative overflow-hidden rounded-2xl bg-institution p-6 text-primary-foreground shadow-lifted lg:p-8">
                 <div className="relative z-1 max-w-2xl">
                   <p className="text-xs font-semibold tracking-[0.16em] text-primary-foreground/65 uppercase">
-                    {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} · Vue d'ensemble
+                    {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} · {t("dashboard.overviewSuffix")}
                   </p>
-                  <h2 className="mt-3 font-heading text-2xl font-semibold lg:text-3xl">Bonjour, {user.fullname.split(" ")[0]}.</h2>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/75">Voici les signaux à surveiller aujourd'hui pour garder les demandes usagers et les contenus publics sur la bonne trajectoire.</p>
+                  <h2 className="mt-3 font-heading text-2xl font-semibold lg:text-3xl">{t("dashboard.greeting", { name: user.fullname.split(" ")[0] })}</h2>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/75">{t("dashboard.heroBody")}</p>
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <button onClick={() => setSection("reclamations")} className="inline-flex items-center gap-2 rounded-md bg-sidebar-primary px-4 py-2.5 text-sm font-semibold text-sidebar-primary-foreground transition-transform hover:-translate-y-0.5">Traiter les réclamations <ArrowUpRight className="size-4" aria-hidden /></button>
-                    <button onClick={() => setSection("audit")} className="inline-flex items-center gap-2 rounded-md border border-primary-foreground/25 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/10">Voir le journal <ChevronRight className="size-4" aria-hidden /></button>
+                    <button onClick={() => setSection("reclamations")} className="inline-flex items-center gap-2 rounded-md bg-sidebar-primary px-4 py-2.5 text-sm font-semibold text-sidebar-primary-foreground transition-transform hover:-translate-y-0.5">{t("dashboard.handleClaims")} <ArrowUpRight className="size-4" aria-hidden /></button>
+                    <button onClick={() => setSection("audit")} className="inline-flex items-center gap-2 rounded-md border border-primary-foreground/25 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/10">{t("dashboard.viewLog")} <ChevronRight className="size-4" aria-hidden /></button>
                   </div>
                 </div>
                 <div className="absolute -right-12 -bottom-24 size-64 rounded-full border-24 border-primary-foreground/10" aria-hidden />
@@ -635,7 +639,7 @@ export default function Admin() {
               {indicateursSectoriels.length > 0 && (
                 <div>
                   <p className="mb-3 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                    Observatoire du secteur · {overviewStats?.year}
+                    {t("dashboard.sectorObservatory", { year: overviewStats?.year ?? "" })}
                   </p>
                   <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {indicateursSectoriels.map((k) => (
@@ -655,8 +659,8 @@ export default function Admin() {
                 <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h2 className="font-heading text-lg font-semibold">Chiffre d'affaires déclaré</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">Évolution trimestrielle · milliards GNF</p>
+                      <h2 className="font-heading text-lg font-semibold">{t("dashboard.revenue.title")}</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.revenue.subtitle")}</p>
                     </div>
                     {variationCA !== null && (
                       <span
@@ -685,7 +689,7 @@ export default function Admin() {
                             fontSize: "0.8rem",
                           }}
                         />
-                        <Bar dataKey="ca" name="CA (Mds GNF)" fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="ca" name={t("dashboard.revenue.seriesName")} fill="var(--color-chart-1)" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -694,8 +698,8 @@ export default function Admin() {
                 <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h2 className="font-heading text-lg font-semibold">À traiter aujourd'hui</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">Priorités opérationnelles</p>
+                      <h2 className="font-heading text-lg font-semibold">{t("dashboard.todo.title")}</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.todo.subtitle")}</p>
                     </div>
                     <span className="grid size-8 place-items-center rounded-full bg-warning/15 text-sm font-bold text-warning-foreground">
                       {(overview?.reclamations?.ouvertes ?? 0) +
@@ -711,8 +715,8 @@ export default function Admin() {
 
               <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <h2 className="font-heading text-lg font-semibold">Parc d'abonnés mobiles</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Évolution mensuelle · millions d'abonnés</p>
+                  <h2 className="font-heading text-lg font-semibold">{t("dashboard.subscribers.title")}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.subscribers.subtitle")}</p>
                   <div className="mt-6 h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={abonnesReel}>
@@ -733,32 +737,32 @@ export default function Admin() {
                             fontSize: "0.8rem",
                           }}
                         />
-                        <Area type="monotone" dataKey="abonnes" name="Abonnés (M)" stroke="var(--color-chart-1)" strokeWidth={2} fill="url(#grad-abonnes-admin)" />
+                        <Area type="monotone" dataKey="abonnes" name={t("dashboard.subscribers.seriesName")} stroke="var(--color-chart-1)" strokeWidth={2} fill="url(#grad-abonnes-admin)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <h2 className="font-heading text-lg font-semibold">Répartition du contenu public</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Volumes actuellement en ligne</p>
+                  <h2 className="font-heading text-lg font-semibold">{t("dashboard.contentBreakdown.title")}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.contentBreakdown.subtitle")}</p>
                   <dl className="mt-5 grid grid-cols-2 gap-4">
-                    <ContenuStat label="Actualités" value={newsReelles.length} icon={Newspaper} />
-                    <ContenuStat label="Communiqués" value={communiquesReels.length} icon={FileCheck2} />
-                    <ContenuStat label="Réglementations" value={reglementationsReelles.length} icon={ScrollText} />
-                    <ContenuStat label="Consultations" value={consultationsReelles.length} icon={Vote} />
-                    <ContenuStat label="AO ouverts" value={tendersReels.filter((t) => t.status === "OUVERT").length} icon={Gavel} />
-                    <ContenuStat label="Postes ouverts" value={careersReels.length} icon={Briefcase} />
+                    <ContenuStat label={t("dashboard.contentBreakdown.news")} value={newsReelles.length} icon={Newspaper} />
+                    <ContenuStat label={t("dashboard.contentBreakdown.releases")} value={communiquesReels.length} icon={FileCheck2} />
+                    <ContenuStat label={t("dashboard.contentBreakdown.regulations")} value={reglementationsReelles.length} icon={ScrollText} />
+                    <ContenuStat label={t("dashboard.contentBreakdown.consultations")} value={consultationsReelles.length} icon={Vote} />
+                    <ContenuStat label={t("dashboard.contentBreakdown.openTenders")} value={tendersReels.filter((tender) => tender.status === "OUVERT").length} icon={Gavel} />
+                    <ContenuStat label={t("dashboard.contentBreakdown.openPositions")} value={careersReels.length} icon={Briefcase} />
                   </dl>
                 </div>
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="min-w-0 rounded-xl border border-border bg-card shadow-soft">
-                  <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 lg:px-6"><div><h2 className="font-heading text-lg font-semibold">Réclamations récentes</h2><p className="mt-1 text-xs text-muted-foreground">Derniers signalements des usagers</p></div><button onClick={() => setSection("reclamations")} className="text-xs font-semibold text-primary hover:underline">Tout voir</button></div>
+                  <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 lg:px-6"><div><h2 className="font-heading text-lg font-semibold">{t("dashboard.recentClaims.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("dashboard.recentClaims.subtitle")}</p></div><button onClick={() => setSection("reclamations")} className="text-xs font-semibold text-primary hover:underline">{t("dashboard.recentClaims.viewAll")}</button></div>
                   <TableauAdmin
                     compact
-                    colonnes={["Référence", "Nature", "Opérateur", "Statut"]}
+                    colonnes={t.raw("dashboard.recentClaims.columns") as string[]}
                     lignes={reclamationsRecentes.map((r) => [
                       `REC-${r.id}`,
                       r.claimType,
@@ -767,11 +771,11 @@ export default function Admin() {
                     ])}
                   />
                   {reclamationsRecentes.length === 0 && (
-                    <p className="px-5 py-6 text-center text-xs text-muted-foreground">Aucune réclamation pour l'instant.</p>
+                    <p className="px-5 py-6 text-center text-xs text-muted-foreground">{t("dashboard.recentClaims.empty")}</p>
                   )}
                 </div>
                 <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <div className="flex items-center justify-between gap-4"><div><h2 className="font-heading text-lg font-semibold">Activité récente</h2><p className="mt-1 text-xs text-muted-foreground">Journal des dernières actions</p></div><History className="size-4 text-muted-foreground" aria-hidden /></div>
+                  <div className="flex items-center justify-between gap-4"><div><h2 className="font-heading text-lg font-semibold">{t("dashboard.recentActivity.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("dashboard.recentActivity.subtitle")}</p></div><History className="size-4 text-muted-foreground" aria-hidden /></div>
                   <ul className="mt-5 space-y-4">
                     {activiteRecente.map((j) => (
                       <li key={j.id} className="flex gap-3">
@@ -779,13 +783,13 @@ export default function Admin() {
                         <div>
                           <p className="text-sm font-medium">{j.action}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {j.actor?.email ?? "Système"} · {formaterDate(j.createdAt)}
+                            {j.actor?.email ?? t("dashboard.recentActivity.system")} · {formaterDate(j.createdAt)}
                           </p>
                         </div>
                       </li>
                     ))}
                     {activiteRecente.length === 0 && (
-                      <p className="text-center text-xs text-muted-foreground">Aucune activité pour l'instant.</p>
+                      <p className="text-center text-xs text-muted-foreground">{t("dashboard.recentActivity.empty")}</p>
                     )}
                   </ul>
                 </div>
@@ -922,13 +926,11 @@ interface EquipmentCategoryOption {
   name: string;
 }
 
-const EQUIPMENT_STATUTS: { value: EquipementAdmin["status"]; label: string }[] = [
-  { value: "HOMOLOGUE", label: "Homologué" },
-  { value: "EN_COURS", label: "En cours d'instruction" },
-  { value: "INTERDIT", label: "Interdit" },
-];
+const EQUIPMENT_STATUTS: EquipementAdmin["status"][] = ["HOMOLOGUE", "EN_COURS", "INTERDIT"];
 
 function EquipementsAdmin() {
+  const t = useTranslations("admin.equipements");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: equipements, loading, error, refetch } = useApiList<EquipementAdmin>("/equipment?lang=fr&pageSize=100");
   const { data: categories } = useApiOne<EquipmentCategoryOption[]>("/equipment-categories?lang=fr");
@@ -969,9 +971,9 @@ function EquipementsAdmin() {
 
   function exporter() {
     exporterCsv(
-      `equipements-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Code", "Équipement", "Marque", "Modèle", "Catégorie", "Statut"],
-      resultat.map((e) => [e.code, e.name, e.brand, e.model, e.category.name, e.status]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((e) => [e.code, e.name, e.brand, e.model, e.category.name, t(`statutOptions.${e.status}`)]),
     );
   }
 
@@ -982,21 +984,21 @@ function EquipementsAdmin() {
     setShowForm((v) => !v);
   }
 
-  function ouvrirEdition(e: EquipementAdmin) {
-    setEditing(e);
-    setStatus(e.status);
-    setCategoryId(String(e.category.id));
+  function ouvrirEdition(equipement: EquipementAdmin) {
+    setEditing(equipement);
+    setStatus(equipement.status);
+    setCategoryId(String(equipement.category.id));
     setShowForm(true);
   }
 
-  async function supprimer(e: EquipementAdmin) {
-    if (!(await confirm(`Supprimer l'équipement "${e.name}" ?`))) return;
+  async function supprimer(equipement: EquipementAdmin) {
+    if (!(await confirm(t("confirmDelete", { name: equipement.name })))) return;
     try {
-      await apiFetch(`/equipment/${e.id}`, { method: "DELETE" });
-      toast.success("Équipement supprimé.");
+      await apiFetch(`/equipment/${equipement.id}`, { method: "DELETE" });
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -1004,7 +1006,7 @@ function EquipementsAdmin() {
     event.preventDefault();
     setFormError("");
     if (!status || !categoryId) {
-      setFormError("Merci de sélectionner un statut et une catégorie.");
+      setFormError(t("requiredFields"));
       return;
     }
     setSubmitting(true);
@@ -1026,10 +1028,10 @@ function EquipementsAdmin() {
     try {
       if (editing) {
         await apiFetch(`/equipment/${editing.id}`, { method: "PATCH", body });
-        toast.success("Équipement modifié.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/equipment", { method: "POST", body });
-        toast.success("Équipement ajouté avec succès.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
@@ -1037,7 +1039,7 @@ function EquipementsAdmin() {
       setCategoryId("");
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
@@ -1051,74 +1053,74 @@ function EquipementsAdmin() {
             <Radio className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Équipements</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les équipements homologués et leur statut.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouvel équipement"}
+            {showForm && !editing ? tCommon("cancel") : t("newEquipment")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={Radio} tone="primary" value={equipements.length} label="Total" />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={homologues} label="Homologués" />
-        <StatTrendCard icon={Clock3} tone="warning" value={enCoursCount} label="En cours" />
-        <StatTrendCard icon={X} tone="destructive" value={interdits} label="Interdits" />
+        <StatTrendCard icon={Radio} tone="primary" value={equipements.length} label={t("stats.total")} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={homologues} label={t("stats.approved")} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCoursCount} label={t("stats.inProgress")} />
+        <StatTrendCard icon={X} tone="destructive" value={interdits} label={t("stats.forbidden")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-          <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouvel équipement"}</p>
+          <p className="text-sm font-semibold sm:col-span-2">{editing ? t("editingTitle", { name: editing.name }) : t("newEquipmentTitle")}</p>
           <div className="grid gap-2">
-            <Label htmlFor="eq-code">Code *</Label>
-            <Input id="eq-code" name="code" required placeholder="Ex. : EQ-2026-0180" defaultValue={editing?.code} />
+            <Label htmlFor="eq-code">{t("fields.code")}</Label>
+            <Input id="eq-code" name="code" required placeholder={t("fields.codePlaceholder")} defaultValue={editing?.code} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-name">Nom de l'équipement *</Label>
+            <Label htmlFor="eq-name">{t("fields.name")}</Label>
             <Input id="eq-name" name="nameFr" required defaultValue={editing?.name} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-type">Type *</Label>
-            <Input id="eq-type" name="typeFr" required placeholder="Ex. : Terminal data" defaultValue={editing?.type} />
+            <Label htmlFor="eq-type">{t("fields.type")}</Label>
+            <Input id="eq-type" name="typeFr" required placeholder={t("fields.typePlaceholder")} defaultValue={editing?.type} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-status">Statut *</Label>
+            <Label htmlFor="eq-status">{t("fields.status")}</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as EquipementAdmin["status"])}>
               <SelectTrigger id="eq-status">
-                <SelectValue placeholder="Sélectionner…" />
+                <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {EQUIPMENT_STATUTS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
+                  <SelectItem key={s} value={s}>
+                    {t(`statutOptions.${s}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-brand">Marque *</Label>
+            <Label htmlFor="eq-brand">{t("fields.brand")}</Label>
             <Input id="eq-brand" name="brand" required defaultValue={editing?.brand} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-model">Modèle *</Label>
+            <Label htmlFor="eq-model">{t("fields.model")}</Label>
             <Input id="eq-model" name="model" required defaultValue={editing?.model} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-manufacturer">Fabricant *</Label>
+            <Label htmlFor="eq-manufacturer">{t("fields.manufacturer")}</Label>
             <Input id="eq-manufacturer" name="manufacturer" required defaultValue={editing?.manufacturer} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-category">Catégorie *</Label>
+            <Label htmlFor="eq-category">{tCommon("category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger id="eq-category">
-                <SelectValue placeholder="Sélectionner…" />
+                <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {(categories ?? []).map((c) => (
@@ -1130,32 +1132,32 @@ function EquipementsAdmin() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-homolog">Numéro d'homologation</Label>
-            <Input id="eq-homolog" name="homologationNumber" placeholder="Facultatif" defaultValue={editing?.homologationNumber ?? ""} />
+            <Label htmlFor="eq-homolog">{t("fields.homologationNumber")}</Label>
+            <Input id="eq-homolog" name="homologationNumber" placeholder={t("fields.homologationOptional")} defaultValue={editing?.homologationNumber ?? ""} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-validite">Valide jusqu'au</Label>
+            <Label htmlFor="eq-validite">{t("fields.validUntil")}</Label>
             <Input id="eq-validite" name="validUntil" type="date" defaultValue={editing?.validUntil?.slice(0, 10) ?? ""} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="eq-certificate">Certificat (PDF, {editing ? "laisser vide pour conserver l'actuel" : "facultatif"})</Label>
+            <Label htmlFor="eq-certificate">{t("fields.certificate", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
             <Input id="eq-certificate" name="certificate" type="file" accept=".pdf" />
           </div>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Enregistrer l'équipement"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newEquipmentTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
         </form>
       )}
 
-      {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {loading && <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>}
       {error && !loading && <p className="text-sm text-destructive">{error}</p>}
       {!loading && !error && (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
@@ -1166,31 +1168,31 @@ function EquipementsAdmin() {
                 value={recherche}
                 onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
                 className="h-9 bg-card pl-9 text-xs"
-                placeholder="Rechercher par marque, modèle ou code…"
+                placeholder={t("searchPlaceholder")}
               />
             </div>
             <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
               <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                {EQUIPMENT_STATUTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+                {EQUIPMENT_STATUTS.map((s) => <SelectItem key={s} value={s}>{t(`statutOptions.${s}`)}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
               <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes les catégories</SelectItem>
+                <SelectItem value="all">{tCommon("allCategories")}</SelectItem>
                 {(categories ?? []).map((c) => <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-              Réinitialiser
+              {tCommon("reset")}
             </Button>
           </div>
 
           <TableauAdmin
             compact
-            colonnes={["Référence", "Équipement", "Marque / modèle", "Catégorie", "Validité", "Statut", "Actions"]}
+            colonnes={[t("columns.reference"), t("columns.equipment"), t("columns.brandModel"), t("columns.category"), t("columns.validity"), tCommon("status"), tCommon("actions")]}
             lignes={resultatPage.map((e) => [
               e.code,
               e.name,
@@ -1201,7 +1203,7 @@ function EquipementsAdmin() {
               <RowActions key={e.id} onEdit={() => ouvrirEdition(e)} onDelete={() => supprimer(e)} />,
             ])}
           />
-          {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun équipement ne correspond aux filtres.</p>}
+          {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
           <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
         </div>
@@ -1246,6 +1248,7 @@ function StatTrendCard({
   label: string;
   delta?: number;
 }) {
+  const tCommon = useTranslations("admin.common");
   const toneStyles: Record<typeof tone, string> = {
     primary: "bg-primary/10 text-primary",
     warning: "bg-warning/15 text-warning-foreground",
@@ -1264,7 +1267,7 @@ function StatTrendCard({
         <p className="font-heading text-2xl font-bold text-foreground">{value}</p>
         <p className="truncate text-xs text-muted-foreground">{label}</p>
         {delta !== undefined && (
-        <p className={cn("mt-0.5 text-[11px] font-semibold", deltaStyle)}>{deltaTexte} cette semaine</p>
+        <p className={cn("mt-0.5 text-[11px] font-semibold", deltaStyle)}>{deltaTexte} {tCommon("thisWeek")}</p>
         )}
       </div>
     </div>
@@ -1282,6 +1285,7 @@ function PaginationAdmin({
   pageSize: number;
   onPageChange: (page: number) => void;
 }) {
+  const tCommon = useTranslations("admin.common");
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   if (totalItems === 0) return null;
   const debut = (page - 1) * pageSize + 1;
@@ -1290,7 +1294,7 @@ function PaginationAdmin({
   return (
     <div className="flex flex-col gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-muted-foreground">
-        Affichage de {debut} à {fin} sur {totalItems} résultats
+        {tCommon("showingResults", { start: debut, end: fin, total: totalItems })}
       </p>
       <div className="flex items-center gap-1">
         <button
@@ -1352,23 +1356,26 @@ interface ClaimAdminFull {
 const CLAIM_STATUTS: ClaimAdminFull["status"][] = ["NOUVEAU", "EN_COURS", "RESOLU", "REJETE"];
 
 function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpdated: () => void }) {
+  const t = useTranslations("admin.reclamations");
+  const tCommon = useTranslations("admin.common");
+  const tStatus = useTranslations("status");
   const [pending, setPending] = useState(false);
 
   async function changer(status: string) {
     if (status === claim.status) return;
     if (status === "REJETE") {
-      const reason = window.prompt("Motif du refus (au moins 10 caractères) :");
+      const reason = window.prompt(t("rejectReasonPrompt"));
       if (!reason || reason.trim().length < 10) {
-        toast.error("Motif de refus requis (10 caractères minimum).");
+        toast.error(t("rejectReasonRequired"));
         return;
       }
       setPending(true);
       try {
         await apiFetch(`/claims/${claim.id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason }) });
-        toast.success("Statut mis à jour.");
+        toast.success(t("statusUpdated"));
         onUpdated();
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+        toast.error(err instanceof ApiError ? err.message : tCommon("error"));
       } finally {
         setPending(false);
       }
@@ -1377,10 +1384,10 @@ function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpda
     setPending(true);
     try {
       await apiFetch(`/claims/${claim.id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
-      toast.success("Statut mis à jour.");
+      toast.success(t("statusUpdated"));
       onUpdated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setPending(false);
     }
@@ -1394,7 +1401,7 @@ function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpda
       <SelectContent>
         {CLAIM_STATUTS.map((s) => (
           <SelectItem key={s} value={s}>
-            {s}
+            {tStatus(s)}
           </SelectItem>
         ))}
       </SelectContent>
@@ -1403,6 +1410,9 @@ function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpda
 }
 
 function ReclamationsAdmin() {
+  const t = useTranslations("admin.reclamations");
+  const tCommon = useTranslations("admin.common");
+  const tStatus = useTranslations("status");
   const confirm = useConfirm();
   const { data: claims, loading, error, refetch } = useApiList<ClaimAdminFull>("/claims?lang=fr&pageSize=100");
   const [recherche, setRecherche] = useState("");
@@ -1471,40 +1481,40 @@ function ReclamationsAdmin() {
 
   async function supprimerSelection() {
     if (selection.size === 0) return;
-    if (!(await confirm(`Supprimer ${selection.size} réclamation(s) ? Cette action est irréversible.`))) return;
+    if (!(await confirm(t("confirmDeleteSelection", { count: selection.size })))) return;
     setSuppressionEnCours(true);
     try {
       await Promise.all(Array.from(selection).map((id) => apiFetch(`/claims/${id}`, { method: "DELETE" })));
-      toast.success("Réclamation(s) supprimée(s).");
+      toast.success(t("deletedSelection"));
       setSelection(new Set());
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSuppressionEnCours(false);
     }
   }
 
   async function supprimerUne(claim: ClaimAdminFull) {
-    if (!(await confirm(`Supprimer la réclamation de ${claim.firstname} ${claim.lastname} ?`))) return;
+    if (!(await confirm(t("confirmDeleteOne", { name: `${claim.firstname} ${claim.lastname}` })))) return;
     try {
       await apiFetch(`/claims/${claim.id}`, { method: "DELETE" });
-      toast.success("Réclamation supprimée.");
+      toast.success(t("deletedOne"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
   function exporter() {
     exporterCsv(
-      `reclamations-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Prénom", "Nom", "Email", "Téléphone", "Opérateur", "Catégorie", "Statut", "Date"],
-      resultat.map((c) => [c.firstname, c.lastname, c.email, c.telephone ?? "", c.concernedOperator, c.claimType, c.status, formaterDate(c.createdAt)]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((c) => [c.firstname, c.lastname, c.email, c.telephone ?? "", c.concernedOperator, c.claimType, tStatus(c.status), formaterDate(c.createdAt)]),
     );
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -1515,20 +1525,20 @@ function ReclamationsAdmin() {
             <MessageSquareWarning className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Réclamations</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les réclamations des usagers et suivez leur traitement.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-          <Download className="size-4" aria-hidden /> Exporter
+          <Download className="size-4" aria-hidden /> {t("export")}
         </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={FileText} tone="primary" value={claims.length} label="Total" delta={nouvellesCetteSemaine} />
-        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label="En cours" delta={enCours.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={resolues.length} label="Résolues" delta={resolues.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
-        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label="Rejetées" delta={rejetees.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
+        <StatTrendCard icon={FileText} tone="primary" value={claims.length} label={t("stats.total")} delta={nouvellesCetteSemaine} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label={t("stats.inProgress")} delta={enCours.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={resolues.length} label={t("stats.resolved")} delta={resolues.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
+        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label={t("stats.rejected")} delta={rejetees.filter((c) => depuisMoinsDuneSemaine(c.updatedAt)).length} />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
@@ -1539,35 +1549,35 @@ function ReclamationsAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un usager, un opérateur…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              {CLAIM_STATUTS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              <SelectItem value="all">{t("allStatuses")}</SelectItem>
+              {CLAIM_STATUTS.map((item) => <SelectItem key={item} value={item}>{tStatus(item)}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Toutes les catégories</SelectItem>
+              <SelectItem value="all">{t("allCategories")}</SelectItem>
               {categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={t("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={t("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {t("reset")}
           </Button>
         </div>
 
         {selection.size > 0 && (
           <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-2.5">
-            <p className="text-xs font-medium text-destructive">{selection.size} sélectionnée(s)</p>
+            <p className="text-xs font-medium text-destructive">{t("selectedCount", { count: selection.size })}</p>
             <Button type="button" size="sm" variant="outline" onClick={supprimerSelection} disabled={suppressionEnCours} className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive">
-              <Trash2 className="size-3.5" aria-hidden /> Supprimer la sélection
+              <Trash2 className="size-3.5" aria-hidden /> {t("deleteSelection")}
             </Button>
           </div>
         )}
@@ -1581,15 +1591,15 @@ function ReclamationsAdmin() {
                     type="checkbox"
                     checked={resultatPage.length > 0 && resultatPage.every((c) => selection.has(c.id))}
                     onChange={basculerSelectionPage}
-                    aria-label="Sélectionner la page"
+                    aria-label={t("selectPage")}
                   />
                 </th>
-                <th className="px-4 py-3">Usager</th>
-                <th className="px-4 py-3">Nature</th>
-                <th className="px-4 py-3">Catégorie</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Statut</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+                <th className="px-4 py-3">{t("columns.user")}</th>
+                <th className="px-4 py-3">{t("columns.nature")}</th>
+                <th className="px-4 py-3">{t("columns.category")}</th>
+                <th className="px-4 py-3">{t("columns.date")}</th>
+                <th className="px-4 py-3">{t("columns.status")}</th>
+                <th className="px-5 py-3 text-right">{tCommon("actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -1597,7 +1607,7 @@ function ReclamationsAdmin() {
                 const ligne = (
                   <tr key={claim.id} className="transition-colors hover:bg-accent/25">
                     <td className="px-5 py-3.5">
-                      <input type="checkbox" checked={selection.has(claim.id)} onChange={() => basculerSelection(claim.id)} aria-label={`Sélectionner ${claim.firstname} ${claim.lastname}`} />
+                      <input type="checkbox" checked={selection.has(claim.id)} onChange={() => basculerSelection(claim.id)} aria-label={t("selectRow", { name: `${claim.firstname} ${claim.lastname}` })} />
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
@@ -1611,7 +1621,7 @@ function ReclamationsAdmin() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-muted-foreground">Réclamation</td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">{t("natureValue")}</td>
                     <td className="px-4 py-3.5">
                       <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{claim.claimType}</span>
                     </td>
@@ -1622,10 +1632,10 @@ function ReclamationsAdmin() {
                     <td className="px-4 py-3.5"><StatutBadge statut={claim.status} /></td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button type="button" onClick={() => setOuvert((v) => (v === claim.id ? null : claim.id))} aria-label="Voir détails" title="Voir détails" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
+                        <button type="button" onClick={() => setOuvert((v) => (v === claim.id ? null : claim.id))} aria-label={t("viewDetails")} title={t("viewDetails")} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
                           <Eye className="size-4" aria-hidden />
                         </button>
-                        <button type="button" onClick={() => supprimerUne(claim)} aria-label="Supprimer" title="Supprimer" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                        <button type="button" onClick={() => supprimerUne(claim)} aria-label={tCommon("delete")} title={tCommon("delete")} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
                           <Trash2 className="size-4" aria-hidden />
                         </button>
                       </div>
@@ -1639,26 +1649,26 @@ function ReclamationsAdmin() {
                     <td colSpan={7} className="bg-surface/60 px-5 py-5 sm:px-8">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Opérateur concerné</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.operator")}</p>
                           <p className="mt-1 text-sm">{claim.concernedOperator}</p>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statut du dossier</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.fileStatus")}</p>
                           <div className="mt-1"><ClaimStatusSelect claim={claim} onUpdated={refetch} /></div>
                         </div>
                         <div className="sm:col-span-2">
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Description</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.description")}</p>
                           <p className="mt-1 text-sm leading-6 whitespace-pre-line text-muted-foreground">{claim.claimDescription}</p>
                         </div>
                         {claim.status === "REJETE" && claim.rejectionReason && (
                           <div className="sm:col-span-2">
-                            <p className="text-xs font-semibold tracking-wide text-destructive uppercase">Motif du rejet</p>
+                            <p className="text-xs font-semibold tracking-wide text-destructive uppercase">{t("detail.rejectionReason")}</p>
                             <p className="mt-1 text-sm text-muted-foreground">{claim.rejectionReason}</p>
                           </div>
                         )}
                         {claim.attachments.length > 0 && (
                           <div className="sm:col-span-2">
-                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Pièces jointes</p>
+                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.attachments")}</p>
                             <ul className="mt-1.5 flex flex-wrap gap-2">
                               {claim.attachments.map((piece) => (
                                 <li key={piece.id}>
@@ -1676,7 +1686,7 @@ function ReclamationsAdmin() {
                 ];
               })}
               {resultatPage.length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune réclamation ne correspond aux filtres.</td></tr>
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</td></tr>
               )}
             </tbody>
           </table>
@@ -1705,6 +1715,9 @@ interface ServiceRequestAdmin {
 const SERVICE_REQUEST_STATUTS: ServiceRequestAdmin["status"][] = ["NOUVEAU", "EN_COURS", "TRAITE", "REJETE"];
 
 function ServiceRequestStatusSelect({ demande, onUpdated }: { demande: ServiceRequestAdmin; onUpdated: () => void }) {
+  const t = useTranslations("admin.demandes");
+  const tCommon = useTranslations("admin.common");
+  const tStatus = useTranslations("status");
   const [pending, setPending] = useState(false);
 
   async function changer(status: string) {
@@ -1712,10 +1725,10 @@ function ServiceRequestStatusSelect({ demande, onUpdated }: { demande: ServiceRe
     setPending(true);
     try {
       await apiFetch(`/service-requests/${demande.id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
-      toast.success("Statut mis à jour.");
+      toast.success(t("statusUpdated"));
       onUpdated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setPending(false);
     }
@@ -1729,7 +1742,7 @@ function ServiceRequestStatusSelect({ demande, onUpdated }: { demande: ServiceRe
       <SelectContent>
         {SERVICE_REQUEST_STATUTS.map((s) => (
           <SelectItem key={s} value={s}>
-            {s}
+            {tStatus(s)}
           </SelectItem>
         ))}
       </SelectContent>
@@ -1738,6 +1751,8 @@ function ServiceRequestStatusSelect({ demande, onUpdated }: { demande: ServiceRe
 }
 
 function ServiceRequestReplyForm({ demande }: { demande: ServiceRequestAdmin }) {
+  const t = useTranslations("admin.demandes");
+  const tCommon = useTranslations("admin.common");
   const [message, setMessage] = useState("");
   const [envoi, setEnvoi] = useState(false);
 
@@ -1747,10 +1762,10 @@ function ServiceRequestReplyForm({ demande }: { demande: ServiceRequestAdmin }) 
     setEnvoi(true);
     try {
       await apiFetch(`/service-requests/${demande.id}/reply`, { method: "POST", body: JSON.stringify({ replyMessage: message }) });
-      toast.success("Réponse envoyée par email.");
+      toast.success(t("replySent"));
       setMessage("");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setEnvoi(false);
     }
@@ -1762,18 +1777,21 @@ function ServiceRequestReplyForm({ demande }: { demande: ServiceRequestAdmin }) 
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         rows={2}
-        placeholder={`Répondre à ${demande.fullname}…`}
+        placeholder={t("replyPlaceholder", { name: demande.fullname })}
         className="text-sm"
         required
       />
       <Button type="submit" size="sm" disabled={envoi} className="shrink-0 gap-1.5 sm:self-end">
-        <Send className="size-3.5" aria-hidden /> {envoi ? "Envoi…" : "Envoyer"}
+        <Send className="size-3.5" aria-hidden /> {envoi ? t("sending") : t("send")}
       </Button>
     </form>
   );
 }
 
 function DemandesServiceAdmin() {
+  const t = useTranslations("admin.demandes");
+  const tCommon = useTranslations("admin.common");
+  const tStatus = useTranslations("status");
   const confirm = useConfirm();
   const { data: demandes, loading, error, refetch } = useApiList<ServiceRequestAdmin>("/service-requests?lang=fr&pageSize=100");
   const [recherche, setRecherche] = useState("");
@@ -1842,40 +1860,40 @@ function DemandesServiceAdmin() {
 
   async function supprimerSelection() {
     if (selection.size === 0) return;
-    if (!(await confirm(`Supprimer ${selection.size} demande(s) ? Cette action est irréversible.`))) return;
+    if (!(await confirm(t("confirmDeleteSelection", { count: selection.size })))) return;
     setSuppressionEnCours(true);
     try {
       await Promise.all(Array.from(selection).map((id) => apiFetch(`/service-requests/${id}`, { method: "DELETE" })));
-      toast.success("Demande(s) supprimée(s).");
+      toast.success(t("deletedSelection"));
       setSelection(new Set());
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSuppressionEnCours(false);
     }
   }
 
   async function supprimerUne(demande: ServiceRequestAdmin) {
-    if (!(await confirm(`Supprimer la demande de ${demande.fullname} ?`))) return;
+    if (!(await confirm(t("confirmDeleteOne", { name: demande.fullname })))) return;
     try {
       await apiFetch(`/service-requests/${demande.id}`, { method: "DELETE" });
-      toast.success("Demande supprimée.");
+      toast.success(t("deletedOne"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
   function exporter() {
     exporterCsv(
-      `demandes-service-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Nom", "Société", "Email", "Téléphone", "Service", "Statut", "Date"],
-      resultat.map((d) => [d.fullname, d.company ?? "", d.email, d.phone ?? "", d.service.name, d.status, formaterDate(d.createdAt)]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((d) => [d.fullname, d.company ?? "", d.email, d.phone ?? "", d.service.name, tStatus(d.status), formaterDate(d.createdAt)]),
     );
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -1886,20 +1904,20 @@ function DemandesServiceAdmin() {
             <FileText className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Demandes de service</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les demandes des usagers et suivez leur traitement.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-          <Download className="size-4" aria-hidden /> Exporter
+          <Download className="size-4" aria-hidden /> {t("export")}
         </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={FileText} tone="primary" value={demandes.length} label="Total" delta={nouvellesCetteSemaine} />
-        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label="En cours" delta={enCours.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={traitees.length} label="Traitées" delta={traitees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
-        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label="Rejetées" delta={rejetees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
+        <StatTrendCard icon={FileText} tone="primary" value={demandes.length} label={t("stats.total")} delta={nouvellesCetteSemaine} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label={t("stats.inProgress")} delta={enCours.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={traitees.length} label={t("stats.processed")} delta={traitees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
+        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label={t("stats.rejected")} delta={rejetees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
@@ -1910,35 +1928,35 @@ function DemandesServiceAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un usager, une société…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              {SERVICE_REQUEST_STATUTS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              <SelectItem value="all">{t("allStatuses")}</SelectItem>
+              {SERVICE_REQUEST_STATUTS.map((item) => <SelectItem key={item} value={item}>{tStatus(item)}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filtreService} onValueChange={(value) => { setFiltreService(value); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les services</SelectItem>
+              <SelectItem value="all">{t("allServices")}</SelectItem>
               {services.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={t("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={t("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {t("reset")}
           </Button>
         </div>
 
         {selection.size > 0 && (
           <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-2.5">
-            <p className="text-xs font-medium text-destructive">{selection.size} sélectionnée(s)</p>
+            <p className="text-xs font-medium text-destructive">{t("selectedCount", { count: selection.size })}</p>
             <Button type="button" size="sm" variant="outline" onClick={supprimerSelection} disabled={suppressionEnCours} className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive">
-              <Trash2 className="size-3.5" aria-hidden /> Supprimer la sélection
+              <Trash2 className="size-3.5" aria-hidden /> {t("deleteSelection")}
             </Button>
           </div>
         )}
@@ -1952,15 +1970,15 @@ function DemandesServiceAdmin() {
                     type="checkbox"
                     checked={resultatPage.length > 0 && resultatPage.every((d) => selection.has(d.id))}
                     onChange={basculerSelectionPage}
-                    aria-label="Sélectionner la page"
+                    aria-label={t("selectPage")}
                   />
                 </th>
-                <th className="px-4 py-3">Demandeur</th>
-                <th className="px-4 py-3">Nature</th>
-                <th className="px-4 py-3">Service</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Statut</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+                <th className="px-4 py-3">{t("columns.requester")}</th>
+                <th className="px-4 py-3">{t("columns.nature")}</th>
+                <th className="px-4 py-3">{t("columns.service")}</th>
+                <th className="px-4 py-3">{t("columns.date")}</th>
+                <th className="px-4 py-3">{t("columns.status")}</th>
+                <th className="px-5 py-3 text-right">{tCommon("actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -1968,7 +1986,7 @@ function DemandesServiceAdmin() {
                 const ligne = (
                   <tr key={demande.id} className="transition-colors hover:bg-accent/25">
                     <td className="px-5 py-3.5">
-                      <input type="checkbox" checked={selection.has(demande.id)} onChange={() => basculerSelection(demande.id)} aria-label={`Sélectionner ${demande.fullname}`} />
+                      <input type="checkbox" checked={selection.has(demande.id)} onChange={() => basculerSelection(demande.id)} aria-label={t("selectRow", { name: demande.fullname })} />
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
@@ -1982,7 +2000,7 @@ function DemandesServiceAdmin() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-muted-foreground">Demande de service</td>
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">{t("natureValue")}</td>
                     <td className="px-4 py-3.5">
                       <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{demande.service.name}</span>
                     </td>
@@ -1993,10 +2011,10 @@ function DemandesServiceAdmin() {
                     <td className="px-4 py-3.5"><StatutBadge statut={demande.status} /></td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button type="button" onClick={() => setOuvert((v) => (v === demande.id ? null : demande.id))} aria-label="Voir détails" title="Voir détails" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
+                        <button type="button" onClick={() => setOuvert((v) => (v === demande.id ? null : demande.id))} aria-label={t("viewDetails")} title={t("viewDetails")} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
                           <Eye className="size-4" aria-hidden />
                         </button>
-                        <button type="button" onClick={() => supprimerUne(demande)} aria-label="Supprimer" title="Supprimer" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                        <button type="button" onClick={() => supprimerUne(demande)} aria-label={tCommon("delete")} title={tCommon("delete")} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
                           <Trash2 className="size-4" aria-hidden />
                         </button>
                       </div>
@@ -2010,25 +2028,25 @@ function DemandesServiceAdmin() {
                     <td colSpan={7} className="bg-surface/60 px-5 py-5 sm:px-8">
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Téléphone</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.phone")}</p>
                           <p className="mt-1 text-sm">{demande.phone ?? "—"}</p>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statut du dossier</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.fileStatus")}</p>
                           <div className="mt-1"><ServiceRequestStatusSelect demande={demande} onUpdated={refetch} /></div>
                         </div>
                         <div className="sm:col-span-2">
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Message</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.message")}</p>
                           <p className="mt-1 text-sm leading-6 whitespace-pre-line text-muted-foreground">{demande.message || "—"}</p>
                         </div>
                         {demande.attachments.length > 0 && (
                           <div className="sm:col-span-2">
-                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Pièces jointes</p>
+                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.attachments")}</p>
                             <ul className="mt-1.5 flex flex-wrap gap-2">
                               {demande.attachments.map((piece, i) => (
                                 <li key={piece.id}>
                                   <a href={piece.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-primary hover:underline">
-                                    <Paperclip className="size-3.5" aria-hidden /> Pièce jointe {i + 1}
+                                    <Paperclip className="size-3.5" aria-hidden /> {t("detail.attachment", { index: i + 1 })}
                                   </a>
                                 </li>
                               ))}
@@ -2036,7 +2054,7 @@ function DemandesServiceAdmin() {
                           </div>
                         )}
                         <div className="sm:col-span-2">
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Répondre par email</p>
+                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.replyByEmail")}</p>
                           <ServiceRequestReplyForm demande={demande} />
                         </div>
                       </div>
@@ -2045,7 +2063,7 @@ function DemandesServiceAdmin() {
                 ];
               })}
               {resultatPage.length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune demande ne correspond aux filtres.</td></tr>
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</td></tr>
               )}
             </tbody>
           </table>
@@ -2058,16 +2076,18 @@ function DemandesServiceAdmin() {
 }
 
 function AuditAdmin() {
+  const t = useTranslations("admin.audit");
+  const tCommon = useTranslations("admin.common");
   const { data: logs, loading, error } = useApiList<AuditLogEntry>("/audit-logs?pageSize=100");
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
     <TableauAdmin
       codeColumn={false}
-      colonnes={["Acteur", "Action", "Entité", "Horodatage"]}
-      lignes={logs.map((j) => [j.actor?.email ?? "Système", j.action, j.entity, formaterDate(j.createdAt)])}
+      colonnes={t.raw("columns") as string[]}
+      lignes={logs.map((j) => [j.actor?.email ?? t("system"), j.action, j.entity, formaterDate(j.createdAt)])}
     />
   );
 }
@@ -2091,6 +2111,9 @@ const TENDER_STATUTS = ["OUVERT", "CLOTURE", "ANNULE"] as const;
 const CONSULTATION_STATUTS = ["OUVERTE", "CLOTUREE"] as const;
 
 function AppelsOffresAdmin() {
+  const t = useTranslations("admin.tenders");
+  const tCommon = useTranslations("admin.common");
+  const tStatus = useTranslations("status");
   const confirm = useConfirm();
   const { data: tenders, loading, error, refetch } = useApiList<TendersCallAdmin>("/tenders?lang=fr&pageSize=100");
   const { data: categories } = useApiOne<{ id: number; name: string }[]>("/tender-categories?lang=fr");
@@ -2107,7 +2130,7 @@ function AppelsOffresAdmin() {
   const [dateFin, setDateFin] = useState("");
   const [page, setPage] = useState(1);
 
-  const categoriesNoms = Array.from(new Set(tenders.map((t) => t.category.name)));
+  const categoriesNoms = Array.from(new Set(tenders.map((tender) => tender.category.name)));
 
   function reinitialiser() {
     setRecherche("");
@@ -2118,11 +2141,11 @@ function AppelsOffresAdmin() {
     setPage(1);
   }
 
-  const resultat = tenders.filter((t) => {
-    const correspondRecherche = `${t.name} ${t.code}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
-    const correspondStatut = filtreStatut === "all" || t.status === filtreStatut;
-    const correspondCategorie = filtreCategorie === "all" || t.category.name === filtreCategorie;
-    const date = t.publicationDate.slice(0, 10);
+  const resultat = tenders.filter((tender) => {
+    const correspondRecherche = `${tender.name} ${tender.code}`.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondStatut = filtreStatut === "all" || tender.status === filtreStatut;
+    const correspondCategorie = filtreCategorie === "all" || tender.category.name === filtreCategorie;
+    const date = tender.publicationDate.slice(0, 10);
     const correspondDateDebut = !dateDebut || date >= dateDebut;
     const correspondDateFin = !dateFin || date <= dateFin;
     return correspondRecherche && correspondStatut && correspondCategorie && correspondDateDebut && correspondDateFin;
@@ -2130,10 +2153,10 @@ function AppelsOffresAdmin() {
   const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
   const pageCourante = Math.min(page, totalPages);
   const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
-  const ouverts = tenders.filter((t) => t.status === "OUVERT");
-  const clotures = tenders.filter((t) => t.status === "CLOTURE");
-  const annules = tenders.filter((t) => t.status === "ANNULE");
-  const nouveauxCetteSemaine = tenders.filter((t) => depuisMoinsDuneSemaine(t.publicationDate)).length;
+  const ouverts = tenders.filter((tender) => tender.status === "OUVERT");
+  const clotures = tenders.filter((tender) => tender.status === "CLOTURE");
+  const annules = tenders.filter((tender) => tender.status === "ANNULE");
+  const nouveauxCetteSemaine = tenders.filter((tender) => depuisMoinsDuneSemaine(tender.publicationDate)).length;
 
   function changerPage(p: number) {
     setPage(Math.min(Math.max(p, 1), totalPages));
@@ -2141,9 +2164,9 @@ function AppelsOffresAdmin() {
 
   function exporter() {
     exporterCsv(
-      `appels-offres-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Référence", "Intitulé", "Catégorie", "Statut", "Date limite"],
-      resultat.map((t) => [t.code, t.name, t.category.name, t.status, formaterDate(t.limitDate)]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((tender) => [tender.code, tender.name, tender.category.name, tStatus(tender.status), formaterDate(tender.limitDate)]),
     );
   }
 
@@ -2154,21 +2177,21 @@ function AppelsOffresAdmin() {
     setShowForm((v) => !v);
   }
 
-  function ouvrirEdition(t: TendersCallAdmin) {
-    setEditing(t);
-    setCategoryId(String(t.category.id));
-    setStatus(t.status);
+  function ouvrirEdition(tender: TendersCallAdmin) {
+    setEditing(tender);
+    setCategoryId(String(tender.category.id));
+    setStatus(tender.status);
     setShowForm(true);
   }
 
-  async function supprimer(t: TendersCallAdmin) {
-    if (!(await confirm(`Supprimer l'appel d'offres "${t.name}" ?`))) return;
+  async function supprimer(tender: TendersCallAdmin) {
+    if (!(await confirm(t("confirmDelete", { name: tender.name })))) return;
     try {
-      await apiFetch(`/tenders/${t.id}`, { method: "DELETE" });
-      toast.success("Appel d'offres supprimé.");
+      await apiFetch(`/tenders/${tender.id}`, { method: "DELETE" });
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -2176,7 +2199,7 @@ function AppelsOffresAdmin() {
     event.preventDefault();
     setFormError("");
     if (!categoryId) {
-      setFormError("Merci de sélectionner une catégorie.");
+      setFormError(tCommon("requiredCategory"));
       return;
     }
     setSubmitting(true);
@@ -2198,23 +2221,23 @@ function AppelsOffresAdmin() {
     try {
       if (editing) {
         await apiFetch(`/tenders/${editing.id}`, { method: "PATCH", body });
-        toast.success("Appel d'offres modifié.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/tenders", { method: "POST", body });
-        toast.success("Appel d'offres créé.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       setCategoryId("");
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -2225,47 +2248,47 @@ function AppelsOffresAdmin() {
             <Gavel className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Appels d'offres</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les appels d'offres et suivez les soumissions.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouvel appel d'offres"}
+            {showForm && !editing ? tCommon("cancel") : t("newTender")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={Gavel} tone="primary" value={tenders.length} label="Total" delta={nouveauxCetteSemaine} />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={ouverts.length} label="Ouverts" />
-        <StatTrendCard icon={Clock3} tone="warning" value={clotures.length} label="Clôturés" />
-        <StatTrendCard icon={X} tone="destructive" value={annules.length} label="Annulés" />
+        <StatTrendCard icon={Gavel} tone="primary" value={tenders.length} label={t("stats.total")} delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={ouverts.length} label={t("stats.open")} />
+        <StatTrendCard icon={Clock3} tone="warning" value={clotures.length} label={t("stats.closed")} />
+        <StatTrendCard icon={X} tone="destructive" value={annules.length} label={t("stats.cancelled")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-          <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouvel appel d'offres"}</p>
+          <p className="text-sm font-semibold sm:col-span-2">{editing ? t("editingTitle", { name: editing.name }) : t("newTenderTitle")}</p>
           <div className="grid gap-2">
-            <Label htmlFor="ao-code">Code *</Label>
-            <Input id="ao-code" name="code" required placeholder="Ex. : AO-2026-020" defaultValue={editing?.code} />
+            <Label htmlFor="ao-code">{t("fields.code")}</Label>
+            <Input id="ao-code" name="code" required placeholder={t("fields.codePlaceholder")} defaultValue={editing?.code} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-name">Intitulé *</Label>
+            <Label htmlFor="ao-name">{t("fields.title")}</Label>
             <Input id="ao-name" name="nameFr" required defaultValue={editing?.name} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="ao-description">Description *</Label>
+            <Label htmlFor="ao-description">{t("fields.description")}</Label>
             <Textarea id="ao-description" name="descriptionFr" required rows={3} defaultValue={editing?.description} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-category">Catégorie *</Label>
+            <Label htmlFor="ao-category">{tCommon("category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger id="ao-category">
-                <SelectValue placeholder="Sélectionner…" />
+                <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {(categories ?? []).map((c) => (
@@ -2277,7 +2300,7 @@ function AppelsOffresAdmin() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-status">Statut</Label>
+            <Label htmlFor="ao-status">{tCommon("status")}</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger id="ao-status">
                 <SelectValue />
@@ -2285,44 +2308,44 @@ function AppelsOffresAdmin() {
               <SelectContent>
                 {TENDER_STATUTS.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s}
+                    {tStatus(s)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-pub">Date de publication *</Label>
+            <Label htmlFor="ao-pub">{t("fields.publicationDate")}</Label>
             <Input id="ao-pub" name="publicationDate" type="date" required defaultValue={editing?.publicationDate?.slice(0, 10)} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-limit">Date limite *</Label>
+            <Label htmlFor="ao-limit">{t("fields.limitDate")}</Label>
             <Input id="ao-limit" name="limitDate" type="date" required defaultValue={editing?.limitDate?.slice(0, 10)} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-budget">Budget (GNF)</Label>
-            <Input id="ao-budget" name="budget" type="number" placeholder="Facultatif" defaultValue={editing?.budget ?? ""} />
+            <Label htmlFor="ao-budget">{t("fields.budget")}</Label>
+            <Input id="ao-budget" name="budget" type="number" placeholder={t("fields.budgetOptional")} defaultValue={editing?.budget ?? ""} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-contact-name">Nom du contact *</Label>
+            <Label htmlFor="ao-contact-name">{t("fields.contactName")}</Label>
             <Input id="ao-contact-name" name="contactName" required defaultValue={editing?.contactName} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ao-contact-email">Email du contact *</Label>
+            <Label htmlFor="ao-contact-email">{t("fields.contactEmail")}</Label>
             <Input id="ao-contact-email" name="contactEmail" type="email" required defaultValue={editing?.contactEmail} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="ao-dossier">Dossier d'appel d'offres (PDF, {editing ? "laisser vide pour conserver l'actuel" : "facultatif"})</Label>
+            <Label htmlFor="ao-dossier">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
             <Input id="ao-dossier" name="dossier" type="file" accept=".pdf" />
           </div>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer l'appel d'offres"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newTenderTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -2337,44 +2360,44 @@ function AppelsOffresAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un appel d'offres…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              {TENDER_STATUTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              {TENDER_STATUTS.map((s) => <SelectItem key={s} value={s}>{tStatus(s)}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Toutes les catégories</SelectItem>
+              <SelectItem value="all">{tCommon("allCategories")}</SelectItem>
               {categoriesNoms.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {tCommon("reset")}
           </Button>
         </div>
 
         <TableauAdmin
           compact
-          colonnes={["Référence", "Intitulé", "Catégorie", "Date limite", "Soumissions", "Statut", "Actions"]}
-          lignes={resultatPage.map((t) => [
-            t.code,
-            t.name,
-            t.category.name,
-            formaterDate(t.limitDate),
-            t.submissionCount,
-            <StatutBadge key={t.id} statut={t.status} />,
-            <RowActions key={t.id} onEdit={() => ouvrirEdition(t)} onDelete={() => supprimer(t)} />,
+          colonnes={[t("columns.reference"), t("columns.title"), t("columns.category"), t("columns.limitDate"), t("columns.submissions"), tCommon("status"), tCommon("actions")]}
+          lignes={resultatPage.map((tender) => [
+            tender.code,
+            tender.name,
+            tender.category.name,
+            formaterDate(tender.limitDate),
+            tender.submissionCount,
+            <StatutBadge key={tender.id} statut={tender.status} />,
+            <RowActions key={tender.id} onEdit={() => ouvrirEdition(tender)} onDelete={() => supprimer(tender)} />,
           ])}
         />
-        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun appel d'offres ne correspond aux filtres.</p>}
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
         <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
       </div>
@@ -2400,6 +2423,8 @@ interface CareerAdmin {
 }
 
 function CarrieresAdmin() {
+  const t = useTranslations("admin.careers");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: careers, loading, error, refetch } = useApiList<CareerAdmin>("/careers?lang=fr&pageSize=100");
   const { data: categories } = useApiOne<{ id: number; name: string }[]>("/career-categories?lang=fr");
@@ -2451,8 +2476,8 @@ function CarrieresAdmin() {
 
   function exporter() {
     exporterCsv(
-      `recrutements-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Référence", "Poste", "Département", "Catégorie", "Candidatures", "Date limite"],
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
       resultat.map((c) => [c.code, c.name, c.departement, c.category.name, c.candidatCount, formaterDate(c.limitDate)]),
     );
   }
@@ -2463,20 +2488,20 @@ function CarrieresAdmin() {
     setShowForm((v) => !v);
   }
 
-  function ouvrirEdition(c: CareerAdmin) {
-    setEditing(c);
-    setCategoryId(String(c.category.id));
+  function ouvrirEdition(career: CareerAdmin) {
+    setEditing(career);
+    setCategoryId(String(career.category.id));
     setShowForm(true);
   }
 
-  async function supprimer(c: CareerAdmin) {
-    if (!(await confirm(`Supprimer l'offre "${c.name}" ?`))) return;
+  async function supprimer(career: CareerAdmin) {
+    if (!(await confirm(t("confirmDelete", { name: career.name })))) return;
     try {
-      await apiFetch(`/careers/${c.id}`, { method: "DELETE" });
-      toast.success("Offre d'emploi supprimée.");
+      await apiFetch(`/careers/${career.id}`, { method: "DELETE" });
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -2484,7 +2509,7 @@ function CarrieresAdmin() {
     event.preventDefault();
     setFormError("");
     if (!categoryId) {
-      setFormError("Merci de sélectionner une catégorie.");
+      setFormError(tCommon("requiredCategory"));
       return;
     }
     setSubmitting(true);
@@ -2505,23 +2530,23 @@ function CarrieresAdmin() {
     try {
       if (editing) {
         await apiFetch(`/careers/${editing.id}`, { method: "PATCH", body });
-        toast.success("Offre d'emploi modifiée.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/careers", { method: "POST", body });
-        toast.success("Offre d'emploi créée.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       setCategoryId("");
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -2532,51 +2557,51 @@ function CarrieresAdmin() {
             <Briefcase className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Recrutements</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez et suivez les offres d'emploi de l'ARPT.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouvelle offre"}
+            {showForm && !editing ? tCommon("cancel") : t("newOffer")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={Briefcase} tone="primary" value={careers.length} label="Total des recrutements" delta={nouveauxCetteSemaine} />
-        <StatTrendCard icon={Clock3} tone="warning" value={enCoursListe.length} label="En cours" />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={cloturesListe.length} label="Clôturés" />
-        <StatTrendCard icon={Users} tone="primary" value={totalCandidatures} label="Candidatures reçues" />
+        <StatTrendCard icon={Briefcase} tone="primary" value={careers.length} label={t("stats.total")} delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={Clock3} tone="warning" value={enCoursListe.length} label={t("stats.inProgress")} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={cloturesListe.length} label={t("stats.closed")} />
+        <StatTrendCard icon={Users} tone="primary" value={totalCandidatures} label={t("stats.candidatures")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-          <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouvelle offre d'emploi"}</p>
+          <p className="text-sm font-semibold sm:col-span-2">{editing ? t("editingTitle", { name: editing.name }) : t("newOfferTitle")}</p>
           <div className="grid gap-2">
-            <Label htmlFor="cr-code">Code *</Label>
-            <Input id="cr-code" name="code" required placeholder="Ex. : REC-2026-11" defaultValue={editing?.code} />
+            <Label htmlFor="cr-code">{t("fields.code")}</Label>
+            <Input id="cr-code" name="code" required placeholder={t("fields.codePlaceholder")} defaultValue={editing?.code} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-name">Intitulé du poste *</Label>
+            <Label htmlFor="cr-name">{t("fields.position")}</Label>
             <Input id="cr-name" name="nameFr" required defaultValue={editing?.name} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="cr-description">Description *</Label>
+            <Label htmlFor="cr-description">{t("fields.description")}</Label>
             <Textarea id="cr-description" name="descriptionFr" required rows={3} defaultValue={editing?.description} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-departement">Département *</Label>
+            <Label htmlFor="cr-departement">{t("fields.department")}</Label>
             <Input id="cr-departement" name="departementFr" required defaultValue={editing?.departement} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-category">Catégorie *</Label>
+            <Label htmlFor="cr-category">{tCommon("category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger id="cr-category">
-                <SelectValue placeholder="Sélectionner…" />
+                <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {(categories ?? []).map((c) => (
@@ -2588,37 +2613,37 @@ function CarrieresAdmin() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-location">Lieu</Label>
-            <Input id="cr-location" name="locationFr" placeholder="Ex. : Conakry" defaultValue={editing?.location ?? ""} />
+            <Label htmlFor="cr-location">{t("fields.location")}</Label>
+            <Input id="cr-location" name="locationFr" placeholder={t("fields.locationPlaceholder")} defaultValue={editing?.location ?? ""} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-salary">Salaire</Label>
-            <Input id="cr-salary" name="salary" placeholder="Facultatif" defaultValue={editing?.salary ?? ""} />
+            <Label htmlFor="cr-salary">{t("fields.salary")}</Label>
+            <Input id="cr-salary" name="salary" placeholder={t("fields.salaryOptional")} defaultValue={editing?.salary ?? ""} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-pub">Date de publication *</Label>
+            <Label htmlFor="cr-pub">{t("fields.publicationDate")}</Label>
             <Input id="cr-pub" name="publicationDate" type="date" required defaultValue={editing?.publicationDate?.slice(0, 10)} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-limit">Date limite *</Label>
+            <Label htmlFor="cr-limit">{t("fields.limitDate")}</Label>
             <Input id="cr-limit" name="limitDate" type="date" required defaultValue={editing?.limitDate?.slice(0, 10)} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-contact-name">Nom du contact *</Label>
+            <Label htmlFor="cr-contact-name">{t("fields.contactName")}</Label>
             <Input id="cr-contact-name" name="contactName" required defaultValue={editing?.contactName} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cr-contact-email">Email du contact *</Label>
+            <Label htmlFor="cr-contact-email">{t("fields.contactEmail")}</Label>
             <Input id="cr-contact-email" name="contactEmail" type="email" required defaultValue={editing?.contactEmail} />
           </div>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer l'offre"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newOfferTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -2633,45 +2658,45 @@ function CarrieresAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un poste, une référence, un service…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="en_cours">En cours</SelectItem>
-              <SelectItem value="cloture">Clôturé</SelectItem>
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              <SelectItem value="en_cours">{t("statusInProgress")}</SelectItem>
+              <SelectItem value="cloture">{t("statusClosed")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Toutes les catégories</SelectItem>
+              <SelectItem value="all">{tCommon("allCategories")}</SelectItem>
               {categoriesNoms.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {tCommon("reset")}
           </Button>
         </div>
 
         <TableauAdmin
           compact
-          colonnes={["Référence", "Poste", "Département", "Date limite", "Candidats", "Publication", "Actions"]}
+          colonnes={[t("columns.reference"), t("columns.position"), t("columns.department"), t("columns.limitDate"), t("columns.candidates"), t("columns.publication"), tCommon("actions")]}
           lignes={resultatPage.map((c) => [
             c.code,
             c.name,
             c.departement,
             formaterDate(c.limitDate),
             c.candidatCount,
-            c.isNew ? <Puce key={c.id} label="Nouveau" tone="info" /> : <Puce key={c.id} label="Publié" tone="success" />,
+            c.isNew ? <Puce key={c.id} label={t("isNew")} tone="info" /> : <Puce key={c.id} label={t("published")} tone="success" />,
             <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
           ])}
         />
-        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun recrutement ne correspond aux filtres.</p>}
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
         <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
       </div>
@@ -2680,6 +2705,8 @@ function CarrieresAdmin() {
 }
 
 function StatistiquesAdmin() {
+  const t = useTranslations("admin.statistics");
+  const tCommon = useTranslations("admin.common");
   const { data: overview, loading, error } = useApiOne<SectorOverview>("/statistics/overview?lang=fr");
   const { data: reports, loading: loadingReports } = useApiList<{
     id: number;
@@ -2691,7 +2718,7 @@ function StatistiquesAdmin() {
     fileUrl: string;
   }>("/statistics/reports?lang=fr&pageSize=100");
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
   if (!overview) return null;
 
@@ -2704,25 +2731,25 @@ function StatistiquesAdmin() {
     <div className="mt-8 grid gap-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Abonnés mobiles</p>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("kpi.mobileSubscribers")}</p>
           <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.subscribersMillion != null ? `${overview.kpis.subscribersMillion} M` : "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Taux de pénétration</p>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("kpi.penetrationRate")}</p>
           <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.penetrationRate != null ? `${overview.kpis.penetrationRate} %` : "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Opérateurs actifs</p>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("kpi.activeOperators")}</p>
           <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.activeOperators ?? "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Sites 4G en service</p>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("kpi.active4GSites")}</p>
           <p className="mt-3 font-heading text-2xl font-bold text-primary">{overview.kpis?.active4GSites != null ? overview.kpis.active4GSites.toLocaleString("fr-FR") : "—"}</p>
         </div>
       </div>
       <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-        <h2 className="font-heading text-lg font-semibold">Parc d'abonnés mobiles</h2>
-        <p className="mt-1 text-xs text-muted-foreground">Évolution mensuelle · millions d'abonnés</p>
+        <h2 className="font-heading text-lg font-semibold">{t("chart.title")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t("chart.subtitle")}</p>
         <div className="mt-6 h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={abonnesParMoisReel}>
@@ -2730,7 +2757,7 @@ function StatistiquesAdmin() {
               <XAxis dataKey="mois" tickLine={false} axisLine={false} fontSize={11} />
               <YAxis tickLine={false} axisLine={false} fontSize={12} />
               <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: "var(--radius)", fontSize: "0.8rem" }} />
-              <Bar dataKey="abonnes" name="Abonnés (M)" fill="var(--color-chart-2)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="abonnes" name={t("chart.seriesName")} fill="var(--color-chart-2)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -2739,7 +2766,7 @@ function StatistiquesAdmin() {
       {!loadingReports && (
         <TableauAdmin
           codeColumn={false}
-          colonnes={["Rapport", "Secteur", "Année", "Format", "Téléchargements", "Fichier"]}
+          colonnes={t.raw("reports.columns") as string[]}
           lignes={reports.map((r) => [
             r.title,
             r.sector,
@@ -2747,7 +2774,7 @@ function StatistiquesAdmin() {
             r.format,
             r.downloadCount.toLocaleString("fr-FR"),
             <a key={r.id} href={r.fileUrl} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
-              Ouvrir
+              {t("reports.open")}
             </a>,
           ])}
         />
@@ -2801,6 +2828,8 @@ function PointStatistiqueForm({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("admin.statistics");
+  const tCommon = useTranslations("admin.common");
   const [periodeType, setPeriodeType] = useState<"month" | "quarter">(entry?.quarter ? "quarter" : "month");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -2825,14 +2854,14 @@ function PointStatistiqueForm({
     try {
       if (entry) {
         await apiFetch(`/statistics/entries/${entry.id}`, { method: "PATCH", body: JSON.stringify(body) });
-        toast.success("Point statistique mis à jour.");
+        toast.success(t("form.updated"));
       } else {
         await apiFetch("/statistics/entries", { method: "POST", body: JSON.stringify(body) });
-        toast.success("Point statistique créé.");
+        toast.success(t("form.created"));
       }
       onDone();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
@@ -2842,27 +2871,27 @@ function PointStatistiqueForm({
     <form onSubmit={enregistrer} className="grid gap-4 rounded-xl border border-primary/15 bg-surface p-5 shadow-soft">
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="grid gap-2">
-          <Label htmlFor="stat-year">Année *</Label>
+          <Label htmlFor="stat-year">{t("form.year")}</Label>
           <Input id="stat-year" name="year" type="number" required min={2000} defaultValue={entry?.year} />
         </div>
         <div className="grid gap-2">
-          <Label>Type de période *</Label>
+          <Label>{t("form.periodType")}</Label>
           <Select value={periodeType} onValueChange={(v) => setPeriodeType(v as "month" | "quarter")}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="month">Mensuel (abonnés, pénétration…)</SelectItem>
-              <SelectItem value="quarter">Trimestriel (chiffre d'affaires)</SelectItem>
+              <SelectItem value="month">{t("form.periodMonth")}</SelectItem>
+              <SelectItem value="quarter">{t("form.periodQuarter")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {periodeType === "month" ? (
           <div className="grid gap-2">
-            <Label htmlFor="stat-month">Mois *</Label>
+            <Label htmlFor="stat-month">{t("form.month")}</Label>
             <Select name="month" defaultValue={entry?.month ? String(entry.month) : undefined} required>
               <SelectTrigger id="stat-month">
-                <SelectValue placeholder="Sélectionnez le mois" />
+                <SelectValue placeholder={t("form.selectMonth")} />
               </SelectTrigger>
               <SelectContent>
                 {MOIS_COURTS.map((m, i) => (
@@ -2875,10 +2904,10 @@ function PointStatistiqueForm({
           </div>
         ) : (
           <div className="grid gap-2">
-            <Label htmlFor="stat-quarter">Trimestre *</Label>
+            <Label htmlFor="stat-quarter">{t("form.quarter")}</Label>
             <Select name="quarter" defaultValue={entry?.quarter ? String(entry.quarter) : undefined} required>
               <SelectTrigger id="stat-quarter">
-                <SelectValue placeholder="Sélectionnez le trimestre" />
+                <SelectValue placeholder={t("form.selectQuarter")} />
               </SelectTrigger>
               <SelectContent>
                 {[1, 2, 3, 4].map((q) => (
@@ -2895,41 +2924,41 @@ function PointStatistiqueForm({
       {periodeType === "month" ? (
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="grid gap-2">
-            <Label htmlFor="stat-subscribersMillion">Abonnés mobile (M)</Label>
+            <Label htmlFor="stat-subscribersMillion">{t("form.mobileSubscribers")}</Label>
             <Input id="stat-subscribersMillion" name="subscribersMillion" type="number" step="0.1" min={0} defaultValue={entry?.subscribersMillion ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-penetrationRate">Pénétration mobile (%)</Label>
+            <Label htmlFor="stat-penetrationRate">{t("form.mobilePenetration")}</Label>
             <Input id="stat-penetrationRate" name="penetrationRate" type="number" step="0.1" min={0} defaultValue={entry?.penetrationRate ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-internetSubscribersMillion">Abonnés internet (M)</Label>
+            <Label htmlFor="stat-internetSubscribersMillion">{t("form.internetSubscribers")}</Label>
             <Input id="stat-internetSubscribersMillion" name="internetSubscribersMillion" type="number" step="0.1" min={0} defaultValue={entry?.internetSubscribersMillion ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-internetPenetrationRate">Pénétration internet (%)</Label>
+            <Label htmlFor="stat-internetPenetrationRate">{t("form.internetPenetration")}</Label>
             <Input id="stat-internetPenetrationRate" name="internetPenetrationRate" type="number" step="0.1" min={0} defaultValue={entry?.internetPenetrationRate ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-mobileMoneyPenetrationRate">Pénétration mobile money (%)</Label>
+            <Label htmlFor="stat-mobileMoneyPenetrationRate">{t("form.mobileMoneyPenetration")}</Label>
             <Input id="stat-mobileMoneyPenetrationRate" name="mobileMoneyPenetrationRate" type="number" step="0.1" min={0} defaultValue={entry?.mobileMoneyPenetrationRate ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-salariedJobs">Emplois salariés</Label>
+            <Label htmlFor="stat-salariedJobs">{t("form.salariedJobs")}</Label>
             <Input id="stat-salariedJobs" name="salariedJobs" type="number" min={0} defaultValue={entry?.salariedJobs ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-activeOperators">Opérateurs actifs</Label>
+            <Label htmlFor="stat-activeOperators">{t("form.activeOperators")}</Label>
             <Input id="stat-activeOperators" name="activeOperators" type="number" min={0} defaultValue={entry?.activeOperators ?? undefined} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="stat-active4GSites">Sites 4G en service</Label>
+            <Label htmlFor="stat-active4GSites">{t("form.active4GSites")}</Label>
             <Input id="stat-active4GSites" name="active4GSites" type="number" min={0} defaultValue={entry?.active4GSites ?? undefined} />
           </div>
         </div>
       ) : (
         <div className="grid gap-2 sm:max-w-xs">
-          <Label htmlFor="stat-revenueBillionGNF">Chiffre d'affaires (milliards GNF)</Label>
+          <Label htmlFor="stat-revenueBillionGNF">{t("form.revenue")}</Label>
           <Input id="stat-revenueBillionGNF" name="revenueBillionGNF" type="number" step="0.1" min={0} defaultValue={entry?.revenueBillionGNF ?? undefined} />
         </div>
       )}
@@ -2937,10 +2966,10 @@ function PointStatistiqueForm({
       {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Enregistrement…" : entry ? "Enregistrer les modifications" : "Créer le point"}
+          {submitting ? tCommon("saving") : entry ? tCommon("save") : t("form.createEntry")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
+          {tCommon("cancel")}
         </Button>
       </div>
     </form>
@@ -2948,36 +2977,38 @@ function PointStatistiqueForm({
 }
 
 function PointsStatistiquesAdmin() {
+  const t = useTranslations("admin.statistics");
+  const tCommon = useTranslations("admin.common");
   const { data: entries, loading, error, refetch } = useApiOne<SectorStatisticEntry[]>("/statistics/entries");
   const [editing, setEditing] = useState<SectorStatisticEntry | "new" | null>(null);
   const confirm = useConfirm();
 
   async function supprimer(id: number) {
-    if (!(await confirm("Supprimer ce point statistique ?"))) return;
+    if (!(await confirm(t("entries.confirmDelete")))) return;
     try {
       await apiFetch(`/statistics/entries/${id}`, { method: "DELETE" });
-      toast.success("Point statistique supprimé.");
+      toast.success(t("entries.deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
-  if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="text-sm text-destructive">{error}</p>;
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading text-lg font-semibold">Points statistiques</h2>
+          <h2 className="font-heading text-lg font-semibold">{t("entries.title")}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Alimentent les chiffres affichés sur le site public (page d'accueil, observatoire du secteur).
+            {t("entries.subtitle")}
           </p>
         </div>
         {editing === null && (
           <Button size="sm" onClick={() => setEditing("new")}>
-            + Nouveau point
+            {t("entries.newEntry")}
           </Button>
         )}
       </div>
@@ -2997,7 +3028,7 @@ function PointsStatistiquesAdmin() {
 
       <TableauAdmin
         codeColumn={false}
-        colonnes={["Période", "Abonnés mobile", "Pénétration mobile", "Abonnés internet", "Mobile money", "Emplois", "Actions"]}
+        colonnes={[t("entries.columns.period"), t("entries.columns.mobileSubscribers"), t("entries.columns.mobilePenetration"), t("entries.columns.internetSubscribers"), t("entries.columns.mobileMoney"), t("entries.columns.jobs"), tCommon("actions")]}
         lignes={(entries ?? []).map((e) => [
           e.month ? `${MOIS_COURTS[e.month - 1]} ${e.year}` : `T${e.quarter} ${e.year}`,
           e.subscribersMillion != null ? `${e.subscribersMillion} M` : "—",
@@ -3007,34 +3038,118 @@ function PointsStatistiquesAdmin() {
           e.salariedJobs != null ? e.salariedJobs.toLocaleString("fr-FR") : "—",
           <div key={e.id} className="flex items-center gap-3">
             <button type="button" onClick={() => setEditing(e)} className="text-xs font-medium text-primary hover:underline">
-              Modifier
+              {tCommon("edit")}
             </button>
             <button type="button" onClick={() => supprimer(e.id)} className="text-xs font-medium text-destructive hover:underline">
-              Supprimer
+              {tCommon("delete")}
             </button>
           </div>,
         ])}
       />
       {(entries ?? []).length === 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">Aucun point statistique pour le moment.</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("entries.noResults")}</p>
       )}
     </div>
   );
 }
 
+interface ThemeColors {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+  background?: string;
+  surface?: string;
+  textPrimary?: string;
+  textSecondary?: string;
+  success?: string;
+  warning?: string;
+  danger?: string;
+}
+
+/** Miroir de DEFAULT_SITE_SETTING.themeColors (backend-nest/src/site-config/site-config.service.ts) — équivalents hex du thème institutionnel oklch() de globals.css, sert de repli d'affichage et de valeurs pour le bouton "Réinitialiser". */
+const DEFAULT_THEME_COLORS: Required<ThemeColors> = {
+  primary: "#014F88",
+  secondary: "#EAF1F8",
+  accent: "#CEEFF5",
+  background: "#FCFEFF",
+  surface: "#F1F6FB",
+  textPrimary: "#101926",
+  textSecondary: "#606A76",
+  success: "#368E5B",
+  warning: "#E49E38",
+  danger: "#CC2827",
+};
+
+const THEME_COLOR_FIELDS: (keyof ThemeColors)[] = [
+  "primary",
+  "secondary",
+  "accent",
+  "success",
+  "warning",
+  "danger",
+  "background",
+  "surface",
+  "textPrimary",
+  "textSecondary",
+];
+
 interface SiteConfig {
   contactInfo: { address?: { fr?: string }; phone?: string; phoneSecondary?: string; email?: string; hours?: { fr?: string } };
   socialLinks: { facebook?: string; twitter?: string; linkedin?: string; youtube?: string; instagram?: string };
   footerText: { fr?: string };
+  themeColors?: ThemeColors;
+  logoKey?: string | null;
 }
 
 function ConfigurationAdmin() {
+  const tCommon = useTranslations("admin.common");
   const { data: config, loading, error, refetch } = useApiOne<SiteConfig>("/site-config");
-  const [submitting, setSubmitting] = useState(false);
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
   if (!config) return null;
+
+  return <ConfigurationInner initialValue={config} onSaved={refetch} />;
+}
+
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="grid gap-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="size-9 shrink-0 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+        />
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-9 font-mono text-xs uppercase"
+          maxLength={7}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ConfigurationInner({ initialValue, onSaved }: { initialValue: SiteConfig; onSaved: () => void }) {
+  const t = useTranslations("admin.config");
+  const tAppearance = useTranslations("admin.config.appearance");
+  const tCommon = useTranslations("admin.common");
+  const [submitting, setSubmitting] = useState(false);
+  const [logoKey, setLogoKey] = useState(initialValue.logoKey ?? "");
+  const [colors, setColors] = useState<Required<ThemeColors>>({ ...DEFAULT_THEME_COLORS, ...initialValue.themeColors });
+
+  function setColor(field: keyof ThemeColors, value: string) {
+    setColors((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function reinitialiserCouleurs() {
+    setColors(DEFAULT_THEME_COLORS);
+    toast.success(tAppearance("colorsReset"));
+  }
 
   async function enregistrer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3055,13 +3170,15 @@ function ConfigurationAdmin() {
         youtube: String(form.get("youtube") || ""),
       },
       footerText: { fr: String(form.get("footerText") || "") },
+      themeColors: colors,
+      logoKey: logoKey || undefined,
     };
     try {
       await apiFetch("/site-config", { method: "PATCH", body: JSON.stringify(body) });
-      toast.success("Configuration enregistrée.");
-      refetch();
+      toast.success(t("saved"));
+      onSaved();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
@@ -3071,56 +3188,106 @@ function ConfigurationAdmin() {
     <form onSubmit={enregistrer} className="mt-8 grid max-w-2xl gap-5 rounded-xl border border-border bg-card p-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="cfg-phone">Téléphone</Label>
-          <Input id="cfg-phone" name="phone" defaultValue={config.contactInfo?.phone ?? ""} />
+          <Label htmlFor="cfg-phone">{t("phone")}</Label>
+          <Input id="cfg-phone" name="phone" defaultValue={initialValue.contactInfo?.phone ?? ""} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="cfg-phone2">Téléphone secondaire</Label>
-          <Input id="cfg-phone2" name="phoneSecondary" defaultValue={config.contactInfo?.phoneSecondary ?? ""} />
+          <Label htmlFor="cfg-phone2">{t("phoneSecondary")}</Label>
+          <Input id="cfg-phone2" name="phoneSecondary" defaultValue={initialValue.contactInfo?.phoneSecondary ?? ""} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="cfg-email">Email de contact</Label>
-          <Input id="cfg-email" name="email" type="email" defaultValue={config.contactInfo?.email ?? ""} />
+          <Label htmlFor="cfg-email">{t("email")}</Label>
+          <Input id="cfg-email" name="email" type="email" defaultValue={initialValue.contactInfo?.email ?? ""} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="cfg-address">Adresse</Label>
-          <Input id="cfg-address" name="address" defaultValue={config.contactInfo?.address?.fr ?? ""} />
+          <Label htmlFor="cfg-address">{t("address")}</Label>
+          <Input id="cfg-address" name="address" defaultValue={initialValue.contactInfo?.address?.fr ?? ""} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="cfg-hours">Horaires d'ouverture</Label>
-          <Input id="cfg-hours" name="hours" defaultValue={config.contactInfo?.hours?.fr ?? ""} placeholder="Ex. : Lundi – Vendredi, 08h00 – 17h00" />
+          <Label htmlFor="cfg-hours">{t("hours")}</Label>
+          <Input id="cfg-hours" name="hours" defaultValue={initialValue.contactInfo?.hours?.fr ?? ""} placeholder={t("hoursPlaceholder")} />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="cfg-fb">Facebook</Label>
-          <Input id="cfg-fb" name="facebook" defaultValue={config.socialLinks?.facebook ?? ""} placeholder="https://facebook.com/…" />
+          <Input id="cfg-fb" name="facebook" defaultValue={initialValue.socialLinks?.facebook ?? ""} placeholder="https://facebook.com/…" />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="cfg-tw">X (Twitter)</Label>
-          <Input id="cfg-tw" name="twitter" defaultValue={config.socialLinks?.twitter ?? ""} placeholder="https://x.com/…" />
+          <Input id="cfg-tw" name="twitter" defaultValue={initialValue.socialLinks?.twitter ?? ""} placeholder="https://x.com/…" />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="cfg-li">LinkedIn</Label>
-          <Input id="cfg-li" name="linkedin" defaultValue={config.socialLinks?.linkedin ?? ""} placeholder="https://linkedin.com/…" />
+          <Input id="cfg-li" name="linkedin" defaultValue={initialValue.socialLinks?.linkedin ?? ""} placeholder="https://linkedin.com/…" />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="cfg-yt">YouTube</Label>
-          <Input id="cfg-yt" name="youtube" defaultValue={config.socialLinks?.youtube ?? ""} placeholder="https://youtube.com/…" />
+          <Input id="cfg-yt" name="youtube" defaultValue={initialValue.socialLinks?.youtube ?? ""} placeholder="https://youtube.com/…" />
         </div>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="cfg-footer">Texte du pied de page</Label>
-        <Input id="cfg-footer" name="footerText" defaultValue={config.footerText?.fr ?? ""} />
+        <Label htmlFor="cfg-footer">{t("footerText")}</Label>
+        <Input id="cfg-footer" name="footerText" defaultValue={initialValue.footerText?.fr ?? ""} />
       </div>
-      <Button type="submit" disabled={submitting} className="justify-self-start">
-        {submitting ? "Enregistrement…" : "Enregistrer"}
+
+      <div className="mt-2 border-t border-border pt-5">
+        <h3 className="font-heading text-base font-semibold">{tAppearance("title")}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{tAppearance("subtitle")}</p>
+
+        <div className="mt-4 max-w-xs">
+          <ImageField label={tAppearance("logo")} value={logoKey} onChange={setLogoKey} />
+          <p className="mt-1.5 text-xs text-muted-foreground">{tAppearance("logoHint")}</p>
+        </div>
+
+        <div className="mt-6">
+          <p className="text-sm font-medium">{tAppearance("colorsTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{tAppearance("colorsHint")}</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {THEME_COLOR_FIELDS.map((field) => (
+              <ColorField key={field} label={tAppearance(field)} value={colors[field]} onChange={(value) => setColor(field, value)} />
+            ))}
+          </div>
+          <button type="button" onClick={reinitialiserCouleurs} className="mt-3 text-xs font-semibold text-primary hover:underline">
+            {tAppearance("resetColors")}
+          </button>
+        </div>
+
+        <div className="mt-5">
+          <p className="text-xs font-medium text-muted-foreground">{tAppearance("preview")}</p>
+          <div
+            className="mt-2 overflow-hidden rounded-xl border"
+            style={{ background: colors.background, borderColor: colors.surface }}
+          >
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: colors.primary }}>
+              <span className="text-sm font-semibold" style={{ color: "#fff" }}>ARPT Guinée</span>
+              <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ background: colors.accent, color: colors.textPrimary }}>
+                {tAppearance("accent")}
+              </span>
+            </div>
+            <div className="p-4">
+              <p className="text-sm font-semibold" style={{ color: colors.textPrimary }}>{tAppearance("textPrimary")}</p>
+              <p className="mt-1 text-xs" style={{ color: colors.textSecondary }}>{tAppearance("textSecondary")}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: colors.secondary, color: colors.textPrimary }}>{tAppearance("secondary")}</span>
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: colors.success, color: "#fff" }}>{tAppearance("success")}</span>
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: colors.warning, color: "#fff" }}>{tAppearance("warning")}</span>
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: colors.danger, color: "#fff" }}>{tAppearance("danger")}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Button type="submit" disabled={submitting} className="mt-2 justify-self-start">
+        {submitting ? tCommon("saving") : tCommon("save")}
       </Button>
     </form>
   );
 }
 
 function ImageField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+  const t = useTranslations("admin.config");
   const [uploading, setUploading] = useState(false);
 
   async function envoyer(event: React.ChangeEvent<HTMLInputElement>) {
@@ -3133,7 +3300,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
       const res = await apiFetch<{ url: string }>("/site-config/upload-image", { method: "POST", body });
       onChange(res.url);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur d'envoi de l'image.");
+      toast.error(err instanceof ApiError ? err.message : t("imageUploadError"));
     } finally {
       setUploading(false);
       event.target.value = "";
@@ -3145,12 +3312,13 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
       <Label className="text-xs">{label}</Label>
       {value && <img src={value} alt="" className="h-20 w-auto rounded-lg border border-border object-cover" />}
       <Input type="file" accept="image/*" disabled={uploading} onChange={envoyer} />
-      {uploading && <p className="text-xs text-muted-foreground">Envoi en cours…</p>}
+      {uploading && <p className="text-xs text-muted-foreground">{t("uploading")}</p>}
     </div>
   );
 }
 
 function FileField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+  const t = useTranslations("admin.config");
   const [uploading, setUploading] = useState(false);
 
   async function envoyer(event: React.ChangeEvent<HTMLInputElement>) {
@@ -3163,7 +3331,7 @@ function FileField({ label, value, onChange }: { label: string; value: string; o
       const res = await apiFetch<{ url: string }>("/site-config/upload-file", { method: "POST", body });
       onChange(res.url);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur d'envoi du fichier.");
+      toast.error(err instanceof ApiError ? err.message : t("fileUploadError"));
     } finally {
       setUploading(false);
       event.target.value = "";
@@ -3175,11 +3343,11 @@ function FileField({ label, value, onChange }: { label: string; value: string; o
       <Label className="text-xs">{label}</Label>
       {value && (
         <a href={value} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
-          Voir le fichier actuel
+          {t("viewCurrentFile")}
         </a>
       )}
       <Input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" disabled={uploading} onChange={envoyer} />
-      {uploading && <p className="text-xs text-muted-foreground">Envoi en cours…</p>}
+      {uploading && <p className="text-xs text-muted-foreground">{t("uploading")}</p>}
     </div>
   );
 }
@@ -3340,8 +3508,9 @@ function ObjectBlockAdmin({
   fields: BlockFieldDef[];
   defaultValue: BlockItem;
 }) {
+  const tCommon = useTranslations("admin.common");
   const { data, loading } = useContentBlockRaw<BlockItem>(blockKey, defaultValue);
-  if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>;
   return <ObjectBlockInner blockKey={blockKey} title={title} description={description} fields={fields} initialValue={data} />;
 }
 
@@ -3358,6 +3527,7 @@ function ObjectBlockInner({
   fields: BlockFieldDef[];
   initialValue: BlockItem;
 }) {
+  const tCommon = useTranslations("admin.common");
   const [value, setValue] = useState<BlockItem>(initialValue);
   const [submitting, setSubmitting] = useState(false);
 
@@ -3365,9 +3535,9 @@ function ObjectBlockInner({
     setSubmitting(true);
     try {
       await apiFetch(`/content-blocks/${blockKey}`, { method: "PUT", body: JSON.stringify({ value }) });
-      toast.success("Contenu enregistré.");
+      toast.success(tCommon("savedContent"));
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
@@ -3386,7 +3556,7 @@ function ObjectBlockInner({
         ))}
       </div>
       <Button type="button" size="sm" className="mt-5" disabled={submitting} onClick={enregistrer}>
-        {submitting ? "Enregistrement…" : "Enregistrer"}
+        {submitting ? tCommon("saving") : tCommon("save")}
       </Button>
     </div>
   );
@@ -3409,8 +3579,9 @@ function ListBlockAdmin({
   itemLabel: (item: BlockItem, index: number) => string;
   emptyItem?: BlockItem;
 }) {
+  const tCommon = useTranslations("admin.common");
   const { data, loading } = useContentBlockRaw<BlockItem[]>(blockKey, defaultItems);
-  if (loading) return <p className="text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>;
   return (
     <ListBlockInner
       blockKey={blockKey}
@@ -3441,6 +3612,7 @@ function ListBlockInner({
   itemLabel: (item: BlockItem, index: number) => string;
   emptyItem?: BlockItem;
 }) {
+  const tCommon = useTranslations("admin.common");
   const [items, setItems] = useState<BlockItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
 
@@ -3465,10 +3637,10 @@ function ListBlockInner({
     setSubmitting(true);
     try {
       await apiFetch(`/content-blocks/${blockKey}`, { method: "PUT", body: JSON.stringify({ value: nonVides }) });
-      toast.success("Contenu enregistré.");
+      toast.success(tCommon("savedContent"));
       setItems(nonVides);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
@@ -3482,7 +3654,7 @@ function ListBlockInner({
           {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
         </div>
         <Button type="button" size="sm" variant="outline" onClick={ajouter}>
-          + Ajouter
+          {tCommon("add")}
         </Button>
       </div>
       <div className="mt-5 space-y-4">
@@ -3502,10 +3674,10 @@ function ListBlockInner({
             </div>
           </div>
         ))}
-        {items.length === 0 && <p className="text-sm text-muted-foreground">Aucun élément. Cliquez sur « Ajouter ».</p>}
+        {items.length === 0 && <p className="text-sm text-muted-foreground">{tCommon("noItemsClickAdd")}</p>}
       </div>
       <Button type="button" size="sm" className="mt-5" disabled={submitting} onClick={enregistrer}>
-        {submitting ? "Enregistrement…" : "Enregistrer"}
+        {submitting ? tCommon("saving") : tCommon("save")}
       </Button>
     </div>
   );
@@ -3531,6 +3703,7 @@ const ICONE_OPTIONS_AUTORITE = [
 ];
 
 function ConsumerRightsDocumentAdmin() {
+  const t = useTranslations("admin.publicPages.guide");
   const { data, loading, refetch } = useApiOne<{ fileUrl: string | null; updatedAt: string | null }>(
     "/consumer-rights-document",
   );
@@ -3544,10 +3717,10 @@ function ConsumerRightsDocumentAdmin() {
     body.append("file", file);
     try {
       await apiFetch("/consumer-rights-document", { method: "POST", body });
-      toast.success("Guide mis à jour.");
+      toast.success(t("updated"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur d'envoi du fichier.");
+      toast.error(err instanceof ApiError ? err.message : t("uploadError"));
     } finally {
       setUploading(false);
       event.target.value = "";
@@ -3556,36 +3729,27 @@ function ConsumerRightsDocumentAdmin() {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="font-heading text-base font-semibold">Guide des droits des consommateurs (PDF)</h3>
+      <h3 className="font-heading text-base font-semibold">{t("title")}</h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Le bouton « Télécharger le guide » n'apparaît sur le site que si un fichier est envoyé ici.
+        {t("subtitle")}
       </p>
       {!loading && data?.fileUrl && (
         <a href={data.fileUrl} target="_blank" rel="noreferrer" className="mt-3 block text-sm text-primary underline">
-          Voir le guide actuel
+          {t("viewCurrent")}
         </a>
       )}
       <Input type="file" accept=".pdf" disabled={uploading} onChange={envoyer} className="mt-3" />
-      {uploading && <p className="mt-1 text-xs text-muted-foreground">Envoi en cours…</p>}
+      {uploading && <p className="mt-1 text-xs text-muted-foreground">{t("uploading")}</p>}
     </div>
   );
 }
 
 function PagesPubliquesAdmin() {
+  const t = useTranslations("admin.publicPages");
   const [pageSelectionnee, setPageSelectionnee] = useState("home");
   const pages = [
-    { value: "home", label: "Accueil" },
-    { value: "about", label: "L’Autorité · À propos" },
-    { value: "claims", label: "Réclamations" },
-    { value: "regulation", label: "Réglementation" },
-    { value: "equipment", label: "Équipements" },
-    { value: "tenders", label: "Appels d’offres" },
-    { value: "careers", label: "Carrières" },
-    { value: "news", label: "Actualités" },
-    { value: "services", label: "Services" },
-    { value: "contact", label: "Contact" },
-    { value: "statistics", label: "Statistiques" },
-    { value: "consultations", label: "Consultations publiques" },
+    "home", "about", "claims", "regulation", "equipment", "tenders",
+    "careers", "news", "services", "contact", "statistics", "consultations",
   ];
 
   return (
@@ -3595,17 +3759,17 @@ function PagesPubliquesAdmin() {
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><LayoutTemplate className="size-5" aria-hidden /></span>
             <div>
-              <p className="font-heading text-xs font-semibold tracking-[0.15em] text-primary uppercase">Éditeur du site</p>
-              <h2 className="mt-1 font-heading text-xl font-semibold">Pages publiques</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Sélectionnez une page pour modifier uniquement son contenu.</p>
+              <p className="font-heading text-xs font-semibold tracking-[0.15em] text-primary uppercase">{t("editorTitle")}</p>
+              <h2 className="mt-1 font-heading text-xl font-semibold">{t("title")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("selectPageHint")}</p>
             </div>
           </div>
           <div className="grid gap-1.5 sm:min-w-72">
-            <Label htmlFor="public-page-select" className="text-xs">Page à administrer</Label>
+            <Label htmlFor="public-page-select" className="text-xs">{t("pageLabel")}</Label>
             <Select value={pageSelectionnee} onValueChange={setPageSelectionnee}>
               <SelectTrigger id="public-page-select" className="bg-surface"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {pages.map((page) => <SelectItem key={page.value} value={page.value}>{page.label}</SelectItem>)}
+                {pages.map((page) => <SelectItem key={page} value={page}>{t(`pages.${page}`)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -3614,7 +3778,7 @@ function PagesPubliquesAdmin() {
 
       <div className="mt-6">
       {pageSelectionnee === "home" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Accueil</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.home`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="home.hero"
@@ -3680,7 +3844,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "about" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">L'Autorité (À propos)</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.about`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="about.hero"
@@ -3802,7 +3966,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "claims" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Réclamations</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.claims`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="claims.hero"
@@ -3883,7 +4047,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "regulation" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Réglementation</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.regulation`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="regulation.hero"
@@ -3903,7 +4067,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "equipment" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Équipements</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.equipment`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="equipment.hero"
@@ -3923,7 +4087,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "tenders" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Appels d'offres</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.tenders`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="tenders.hero"
@@ -3943,7 +4107,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "careers" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Carrières</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.careers`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="careers.hero"
@@ -3963,7 +4127,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "news" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Actualités</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.news`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="news.hero"
@@ -3987,7 +4151,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "services" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Services</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.services`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="services.hero"
@@ -4007,7 +4171,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "contact" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Contact</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.contact`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="contact.hero"
@@ -4027,7 +4191,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "statistics" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Statistiques</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.statistics`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="statistics.hero"
@@ -4047,7 +4211,7 @@ function PagesPubliquesAdmin() {
       </section>}
 
       {pageSelectionnee === "consultations" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Consultations publiques</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.consultations`)}</p>
         <div className="mt-3 space-y-5">
           <ObjectBlockAdmin
             blockKey="consultations.hero"
@@ -4083,6 +4247,8 @@ interface NewsAdmin {
 }
 
 function ActualitesAdmin() {
+  const t = useTranslations("admin.news");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: news, loading, error, refetch } = useApiList<NewsAdmin>("/news?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
@@ -4118,25 +4284,25 @@ function ActualitesAdmin() {
   }
 
   async function supprimer(n: NewsAdmin) {
-    if (!(await confirm(`Supprimer l'actualité "${n.title}" ?`))) return;
+    if (!(await confirm(t("confirmDelete", { name: n.title })))) return;
     try {
       await apiFetch(`/news/${n.id}`, { method: "DELETE" });
-      toast.success("Actualité supprimée.");
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
   function exporter() {
     const csv = [
-      ["Titre", "Catégorie", "Date", "Vues", "Statut"],
-      ...actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), String(item.views), item.isPublished ? "Publié" : "Brouillon"]),
+      t.raw("csv.headers") as string[],
+      ...actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), String(item.views), item.isPublished ? t("statusPublished") : t("statusDraft")]),
     ].map((ligne) => ligne.map((valeur) => `"${valeur.replaceAll('"', '""')}"`).join(";")).join("\n");
     const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
     const lien = document.createElement("a");
     lien.href = url;
-    lien.download = "actualites-arpt.csv";
+    lien.download = t("csv.filename");
     lien.click();
     URL.revokeObjectURL(url);
   }
@@ -4147,7 +4313,7 @@ function ActualitesAdmin() {
     const form = new FormData(event.currentTarget);
     const image = form.get("image") as File;
     if (!editing && (!image || image.size === 0)) {
-      setFormError("Une image est obligatoire.");
+      setFormError(t("imageRequired"));
       return;
     }
     setSubmitting(true);
@@ -4161,22 +4327,22 @@ function ActualitesAdmin() {
     try {
       if (editing) {
         await apiFetch(`/news/${editing.id}`, { method: "PATCH", body });
-        toast.success("Actualité modifiée.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/news", { method: "POST", body });
-        toast.success("Actualité créée.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -4185,55 +4351,55 @@ function ActualitesAdmin() {
         <div className="flex flex-col gap-4 border-b border-border p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-3">
             <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Newspaper className="size-5" aria-hidden /></span>
-            <div><h2 className="font-heading text-xl font-semibold">Dernières actualités</h2><p className="mt-1 text-sm text-muted-foreground">Retrouvez et gérez les publications du site.</p></div>
+            <div><h2 className="font-heading text-xl font-semibold">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p></div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={exporter}><Download className="size-3.5" aria-hidden /> Exporter</Button>
-            <Button size="sm" onClick={ouvrirCreation}>{showForm && !editing ? "Annuler" : "+ Nouvelle actualité"}</Button>
+            <Button type="button" size="sm" variant="outline" onClick={exporter}><Download className="size-3.5" aria-hidden /> {tCommon("export")}</Button>
+            <Button size="sm" onClick={ouvrirCreation}>{showForm && !editing ? tCommon("cancel") : t("newArticle")}</Button>
           </div>
         </div>
 
         <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(13rem,1fr)_10rem_10rem_9rem] lg:p-5">
-          <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-9 bg-card pl-9 text-xs" placeholder="Rechercher une actualité…" /></div>
-          <Select value={categorie} onValueChange={setCategorie}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue placeholder="Toutes les catégories" /></SelectTrigger><SelectContent><SelectItem value="all">Toutes les catégories</SelectItem>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
-          <Select value={statut} onValueChange={(value) => setStatut(value as typeof statut)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tous les statuts</SelectItem><SelectItem value="published">Publié</SelectItem><SelectItem value="draft">Brouillon</SelectItem></SelectContent></Select>
-          <Select value={ordre} onValueChange={(value) => setOrdre(value as typeof ordre)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="recent">Date (récent)</SelectItem><SelectItem value="views">Plus consultées</SelectItem></SelectContent></Select>
+          <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-9 bg-card pl-9 text-xs" placeholder={t("searchPlaceholder")} /></div>
+          <Select value={categorie} onValueChange={setCategorie}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue placeholder={tCommon("allCategories")} /></SelectTrigger><SelectContent><SelectItem value="all">{tCommon("allCategories")}</SelectItem>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
+          <Select value={statut} onValueChange={(value) => setStatut(value as typeof statut)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{tCommon("allStatuses")}</SelectItem><SelectItem value="published">{t("statusPublished")}</SelectItem><SelectItem value="draft">{t("statusDraft")}</SelectItem></SelectContent></Select>
+          <Select value={ordre} onValueChange={(value) => setOrdre(value as typeof ordre)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="recent">{t("sortRecent")}</SelectItem><SelectItem value="views">{t("sortViews")}</SelectItem></SelectContent></Select>
         </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold">{editing ? `Modifier "${editing.title}"` : "Nouvelle actualité"}</p>
+          <p className="text-sm font-semibold">{editing ? t("editingTitle", { name: editing.title }) : t("newArticleTitle")}</p>
           <div className="grid gap-2">
-            <Label htmlFor="news-title">Titre *</Label>
+            <Label htmlFor="news-title">{t("fields.articleTitle")}</Label>
             <Input id="news-title" name="titleFr" required defaultValue={editing?.title} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="news-content">Contenu *</Label>
+            <Label htmlFor="news-content">{t("fields.content")}</Label>
             <Textarea id="news-content" name="contentFr" required rows={6} defaultValue={editing?.content} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="news-category">Catégorie</Label>
-            <Input id="news-category" name="category" placeholder="Ex. : Réglementation, Appels d'offres, Événement…" defaultValue={editing?.category ?? ""} />
+            <Label htmlFor="news-category">{t("fields.category")}</Label>
+            <Input id="news-category" name="category" placeholder={t("fields.categoryPlaceholder")} defaultValue={editing?.category ?? ""} />
           </div>
           {editing?.imageUrl && (
             <img src={editing.imageUrl} alt="" className="h-32 w-auto rounded-lg border border-border object-cover" />
           )}
           <div className="grid gap-2">
-            <Label htmlFor="news-image">Image {editing ? "(laisser vide pour conserver l'actuelle)" : "*"}</Label>
+            <Label htmlFor="news-image">{t("fields.image", { hint: editing ? t("fields.imageHintKeep") : "*" })}</Label>
             <Input id="news-image" name="image" type="file" accept="image/*" required={!editing} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
-            Publier immédiatement
+            {t("fields.publishImmediately")}
           </label>
           {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
           <div className="flex gap-3">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer l'actualité"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newArticleTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -4242,19 +4408,19 @@ function ActualitesAdmin() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[55rem] text-left text-sm">
-            <thead className="border-b border-border bg-card text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"><tr><th className="px-5 py-3">Titre</th><th className="px-4 py-3">Catégorie</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Vues</th><th className="px-4 py-3">Statut</th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
+            <thead className="border-b border-border bg-card text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"><tr><th className="px-5 py-3">{t("columns.title")}</th><th className="px-4 py-3">{t("columns.category")}</th><th className="px-4 py-3">{t("columns.date")}</th><th className="px-4 py-3">{t("columns.views")}</th><th className="px-4 py-3">{t("columns.status")}</th><th className="px-5 py-3 text-right">{tCommon("actions")}</th></tr></thead>
             <tbody className="divide-y divide-border">
               {actualitesFiltrees.map((n) => (
                 <tr key={n.id} className="transition-colors hover:bg-accent/25">
-                  <td className="px-5 py-3.5"><div className="flex max-w-lg items-center gap-3"><div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-muted">{n.imageUrl && <img src={n.imageUrl} alt="" className="size-full object-cover" />}</div><div className="min-w-0"><p className="line-clamp-1 text-xs font-semibold">{n.title}</p><p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{n.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}</p><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} className="mt-1 text-[10px] font-semibold text-primary hover:underline">Lire la suite</button></div></div></td>
+                  <td className="px-5 py-3.5"><div className="flex max-w-lg items-center gap-3"><div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-muted">{n.imageUrl && <img src={n.imageUrl} alt="" className="size-full object-cover" />}</div><div className="min-w-0"><p className="line-clamp-1 text-xs font-semibold">{n.title}</p><p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{n.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}</p><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} className="mt-1 text-[10px] font-semibold text-primary hover:underline">{t("readMore")}</button></div></div></td>
                   <td className="px-4 py-3.5">{n.category ? <span className="inline-flex rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{n.category}</span> : <span className="text-xs text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3.5 text-xs text-muted-foreground"><p>{formaterDate(n.createdAt)}</p></td>
                   <td className="px-4 py-3.5"><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Eye className="size-3.5" aria-hidden />{n.views.toLocaleString("fr-FR")}</span></td>
-                  <td className="px-4 py-3.5">{n.isPublished ? <Puce label="Publié" tone="success" /> : <Puce label="Brouillon" tone="warning" />}</td>
-                  <td className="px-5 py-3.5"><div className="flex justify-end gap-1"><button type="button" onClick={() => ouvrirEdition(n)} title="Modifier" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Pencil className="size-3.5" aria-hidden /></button><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} title="Voir sur le site" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Eye className="size-3.5" aria-hidden /></button><button type="button" onClick={() => supprimer(n)} title="Supprimer" className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="size-3.5" aria-hidden /></button></div></td>
+                  <td className="px-4 py-3.5">{n.isPublished ? <Puce label={t("statusPublished")} tone="success" /> : <Puce label={t("statusDraft")} tone="warning" />}</td>
+                  <td className="px-5 py-3.5"><div className="flex justify-end gap-1"><button type="button" onClick={() => ouvrirEdition(n)} title={tCommon("edit")} className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Pencil className="size-3.5" aria-hidden /></button><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} title={t("viewOnSite")} className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Eye className="size-3.5" aria-hidden /></button><button type="button" onClick={() => supprimer(n)} title={tCommon("delete")} className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="size-3.5" aria-hidden /></button></div></td>
                 </tr>
               ))}
-              {actualitesFiltrees.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune actualité ne correspond à ces filtres.</td></tr>}
+              {actualitesFiltrees.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -4273,6 +4439,8 @@ interface CommuniqueAdmin {
 }
 
 function CommuniquesAdmin() {
+  const t = useTranslations("admin.communiques");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: communiques, loading, error, refetch } = useApiList<CommuniqueAdmin>("/communiques?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
@@ -4310,9 +4478,9 @@ function CommuniquesAdmin() {
 
   function exporter() {
     exporterCsv(
-      `communiques-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Titre", "Pièce jointe", "Date"],
-      resultat.map((c) => [c.title, c.fileUrl ? "Oui" : "Non", formaterDate(c.createdAt)]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((c) => [c.title, c.fileUrl ? t("csv.yes") : t("csv.no"), formaterDate(c.createdAt)]),
     );
   }
 
@@ -4327,13 +4495,13 @@ function CommuniquesAdmin() {
   }
 
   async function supprimer(c: CommuniqueAdmin) {
-    if (!(await confirm(`Supprimer le communiqué "${c.title}" ?`))) return;
+    if (!(await confirm(t("confirmDelete", { name: c.title })))) return;
     try {
       await apiFetch(`/communiques/${c.id}`, { method: "DELETE" });
-      toast.success("Communiqué supprimé.");
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -4351,22 +4519,22 @@ function CommuniquesAdmin() {
     try {
       if (editing) {
         await apiFetch(`/communiques/${editing.id}`, { method: "PATCH", body });
-        toast.success("Communiqué modifié.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/communiques", { method: "POST", body });
-        toast.success("Communiqué créé.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -4377,54 +4545,54 @@ function CommuniquesAdmin() {
             <FileCheck2 className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Communiqués</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les communiqués publiés sur le site.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouveau communiqué"}
+            {showForm && !editing ? tCommon("cancel") : t("newRelease")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatTrendCard icon={FileCheck2} tone="primary" value={communiques.length} label="Total" delta={nouveauxCetteSemaine} />
-        <StatTrendCard icon={Paperclip} tone="success" value={avecPieceJointe} label="Avec pièce jointe" />
-        <StatTrendCard icon={FileText} tone="warning" value={communiques.length - avecPieceJointe} label="Sans pièce jointe" />
+        <StatTrendCard icon={FileCheck2} tone="primary" value={communiques.length} label={t("stats.total")} delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={Paperclip} tone="success" value={avecPieceJointe} label={t("stats.withAttachment")} />
+        <StatTrendCard icon={FileText} tone="warning" value={communiques.length - avecPieceJointe} label={t("stats.withoutAttachment")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold">{editing ? `Modifier "${editing.title}"` : "Nouveau communiqué"}</p>
+          <p className="text-sm font-semibold">{editing ? t("editingTitle", { name: editing.title }) : t("newReleaseTitle")}</p>
           <div className="grid gap-2">
-            <Label htmlFor="com-title">Titre *</Label>
+            <Label htmlFor="com-title">{t("fields.title")}</Label>
             <Input id="com-title" name="titleFr" required defaultValue={editing?.title} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="com-content">Contenu *</Label>
+            <Label htmlFor="com-content">{t("fields.content")}</Label>
             <Textarea id="com-content" name="contentFr" required rows={5} defaultValue={editing?.content} />
           </div>
           {editing?.fileUrl && (
             <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
-              Voir le document actuel
+              {t("viewCurrentDocument")}
             </a>
           )}
           <div className="grid gap-2">
-            <Label htmlFor="com-file">Document joint (PDF, {editing ? "laisser vide pour conserver l'actuel" : "facultatif"})</Label>
+            <Label htmlFor="com-file">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
             <Input id="com-file" name="file" type="file" accept=".pdf" />
           </div>
           {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
           <div className="flex gap-3">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer le communiqué"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newReleaseTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -4439,27 +4607,27 @@ function CommuniquesAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un communiqué…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {tCommon("reset")}
           </Button>
         </div>
 
         <TableauAdmin
           compact
           codeColumn={false}
-          colonnes={["Titre", "Date", "Actions"]}
+          colonnes={[t("columns.title"), t("columns.date"), tCommon("actions")]}
           lignes={resultatPage.map((c) => [
             c.title,
             formaterDate(c.createdAt),
             <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
           ])}
         />
-        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun communiqué ne correspond aux filtres.</p>}
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
         <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
       </div>
@@ -4482,6 +4650,8 @@ interface ServiceAdmin {
 }
 
 function ServicesAdmin() {
+  const t = useTranslations("admin.services");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: services, loading, error, refetch } = useApiList<ServiceAdmin>("/services?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
@@ -4516,9 +4686,9 @@ function ServicesAdmin() {
 
   function exporter() {
     exporterCsv(
-      `services-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Service", "Délai", "Coût", "État"],
-      resultat.map((s) => [s.name, s.delai ?? "", s.cost ?? "", s.isActive ? "Actif" : "Inactif"]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((s) => [s.name, s.delai ?? "", s.cost ?? "", s.isActive ? tCommon("active") : tCommon("inactive")]),
     );
   }
 
@@ -4535,13 +4705,13 @@ function ServicesAdmin() {
   }
 
   async function supprimer(s: ServiceAdmin) {
-    if (!(await confirm(`Supprimer le service "${s.name}" ?`))) return;
+    if (!(await confirm(t("confirmDelete", { name: s.name })))) return;
     try {
       await apiFetch(`/services/${s.id}`, { method: "DELETE" });
-      toast.success("Service supprimé.");
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -4566,22 +4736,22 @@ function ServicesAdmin() {
     try {
       if (editing) {
         await apiFetch(`/services/${editing.id}`, { method: "PATCH", body });
-        toast.success("Service modifié.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/services", { method: "POST", body });
-        toast.success("Service créé.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -4592,82 +4762,82 @@ function ServicesAdmin() {
             <Layers className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Services</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les services proposés aux usagers.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouveau service"}
+            {showForm && !editing ? tCommon("cancel") : t("newService")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatTrendCard icon={Layers} tone="primary" value={services.length} label="Total" delta={nouveauxCetteSemaine} />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={actifs} label="Actifs" />
-        <StatTrendCard icon={X} tone="destructive" value={services.length - actifs} label="Inactifs" />
+        <StatTrendCard icon={Layers} tone="primary" value={services.length} label={t("stats.total")} delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={actifs} label={t("stats.active")} />
+        <StatTrendCard icon={X} tone="destructive" value={services.length - actifs} label={t("stats.inactive")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-          <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouveau service"}</p>
+          <p className="text-sm font-semibold sm:col-span-2">{editing ? t("editingTitle", { name: editing.name }) : t("newServiceTitle")}</p>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="svc-name">Nom du service *</Label>
+            <Label htmlFor="svc-name">{t("fields.name")}</Label>
             <Input id="svc-name" name="nameFr" required defaultValue={editing?.name} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="svc-description">Description</Label>
+            <Label htmlFor="svc-description">{t("fields.description")}</Label>
             <Textarea id="svc-description" name="descriptionFr" rows={3} defaultValue={editing?.description ?? ""} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="svc-delai">Délai de traitement</Label>
-            <Input id="svc-delai" name="delaiFr" placeholder="Ex. : 5 jours ouvrés" defaultValue={editing?.delai ?? ""} />
+            <Label htmlFor="svc-delai">{t("fields.delay")}</Label>
+            <Input id="svc-delai" name="delaiFr" placeholder={t("fields.delayPlaceholder")} defaultValue={editing?.delai ?? ""} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="svc-cost">Coût (GNF)</Label>
-            <Input id="svc-cost" name="cost" type="number" placeholder="Facultatif" defaultValue={editing?.cost ?? ""} />
+            <Label htmlFor="svc-cost">{t("fields.cost")}</Label>
+            <Input id="svc-cost" name="cost" type="number" placeholder={t("fields.costOptional")} defaultValue={editing?.cost ?? ""} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="svc-documents">Documents requis (séparés par des virgules)</Label>
+            <Label htmlFor="svc-documents">{t("fields.requiredDocuments")}</Label>
             <Input
               id="svc-documents"
               name="requiredDocuments"
-              placeholder="Ex. : Pièce d'identité, Justificatif de domicile"
+              placeholder={t("fields.requiredDocumentsPlaceholder")}
               defaultValue={(editing?.requiredDocuments ?? []).join(", ")}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="svc-image">Image {editing ? "(laisser vide pour conserver l'actuelle)" : "(facultatif)"}</Label>
+            <Label htmlFor="svc-image">{t("fields.image", { hint: editing ? t("fields.imageHintKeep") : t("fields.imageHintOptional") })}</Label>
             <Input id="svc-image" name="image" type="file" accept="image/*" />
             {editing?.imageUrl && (
               <img src={editing.imageUrl} alt="" className="mt-1 h-20 w-auto rounded-lg border border-border object-cover" />
             )}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="svc-file">Formulaire à télécharger (PDF, {editing ? "laisser vide pour conserver l'actuel" : "facultatif"})</Label>
+            <Label htmlFor="svc-file">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
             <Input id="svc-file" name="file" type="file" accept=".pdf" />
             {editing?.fileUrl && (
               <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
-                Voir le fichier actuel
+                {t("viewCurrentFile")}
               </a>
             )}
           </div>
           <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Service actif
+            {t("fields.activeLabel")}
           </label>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer le service"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newServiceTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -4682,34 +4852,34 @@ function ServicesAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un service…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreEtat} onValueChange={(value) => { setFiltreEtat(value as typeof filtreEtat); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les états</SelectItem>
-              <SelectItem value="actif">Actifs</SelectItem>
-              <SelectItem value="inactif">Inactifs</SelectItem>
+              <SelectItem value="all">{t("allStates")}</SelectItem>
+              <SelectItem value="actif">{t("stats.active")}</SelectItem>
+              <SelectItem value="inactif">{t("stats.inactive")}</SelectItem>
             </SelectContent>
           </Select>
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {tCommon("reset")}
           </Button>
         </div>
 
         <TableauAdmin
           compact
           codeColumn={false}
-          colonnes={["Service", "Délai", "État", "Actions"]}
+          colonnes={[t("columns.service"), t("columns.delay"), t("columns.state"), tCommon("actions")]}
           lignes={resultatPage.map((s) => [
             s.name,
             s.delai ?? "—",
-            s.isActive ? <Puce key={s.id} label="Actif" tone="success" /> : <Puce key={s.id} label="Inactif" tone="warning" />,
+            s.isActive ? <Puce key={s.id} label={tCommon("active")} tone="success" /> : <Puce key={s.id} label={tCommon("inactive")} tone="warning" />,
             <RowActions key={s.id} onEdit={() => ouvrirEdition(s)} onDelete={() => supprimer(s)} />,
           ])}
         />
-        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun service ne correspond aux filtres.</p>}
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
         <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
       </div>
@@ -4739,10 +4909,14 @@ function initiales(nom: string) {
 }
 
 function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUpdated: () => void }) {
+  const t = useTranslations("admin.messages");
+  const tCommon = useTranslations("admin.common");
+  const confirm = useConfirm();
   const [showReply, setShowReply] = useState(false);
   const [reponse, setReponse] = useState("");
   const [sending, setSending] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   async function envoyer(event: React.FormEvent<HTMLFormElement>) {
@@ -4755,12 +4929,12 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
         method: "POST",
         body: JSON.stringify({ replyMessage: reponse }),
       });
-      toast.success("Réponse envoyée par email.");
+      toast.success(t("replySent"));
       setShowReply(false);
       setReponse("");
       onUpdated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSending(false);
     }
@@ -4775,9 +4949,23 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
       });
       onUpdated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function supprimer() {
+    if (!(await confirm(t("confirmDelete")))) return;
+    setDeleting(true);
+    try {
+      await apiFetch(`/contact-messages/${message.id}`, { method: "DELETE" });
+      toast.success(t("deleted"));
+      onUpdated();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -4789,7 +4977,7 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
       )}
     >
       {!message.isRead && !message.isArchived && (
-        <span className="absolute left-0 top-6 h-9 w-1 rounded-r-full bg-primary" aria-label="Message non lu" />
+        <span className="absolute left-0 top-6 h-9 w-1 rounded-r-full bg-primary" aria-label={t("unreadLabel")} />
       )}
       <div className="flex gap-3.5">
         <div className={cn(
@@ -4810,7 +4998,7 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <time className="text-xs text-muted-foreground">{formaterDate(message.createdAt)}</time>
-              {message.isArchived ? <Puce label="Archivé" tone="info" /> : !message.isRead ? <Puce label="Nouveau" tone="warning" /> : null}
+              {message.isArchived ? <Puce label={t("archived")} tone="info" /> : !message.isRead ? <Puce label={t("new")} tone="warning" /> : null}
             </div>
           </div>
 
@@ -4818,27 +5006,37 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" onClick={() => setShowReply((v) => !v)} className="h-8 gap-1.5 px-3 text-xs">
-              <Reply className="size-3.5" aria-hidden /> {showReply ? "Fermer la réponse" : "Répondre"}
+              <Reply className="size-3.5" aria-hidden /> {showReply ? t("closeReply") : t("reply")}
             </Button>
             <button
               type="button"
               onClick={() => toggle("isRead")}
               disabled={toggling}
-              title={message.isRead ? "Marquer comme non lu" : "Marquer comme lu"}
+              title={message.isRead ? t("markUnread") : t("markRead")}
               className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-50"
             >
               {message.isRead ? <Mail className="size-4" aria-hidden /> : <MailOpen className="size-4" aria-hidden />}
-              <span className="sr-only">Marquer comme {message.isRead ? "non lu" : "lu"}</span>
+              <span className="sr-only">{t("markAs", { state: message.isRead ? t("stateUnread") : t("stateRead") })}</span>
             </button>
             <button
               type="button"
               onClick={() => toggle("isArchived")}
               disabled={toggling}
-              title={message.isArchived ? "Désarchiver" : "Archiver"}
+              title={message.isArchived ? t("unarchive") : t("archive")}
               className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-50"
             >
               <Archive className="size-4" aria-hidden />
-              <span className="sr-only">{message.isArchived ? "Désarchiver" : "Archiver"}</span>
+              <span className="sr-only">{message.isArchived ? t("unarchive") : t("archive")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={supprimer}
+              disabled={deleting}
+              title={t("delete")}
+              className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+            >
+              <Trash2 className="size-4" aria-hidden />
+              <span className="sr-only">{t("delete")}</span>
             </button>
           </div>
         </div>
@@ -4847,18 +5045,18 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
       {showReply && (
         <form onSubmit={envoyer} className="ml-0 mt-5 grid gap-3 rounded-xl border border-primary/15 bg-surface p-4 sm:ml-[3.4rem]">
           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Reply className="size-3.5 text-primary" aria-hidden /> Réponse à {message.name}
+            <Reply className="size-3.5 text-primary" aria-hidden /> {t("replyTo", { name: message.name })}
           </div>
           <Textarea
             value={reponse}
             onChange={(e) => setReponse(e.target.value)}
             rows={4}
             required
-            placeholder={`Répondre à ${message.name}…`}
+            placeholder={t("replyPlaceholder", { name: message.name })}
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" size="sm" disabled={sending} className="justify-self-start gap-1.5">
-            <Send className="size-3.5" aria-hidden /> {sending ? "Envoi…" : "Envoyer par email"}
+            <Send className="size-3.5" aria-hidden /> {sending ? t("sending") : t("sendByEmail")}
           </Button>
         </form>
       )}
@@ -4867,6 +5065,8 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
 }
 
 function MessagesAdmin() {
+  const t = useTranslations("admin.messages");
+  const tCommon = useTranslations("admin.common");
   const { data: messages, loading, error, refetch } = useApiList<ContactMessageAdmin>("/contact-messages?pageSize=100");
   const [recherche, setRecherche] = useState("");
   const [filtre, setFiltre] = useState<"all" | "unread" | "archived">("all");
@@ -4874,12 +5074,15 @@ function MessagesAdmin() {
   const messagesFiltres = messages.filter((message) => {
     const termes = `${message.name} ${message.email} ${message.subject} ${message.message}`.toLocaleLowerCase("fr");
     const correspondRecherche = termes.includes(recherche.trim().toLocaleLowerCase("fr"));
-    const correspondFiltre = filtre === "all" || (filtre === "unread" ? !message.isRead && !message.isArchived : message.isArchived);
+    const correspondFiltre =
+      filtre === "archived"
+        ? message.isArchived
+        : !message.isArchived && (filtre === "all" || !message.isRead);
     return correspondRecherche && correspondFiltre;
   });
   const nonLus = messages.filter((message) => !message.isRead && !message.isArchived).length;
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -4888,18 +5091,18 @@ function MessagesAdmin() {
         <div>
           <div className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Inbox className="size-4" aria-hidden /></span>
-            <h2 className="font-heading text-base font-semibold">Boîte de réception</h2>
+            <h2 className="font-heading text-base font-semibold">{t("inbox")}</h2>
             {nonLus > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">{nonLus}</span>}
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{messages.length} message{messages.length > 1 ? "s" : ""} reçu{messages.length > 1 ? "s" : ""}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("receivedCount", { count: messages.length })}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 sm:w-60">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input value={recherche} onChange={(event) => setRecherche(event.target.value)} placeholder="Rechercher un message…" className="h-9 pl-9 text-xs" />
+            <Input value={recherche} onChange={(event) => setRecherche(event.target.value)} placeholder={t("searchPlaceholder")} className="h-9 pl-9 text-xs" />
           </div>
-          <div className="flex rounded-lg bg-muted p-1" aria-label="Filtrer les messages">
-            {([['all', 'Tous'], ['unread', 'Non lus'], ['archived', 'Archivés']] as const).map(([valeur, libelle]) => (
+          <div className="flex rounded-lg bg-muted p-1" aria-label={t("inbox")}>
+            {([['all', t("filterAll")], ['unread', t("filterUnread")], ['archived', t("filterArchived")]] as const).map(([valeur, libelle]) => (
               <button key={valeur} type="button" onClick={() => setFiltre(valeur)} className={cn("rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors", filtre === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                 {libelle}
               </button>
@@ -4913,8 +5116,8 @@ function MessagesAdmin() {
       {messagesFiltres.length === 0 && (
         <div className="px-5 py-14 text-center">
           <Inbox className="mx-auto size-8 text-muted-foreground/50" aria-hidden />
-          <p className="mt-3 text-sm font-medium">{messages.length === 0 ? "Votre boîte de réception est vide." : "Aucun message ne correspond à cette recherche."}</p>
-          {messages.length > 0 && <button type="button" onClick={() => { setRecherche(""); setFiltre("all"); }} className="mt-2 text-xs font-semibold text-primary hover:underline">Réinitialiser les filtres</button>}
+          <p className="mt-3 text-sm font-medium">{messages.length === 0 ? t("emptyInbox") : t("noSearchResults")}</p>
+          {messages.length > 0 && <button type="button" onClick={() => { setRecherche(""); setFiltre("all"); }} className="mt-2 text-xs font-semibold text-primary hover:underline">{t("resetFilters")}</button>}
         </div>
       )}
     </section>
@@ -4935,6 +5138,8 @@ interface ReglementationAdmin {
 }
 
 function ReglementationAdmin() {
+  const t = useTranslations("admin.regulation");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: textes, loading, error, refetch } = useApiList<ReglementationAdmin>("/regulations?lang=fr&pageSize=100");
   const [showForm, setShowForm] = useState(false);
@@ -4949,7 +5154,7 @@ function ReglementationAdmin() {
   const [dateFin, setDateFin] = useState("");
   const [page, setPage] = useState(1);
 
-  const categoriesNoms = Array.from(new Set(textes.map((t) => t.category)));
+  const categoriesNoms = Array.from(new Set(textes.map((texte) => texte.category)));
 
   function reinitialiser() {
     setRecherche("");
@@ -4959,10 +5164,10 @@ function ReglementationAdmin() {
     setPage(1);
   }
 
-  const resultat = textes.filter((t) => {
-    const correspondRecherche = t.name.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
-    const correspondCategorie = filtreCategorie === "all" || t.category === filtreCategorie;
-    const date = t.dateUpload.slice(0, 10);
+  const resultat = textes.filter((texte) => {
+    const correspondRecherche = texte.name.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr"));
+    const correspondCategorie = filtreCategorie === "all" || texte.category === filtreCategorie;
+    const date = texte.dateUpload.slice(0, 10);
     const correspondDateDebut = !dateDebut || date >= dateDebut;
     const correspondDateFin = !dateFin || date <= dateFin;
     return correspondRecherche && correspondCategorie && correspondDateDebut && correspondDateFin;
@@ -4970,9 +5175,9 @@ function ReglementationAdmin() {
   const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
   const pageCourante = Math.min(page, totalPages);
   const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
-  const totalVues = textes.reduce((somme, t) => somme + t.views, 0);
-  const misEnAvant = textes.filter((t) => t.isPopular).length;
-  const nouveauxCetteSemaine = textes.filter((t) => depuisMoinsDuneSemaine(t.dateUpload)).length;
+  const totalVues = textes.reduce((somme, texte) => somme + texte.views, 0);
+  const misEnAvant = textes.filter((texte) => texte.isPopular).length;
+  const nouveauxCetteSemaine = textes.filter((texte) => depuisMoinsDuneSemaine(texte.dateUpload)).length;
 
   function changerPage(p: number) {
     setPage(Math.min(Math.max(p, 1), totalPages));
@@ -4980,9 +5185,9 @@ function ReglementationAdmin() {
 
   function exporter() {
     exporterCsv(
-      `reglementation-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Texte", "Catégorie", "Format", "Vues", "Date de publication"],
-      resultat.map((t) => [t.name, t.category, t.format, t.views, formaterDate(t.dateUpload)]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((texte) => [texte.name, texte.category, texte.format, texte.views, formaterDate(texte.dateUpload)]),
     );
   }
 
@@ -4993,21 +5198,21 @@ function ReglementationAdmin() {
     setShowForm((v) => !v);
   }
 
-  function ouvrirEdition(t: ReglementationAdmin) {
-    setEditing(t);
-    setDescription(t.description ?? "");
-    setIsPopular(t.isPopular);
+  function ouvrirEdition(texte: ReglementationAdmin) {
+    setEditing(texte);
+    setDescription(texte.description ?? "");
+    setIsPopular(texte.isPopular);
     setShowForm(true);
   }
 
-  async function supprimer(t: ReglementationAdmin) {
-    if (!(await confirm(`Supprimer le texte "${t.name}" ?`))) return;
+  async function supprimer(texte: ReglementationAdmin) {
+    if (!(await confirm(t("confirmDelete", { name: texte.name })))) return;
     try {
-      await apiFetch(`/regulations/${t.id}`, { method: "DELETE" });
-      toast.success("Texte réglementaire supprimé.");
+      await apiFetch(`/regulations/${texte.id}`, { method: "DELETE" });
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -5017,7 +5222,7 @@ function ReglementationAdmin() {
     const form = new FormData(event.currentTarget);
     const fichier = form.get("file") as File;
     if (!editing && (!fichier || fichier.size === 0)) {
-      setFormError("Le fichier du texte est obligatoire.");
+      setFormError(t("fileRequired"));
       return;
     }
     setSubmitting(true);
@@ -5032,22 +5237,22 @@ function ReglementationAdmin() {
     try {
       if (editing) {
         await apiFetch(`/regulations/${editing.id}`, { method: "PATCH", body });
-        toast.success("Texte réglementaire modifié.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/regulations", { method: "POST", body });
-        toast.success("Texte réglementaire créé.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -5058,79 +5263,79 @@ function ReglementationAdmin() {
             <ScrollText className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Réglementation</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les textes réglementaires publiés sur le site.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouveau texte"}
+            {showForm && !editing ? tCommon("cancel") : t("newText")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={ScrollText} tone="primary" value={textes.length} label="Total" delta={nouveauxCetteSemaine} />
-        <StatTrendCard icon={Eye} tone="warning" value={totalVues} label="Vues cumulées" />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={misEnAvant} label="Mis en avant" />
-        <StatTrendCard icon={FileText} tone="primary" value={categoriesNoms.length} label="Catégories" />
+        <StatTrendCard icon={ScrollText} tone="primary" value={textes.length} label={t("stats.total")} delta={nouveauxCetteSemaine} />
+        <StatTrendCard icon={Eye} tone="warning" value={totalVues} label={t("stats.totalViews")} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={misEnAvant} label={t("stats.featured")} />
+        <StatTrendCard icon={FileText} tone="primary" value={categoriesNoms.length} label={t("stats.categories")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-          <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.name}"` : "Nouveau texte réglementaire"}</p>
+          <p className="text-sm font-semibold sm:col-span-2">{editing ? t("editingTitle", { name: editing.name }) : t("newTextTitle")}</p>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="reg-name">Nom du texte *</Label>
+            <Label htmlFor="reg-name">{t("fields.name")}</Label>
             <Input id="reg-name" name="nameFr" required defaultValue={editing?.name} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="reg-description">Description</Label>
+            <Label htmlFor="reg-description">{t("fields.description")}</Label>
             <Textarea
               id="reg-description"
               rows={3}
-              placeholder="Résumé en 2 à 3 lignes du contenu de ce texte, affiché aux usagers sur la page Réglementation."
+              placeholder={t("fields.descriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
             <div className="rounded-lg border border-dashed border-border bg-surface p-3">
-              <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">Aperçu sur le site</p>
+              <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">{t("fields.sitePreview")}</p>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                {description || <span className="italic text-muted-foreground/60">Aucune description saisie pour l'instant.</span>}
+                {description || <span className="italic text-muted-foreground/60">{t("fields.noDescriptionYet")}</span>}
               </p>
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="reg-category">Catégorie *</Label>
-            <Input id="reg-category" name="category" required placeholder="Ex. : Loi, Décret, Arrêté…" defaultValue={editing?.category} />
+            <Label htmlFor="reg-category">{t("fields.category")}</Label>
+            <Input id="reg-category" name="category" required placeholder={t("fields.categoryPlaceholder")} defaultValue={editing?.category} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="reg-date">Date de publication *</Label>
+            <Label htmlFor="reg-date">{t("fields.publicationDate")}</Label>
             <Input id="reg-date" name="dateUpload" type="date" required defaultValue={editing?.dateUpload?.slice(0, 10)} />
           </div>
           <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" checked={isPopular} onChange={(e) => setIsPopular(e.target.checked)} />
-            Mettre en avant dans « Textes les plus consultés » (page d'accueil)
+            {t("fields.featureLabel")}
           </label>
           {editing?.fileUrl && (
             <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline sm:col-span-2">
-              Voir le fichier actuel
+              {t("viewCurrentFile")}
             </a>
           )}
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="reg-file">Fichier (PDF) {editing ? "(laisser vide pour conserver l'actuel)" : "*"}</Label>
+            <Label htmlFor="reg-file">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : "*" })}</Label>
             <Input id="reg-file" name="file" type="file" accept=".pdf" required={!editing} />
           </div>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer le texte"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newTextTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -5145,37 +5350,37 @@ function ReglementationAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher un texte…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreCategorie} onValueChange={(value) => { setFiltreCategorie(value); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Toutes les catégories</SelectItem>
+              <SelectItem value="all">{tCommon("allCategories")}</SelectItem>
               {categoriesNoms.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {tCommon("reset")}
           </Button>
         </div>
 
         <TableauAdmin
           compact
           codeColumn={false}
-          colonnes={["Texte", "Catégorie", "Format", "Publié le", "Vues", "Actions"]}
-          lignes={resultatPage.map((t) => [
-            t.name,
-            t.category,
-            t.format,
-            formaterDate(t.dateUpload),
-            t.views.toLocaleString("fr-FR"),
-            <RowActions key={t.id} onEdit={() => ouvrirEdition(t)} onDelete={() => supprimer(t)} />,
+          colonnes={[t("columns.text"), t("columns.category"), t("columns.format"), t("columns.publishedOn"), t("columns.views"), tCommon("actions")]}
+          lignes={resultatPage.map((texte) => [
+            texte.name,
+            texte.category,
+            texte.format,
+            formaterDate(texte.dateUpload),
+            texte.views.toLocaleString("fr-FR"),
+            <RowActions key={texte.id} onEdit={() => ouvrirEdition(texte)} onDelete={() => supprimer(texte)} />,
           ])}
         />
-        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucun texte ne correspond aux filtres.</p>}
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
         <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
       </div>
@@ -5197,6 +5402,9 @@ interface ConsultationAdmin {
 }
 
 function ConsultationsAdmin() {
+  const t = useTranslations("admin.consultations");
+  const tCommon = useTranslations("admin.common");
+  const tStatus = useTranslations("status");
   const confirm = useConfirm();
   const { data: consultations, loading, error, refetch } = useApiList<ConsultationAdmin>(
     "/public-consultations?lang=fr&pageSize=100",
@@ -5241,9 +5449,9 @@ function ConsultationsAdmin() {
 
   function exporter() {
     exporterCsv(
-      `consultations-${new Date().toISOString().slice(0, 10)}.csv`,
-      ["Titre", "Statut", "Début", "Fin"],
-      resultat.map((c) => [c.title, c.status, formaterDate(c.startDate), formaterDate(c.endDate)]),
+      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
+      t.raw("csv.headers") as string[],
+      resultat.map((c) => [c.title, tStatus(c.status), formaterDate(c.startDate), formaterDate(c.endDate)]),
     );
   }
 
@@ -5260,13 +5468,13 @@ function ConsultationsAdmin() {
   }
 
   async function supprimer(c: ConsultationAdmin) {
-    if (!(await confirm(`Supprimer la consultation "${c.title}" ?`))) return;
+    if (!(await confirm(t("confirmDelete", { name: c.title })))) return;
     try {
       await apiFetch(`/public-consultations/${c.id}`, { method: "DELETE" });
-      toast.success("Consultation publique supprimée.");
+      toast.success(t("deleted"));
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
@@ -5288,22 +5496,22 @@ function ConsultationsAdmin() {
     try {
       if (editing) {
         await apiFetch(`/public-consultations/${editing.id}`, { method: "PATCH", body });
-        toast.success("Consultation publique modifiée.");
+        toast.success(t("updated"));
       } else {
         await apiFetch("/public-consultations", { method: "POST", body });
-        toast.success("Consultation publique créée.");
+        toast.success(t("created"));
       }
       setShowForm(false);
       setEditing(null);
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -5314,39 +5522,39 @@ function ConsultationsAdmin() {
             <Vote className="size-5" aria-hidden />
           </span>
           <div>
-            <h2 className="font-heading text-xl font-semibold">Consultations publiques</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gérez les consultations soumises à l'avis du public.</p>
+            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> Exporter
+            <Download className="size-4" aria-hidden /> {tCommon("export")}
           </Button>
           <Button size="sm" onClick={ouvrirCreation}>
-            {showForm && !editing ? "Annuler" : "+ Nouvelle consultation"}
+            {showForm && !editing ? tCommon("cancel") : t("newConsultation")}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatTrendCard icon={Vote} tone="primary" value={consultations.length} label="Total" delta={nouvellesCetteSemaine} />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={ouvertes} label="Ouvertes" />
-        <StatTrendCard icon={X} tone="destructive" value={cloturees} label="Clôturées" />
+        <StatTrendCard icon={Vote} tone="primary" value={consultations.length} label={t("stats.total")} delta={nouvellesCetteSemaine} />
+        <StatTrendCard icon={CheckCircle2} tone="success" value={ouvertes} label={t("stats.open")} />
+        <StatTrendCard icon={X} tone="destructive" value={cloturees} label={t("stats.closed")} />
       </div>
 
       {showForm && (
         <form key={editing?.id ?? "new"} onSubmit={soumettre} className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-          <p className="text-sm font-semibold sm:col-span-2">{editing ? `Modifier "${editing.title}"` : "Nouvelle consultation publique"}</p>
+          <p className="text-sm font-semibold sm:col-span-2">{editing ? t("editingTitle", { name: editing.title }) : t("newConsultationTitle")}</p>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="cons-title">Titre *</Label>
+            <Label htmlFor="cons-title">{t("fields.title")}</Label>
             <Input id="cons-title" name="titleFr" required defaultValue={editing?.title} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="cons-description">Description *</Label>
+            <Label htmlFor="cons-description">{t("fields.description")}</Label>
             <Textarea id="cons-description" name="descriptionFr" required rows={3} defaultValue={editing?.description} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cons-status">Statut</Label>
+            <Label htmlFor="cons-status">{t("fields.status")}</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger id="cons-status">
                 <SelectValue />
@@ -5354,41 +5562,41 @@ function ConsultationsAdmin() {
               <SelectContent>
                 {CONSULTATION_STATUTS.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s === "OUVERTE" ? "Ouverte" : "Clôturée"}
+                    {tStatus(s)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cons-start">Date de début *</Label>
+            <Label htmlFor="cons-start">{t("fields.startDate")}</Label>
             <Input id="cons-start" name="startDate" type="date" required defaultValue={editing?.startDate?.slice(0, 10)} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cons-end">Date de fin *</Label>
+            <Label htmlFor="cons-end">{t("fields.endDate")}</Label>
             <Input id="cons-end" name="endDate" type="date" required defaultValue={editing?.endDate?.slice(0, 10)} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="cons-email">Email de contact *</Label>
+            <Label htmlFor="cons-email">{t("fields.contactEmail")}</Label>
             <Input id="cons-email" name="contactEmail" type="email" required defaultValue={editing?.contactEmail} />
           </div>
           {editing?.fileUrl && (
             <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline sm:col-span-2">
-              Voir le document actuel
+              {t("viewCurrentDocument")}
             </a>
           )}
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="cons-file">Document joint (PDF, {editing ? "laisser vide pour conserver l'actuel" : "facultatif"})</Label>
+            <Label htmlFor="cons-file">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
             <Input id="cons-file" name="file" type="file" accept=".pdf" />
           </div>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
             <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer la consultation"}
+              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newConsultationTitle")}
             </Button>
             {editing && (
               <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                Annuler
+                {tCommon("cancel")}
               </Button>
             )}
           </div>
@@ -5403,27 +5611,27 @@ function ConsultationsAdmin() {
               value={recherche}
               onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
               className="h-9 bg-card pl-9 text-xs"
-              placeholder="Rechercher une consultation…"
+              placeholder={t("searchPlaceholder")}
             />
           </div>
           <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
             <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              {CONSULTATION_STATUTS.map((s) => <SelectItem key={s} value={s}>{s === "OUVERTE" ? "Ouverte" : "Clôturée"}</SelectItem>)}
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              {CONSULTATION_STATUTS.map((s) => <SelectItem key={s} value={s}>{tStatus(s)}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de début" />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label="Date de fin" />
+          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("startDate")} />
+          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={tCommon("endDate")} />
           <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            Réinitialiser
+            {tCommon("reset")}
           </Button>
         </div>
 
         <TableauAdmin
           compact
           codeColumn={false}
-          colonnes={["Consultation", "Période", "Statut", "Actions"]}
+          colonnes={[t("columns.consultation"), t("columns.period"), tCommon("status"), tCommon("actions")]}
           lignes={resultatPage.map((c) => [
             c.title,
             `${formaterDate(c.startDate)} → ${formaterDate(c.endDate)}`,
@@ -5431,7 +5639,7 @@ function ConsultationsAdmin() {
             <RowActions key={c.id} onEdit={() => ouvrirEdition(c)} onDelete={() => supprimer(c)} />,
           ])}
         />
-        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">Aucune consultation ne correspond aux filtres.</p>}
+        {resultatPage.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</p>}
 
         <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
       </div>
@@ -5474,6 +5682,8 @@ interface PermissionOption {
 }
 
 function UserRoleSelect({ user, roles, onUpdated }: { user: UserAdmin; roles: RoleOption[]; onUpdated: () => void }) {
+  const t = useTranslations("admin.users.roleSelect");
+  const tCommon = useTranslations("admin.common");
   const [pending, setPending] = useState(false);
 
   async function changer(value: string) {
@@ -5483,10 +5693,10 @@ function UserRoleSelect({ user, roles, onUpdated }: { user: UserAdmin; roles: Ro
         method: "PATCH",
         body: JSON.stringify({ roleId: value === "none" ? null : Number(value) }),
       });
-      toast.success("Rôle mis à jour.");
+      toast.success(t("roleUpdated"));
       onUpdated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setPending(false);
     }
@@ -5499,7 +5709,7 @@ function UserRoleSelect({ user, roles, onUpdated }: { user: UserAdmin; roles: Ro
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">Aucun (usager)</SelectItem>
+          <SelectItem value="none">{t("noRole")}</SelectItem>
           {roles.map((r) => (
             <SelectItem key={r.id} value={String(r.id)}>
               {r.name}
@@ -5511,22 +5721,24 @@ function UserRoleSelect({ user, roles, onUpdated }: { user: UserAdmin; roles: Ro
           le rôle choisi ci-dessus (voir PermissionsGuard côté backend), mais
           reste modifiable ici pour que l'affichage/l'organisation des comptes
           reste cohérent (ex: filtrage par rôle) même pour un superuser. */}
-      {user.isSuperuser && <span className="text-[10px] whitespace-nowrap text-muted-foreground">Super Admin</span>}
+      {user.isSuperuser && <span className="text-[10px] whitespace-nowrap text-muted-foreground">{t("superAdmin")}</span>}
     </div>
   );
 }
 
 function UserActiveToggle({ user, onUpdated }: { user: UserAdmin; onUpdated: () => void }) {
+  const t = useTranslations("admin.users.activeToggle");
+  const tCommon = useTranslations("admin.common");
   const [pending, setPending] = useState(false);
 
   async function toggler() {
     setPending(true);
     try {
       await apiFetch(`/users/${user.id}/toggle-active`, { method: "POST" });
-      toast.success(user.isActive ? "Compte désactivé." : "Compte activé.");
+      toast.success(user.isActive ? t("deactivated") : t("activated"));
       onUpdated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setPending(false);
     }
@@ -5540,9 +5752,9 @@ function UserActiveToggle({ user, onUpdated }: { user: UserAdmin; onUpdated: () 
       className="disabled:opacity-50"
     >
       {user.isActive ? (
-        <Puce label="Actif" tone="success" />
+        <Puce label={tCommon("active")} tone="success" />
       ) : (
-        <Puce label="Désactivé" tone="warning" />
+        <Puce label={tCommon("inactive")} tone="warning" />
       )}
     </button>
   );
@@ -5557,15 +5769,14 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-const ENTREPRISE_STATUT_LABEL: Record<NonNullable<UserAdmin["enterpriseApprovalStatus"]>, string> = {
-  EN_ATTENTE: "En attente",
-  APPROUVE: "Approuvé",
-  REJETE: "Rejeté",
-};
-
 /** Lien "Voir" par ligne (Utilisateurs comme Comptes entreprise) — ouvre le détail complet du compte, pas résumable dans une seule cellule de tableau. */
 function VoirCompteButton({ user }: { user: UserAdmin }) {
+  const t = useTranslations("admin.users.detail");
+  const tRole = useTranslations("admin.users.roleSelect");
+  const tEnterpriseStatus = useTranslations("admin.users.enterpriseStatus");
+  const tCommon = useTranslations("admin.common");
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const na = t("notAvailable");
 
   return (
     <>
@@ -5574,7 +5785,7 @@ function VoirCompteButton({ user }: { user: UserAdmin }) {
         onClick={() => dialogRef.current?.showModal()}
         className="text-xs font-medium text-primary hover:underline"
       >
-        Voir
+        {tCommon("view")}
       </button>
       <dialog
         ref={dialogRef}
@@ -5584,42 +5795,42 @@ function VoirCompteButton({ user }: { user: UserAdmin }) {
         className="fixed inset-0 m-auto h-fit max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl border border-border bg-card p-0 text-card-foreground shadow-soft backdrop:bg-black/40"
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-heading text-base font-semibold">Détails du compte</h2>
+          <h2 className="font-heading text-base font-semibold">{t("title")}</h2>
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
-            aria-label="Fermer"
+            aria-label={tCommon("close")}
             className="text-muted-foreground hover:text-foreground"
           >
             <X className="size-4" aria-hidden />
           </button>
         </div>
         <dl className="px-5 py-2">
-          <DetailRow label="Nom" value={user.fullname} />
-          <DetailRow label="Email" value={user.email} />
-          <DetailRow label="Email vérifié" value={user.emailVerified ? "Oui" : "Non"} />
-          <DetailRow label="Type de compte" value={user.accountType === "ENTREPRISE" ? "Entreprise" : "Particulier"} />
+          <DetailRow label={t("name")} value={user.fullname} />
+          <DetailRow label={t("email")} value={user.email} />
+          <DetailRow label={t("emailVerified")} value={user.emailVerified ? t("yes") : t("no")} />
+          <DetailRow label={t("accountType")} value={user.accountType === "ENTREPRISE" ? t("enterprise") : t("individual")} />
           {user.accountType === "ENTREPRISE" && (
             <>
-              <DetailRow label="Raison sociale" value={user.companyName ?? "—"} />
+              <DetailRow label={t("companyName")} value={user.companyName ?? na} />
               <DetailRow
-                label="Statut entreprise"
-                value={user.enterpriseApprovalStatus ? ENTREPRISE_STATUT_LABEL[user.enterpriseApprovalStatus] : "—"}
+                label={t("enterpriseStatus")}
+                value={user.enterpriseApprovalStatus ? tEnterpriseStatus(user.enterpriseApprovalStatus) : na}
               />
-              {user.rejectionReason && <DetailRow label="Motif de rejet" value={user.rejectionReason} />}
+              {user.rejectionReason && <DetailRow label={t("rejectionReason")} value={user.rejectionReason} />}
               <DetailRow
-                label="Document"
-                value={user.hasCompanyDocument ? <EntrepriseDocumentLink userId={user.id} /> : "—"}
+                label={t("document")}
+                value={user.hasCompanyDocument ? <EntrepriseDocumentLink userId={user.id} /> : na}
               />
             </>
           )}
-          <DetailRow label="Rôle" value={user.isSuperuser ? "Super Admin" : (user.role?.name ?? "Aucun (usager)")} />
-          <DetailRow label="État" value={user.isActive ? "Actif" : "Désactivé"} />
-          <DetailRow label="Inscrit le" value={formaterDate(user.dateJoined)} />
+          <DetailRow label={t("role")} value={user.isSuperuser ? tRole("superAdmin") : (user.role?.name ?? tRole("noRole"))} />
+          <DetailRow label={t("state")} value={user.isActive ? tCommon("active") : tCommon("inactive")} />
+          <DetailRow label={t("joinedOn")} value={formaterDate(user.dateJoined)} />
         </dl>
         <div className="flex justify-end border-t border-border px-5 py-4">
           <Button type="button" size="sm" variant="outline" onClick={() => dialogRef.current?.close()}>
-            Fermer
+            {tCommon("close")}
           </Button>
         </div>
       </dialog>
@@ -5628,6 +5839,8 @@ function VoirCompteButton({ user }: { user: UserAdmin }) {
 }
 
 function RolesAdmin() {
+  const t = useTranslations("admin.roles");
+  const tCommon = useTranslations("admin.common");
   const confirm = useConfirm();
   const { data: roles, loading, error, refetch } = useApiOne<RoleAdmin[]>("/roles");
   const { data: permissions } = useApiOne<PermissionOption[]>("/permissions");
@@ -5672,7 +5885,7 @@ function RolesAdmin() {
     event.preventDefault();
     setFormError("");
     if (nom.trim().length < 2) {
-      setFormError("Le nom du rôle doit contenir au moins 2 caractères.");
+      setFormError(t("nameTooShort"));
       return;
     }
     setSubmitting(true);
@@ -5681,50 +5894,50 @@ function RolesAdmin() {
         method: editingId ? "PATCH" : "POST",
         body: JSON.stringify({ name: nom, permissionIds: Array.from(selectedPerms) }),
       });
-      toast.success(editingId ? "Rôle mis à jour." : "Rôle créé.");
+      toast.success(editingId ? t("roleUpdated") : t("roleCreated"));
       fermerForm();
       setNom("");
       setSelectedPerms(new Set());
       refetch();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function supprimer(id: number) {
-    if (!(await confirm("Supprimer ce rôle ? Les utilisateurs qui l'ont perdront leurs permissions."))) return;
+    if (!(await confirm(t("confirmDelete")))) return;
     try {
       await apiFetch(`/roles/${id}`, { method: "DELETE" });
-      toast.success("Rôle supprimé.");
+      toast.success(t("roleDeleted"));
       if (editingId === id) fermerForm();
       refetch();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     }
   }
 
-  if (loading) return <p className="mt-6 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-6 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-6 text-sm text-destructive">{error}</p>;
 
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-heading text-lg font-semibold">Rôles & permissions</h2>
+        <h2 className="font-heading text-lg font-semibold">{t("title")}</h2>
         <Button size="sm" onClick={() => (showForm ? fermerForm() : ouvrirCreation())}>
-          {showForm ? "Annuler" : "+ Nouveau rôle"}
+          {showForm ? tCommon("cancel") : t("newRole")}
         </Button>
       </div>
 
       {showForm && (
         <form onSubmit={enregistrer} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
           <div className="grid gap-2 max-w-sm">
-            <Label htmlFor="role-name">Nom du rôle *</Label>
+            <Label htmlFor="role-name">{t("nameLabel")}</Label>
             <Input id="role-name" value={nom} onChange={(e) => setNom(e.target.value)} required />
           </div>
           <div>
-            <Label>Permissions</Label>
+            <Label>{t("permissionsLabel")}</Label>
             <div className="mt-2 grid max-h-64 gap-2 overflow-y-auto rounded-md border border-border p-3 sm:grid-cols-2">
               {(permissions ?? []).map((p) => (
                 <label key={p.id} className="flex items-center gap-2 text-sm">
@@ -5740,7 +5953,7 @@ function RolesAdmin() {
           </div>
           {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
           <Button type="submit" disabled={submitting} className="justify-self-start">
-            {submitting ? "Enregistrement…" : editingId ? "Enregistrer les modifications" : "Créer le rôle"}
+            {submitting ? tCommon("saving") : editingId ? t("submitEdit") : t("submitCreate")}
           </Button>
         </form>
       )}
@@ -5752,14 +5965,14 @@ function RolesAdmin() {
               <h3 className="font-semibold">{r.name}</h3>
               <div className="flex items-center gap-3">
                 <button onClick={() => ouvrirEdition(r)} className="text-xs font-medium text-primary hover:underline">
-                  Modifier
+                  {tCommon("edit")}
                 </button>
                 <button onClick={() => supprimer(r.id)} className="text-xs text-destructive hover:underline">
-                  Supprimer
+                  {tCommon("delete")}
                 </button>
               </div>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{r.permissions.length} permission(s)</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("permissionCount", { count: r.permissions.length })}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {r.permissions.slice(0, 4).map((p) => (
                 <span key={p.id} className="rounded-full bg-accent px-2 py-0.5 text-[11px] text-accent-foreground">
@@ -5773,7 +5986,7 @@ function RolesAdmin() {
           </div>
         ))}
         {(roles ?? []).length === 0 && (
-          <p className="text-sm text-muted-foreground">Aucun rôle pour l'instant.</p>
+          <p className="text-sm text-muted-foreground">{t("noRolesYet")}</p>
         )}
       </div>
     </div>
@@ -5781,6 +5994,7 @@ function RolesAdmin() {
 }
 
 function EntrepriseDocumentLink({ userId }: { userId: number }) {
+  const t = useTranslations("admin.users.document");
   const [pending, setPending] = useState(false);
 
   async function voir() {
@@ -5789,7 +6003,7 @@ function EntrepriseDocumentLink({ userId }: { userId: number }) {
       const res = await apiFetch<{ url: string }>(`/users/${userId}/company-document`);
       window.open(res.url, "_blank", "noopener,noreferrer");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Impossible d'ouvrir le document.");
+      toast.error(err instanceof ApiError ? err.message : t("openError"));
     } finally {
       setPending(false);
     }
@@ -5797,16 +6011,18 @@ function EntrepriseDocumentLink({ userId }: { userId: number }) {
 
   return (
     <button type="button" onClick={voir} disabled={pending} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
-      Voir le document
+      {t("viewDocument")}
     </button>
   );
 }
 
 function EnterpriseApprovalActions({ user, onUpdated }: { user: UserAdmin; onUpdated: () => void }) {
+  const t = useTranslations("admin.users.approval");
+  const tCommon = useTranslations("admin.common");
   const [pending, setPending] = useState(false);
 
   async function decide(decision: "APPROUVE" | "REJETE") {
-    const reason = decision === "REJETE" ? window.prompt("Motif du rejet (visible par le demandeur) :") : undefined;
+    const reason = decision === "REJETE" ? window.prompt(t("rejectPrompt")) : undefined;
     if (decision === "REJETE" && !reason?.trim()) return;
     setPending(true);
     try {
@@ -5814,10 +6030,10 @@ function EnterpriseApprovalActions({ user, onUpdated }: { user: UserAdmin; onUpd
         method: "PATCH",
         body: JSON.stringify({ decision, ...(reason ? { reason: reason.trim() } : {}) }),
       });
-      toast.success(decision === "APPROUVE" ? "Compte entreprise validé." : "Compte entreprise rejeté.");
+      toast.success(decision === "APPROUVE" ? t("approved") : t("rejected"));
       onUpdated();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Erreur, réessayez.");
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setPending(false);
     }
@@ -5827,13 +6043,15 @@ function EnterpriseApprovalActions({ user, onUpdated }: { user: UserAdmin; onUpd
 
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      <Button type="button" size="sm" disabled={pending} onClick={() => decide("APPROUVE")} className="h-7 px-2 text-[11px]">Approuver</Button>
-      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => decide("REJETE")} className="h-7 px-2 text-[11px]">Rejeter</Button>
+      <Button type="button" size="sm" disabled={pending} onClick={() => decide("APPROUVE")} className="h-7 px-2 text-[11px]">{t("approve")}</Button>
+      <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => decide("REJETE")} className="h-7 px-2 text-[11px]">{t("reject")}</Button>
     </div>
   );
 }
 
 function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCreated: () => void }) {
+  const t = useTranslations("admin.users.create");
+  const tCommon = useTranslations("admin.common");
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -5858,13 +6076,13 @@ function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCr
           roleId: roleId ? Number(roleId) : undefined,
         }),
       });
-      toast.success("Utilisateur créé — un email lui a été envoyé pour définir son mot de passe.");
+      toast.success(t("created"));
       setShowForm(false);
       setRoleIdOverride(null);
       event.currentTarget.reset();
       onCreated();
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setFormError(err instanceof ApiError ? err.message : t("errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -5874,29 +6092,29 @@ function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCr
     <div>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading text-lg font-semibold">Répertoire des comptes</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Gérez les accès, les rôles et le statut de chaque compte.</p>
+          <h2 className="font-heading text-lg font-semibold">{t("title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button size="sm" className="shrink-0" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Annuler" : "+ Ajouter un compte"}
+          {showForm ? tCommon("cancel") : t("addAccount")}
         </Button>
       </div>
 
       {showForm && (
         <form onSubmit={creer} className="mt-5 grid gap-4 rounded-xl border border-primary/15 bg-surface p-5 shadow-soft sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="new-user-fullname">Nom complet *</Label>
+            <Label htmlFor="new-user-fullname">{t("fullname")}</Label>
             <Input id="new-user-fullname" name="fullname" required minLength={2} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="new-user-email">Adresse e-mail *</Label>
+            <Label htmlFor="new-user-email">{t("email")}</Label>
             <Input id="new-user-email" name="email" type="email" required />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="new-user-role">Rôle</Label>
+            <Label htmlFor="new-user-role">{t("role")}</Label>
             <Select value={roleId} onValueChange={setRoleIdOverride}>
               <SelectTrigger id="new-user-role">
-                <SelectValue placeholder="Membre (par défaut)" />
+                <SelectValue placeholder={t("roleDefaultPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {roles.map((r) => (
@@ -5908,11 +6126,11 @@ function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCr
             </Select>
           </div>
           <p className="text-xs text-muted-foreground sm:col-span-2">
-            Aucun mot de passe à saisir : l&apos;utilisateur recevra un email pour définir le sien.
+            {t("noPasswordHint")}
           </p>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <Button type="submit" disabled={submitting} className="justify-self-start">
-            {submitting ? "Création…" : "Créer l'utilisateur"}
+            {submitting ? t("creating") : t("submit")}
           </Button>
         </form>
       )}
@@ -5921,6 +6139,9 @@ function CreerUtilisateurAdmin({ roles, onCreated }: { roles: RoleOption[]; onCr
 }
 
 function UtilisateursAdmin() {
+  const t = useTranslations("admin.users.list");
+  const tDetail = useTranslations("admin.users.detail");
+  const tCommon = useTranslations("admin.common");
   const { data: users, loading, error, refetch } = useApiList<UserAdmin>("/users?pageSize=100");
   const { data: roles } = useApiOne<RoleOption[]>("/roles");
   const [recherche, setRecherche] = useState("");
@@ -5939,7 +6160,7 @@ function UtilisateursAdmin() {
   const comptesActifs = users.filter((user) => user.isActive).length;
   const enAttente = users.filter((user) => user.enterpriseApprovalStatus === "EN_ATTENTE").length;
 
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">Chargement…</p>;
+  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
   if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
 
   return (
@@ -5950,19 +6171,19 @@ function UtilisateursAdmin() {
             <div className="flex items-start gap-3">
               <span className="grid size-11 place-items-center rounded-xl bg-primary-foreground/15"><Users className="size-5" aria-hidden /></span>
               <div>
-                <p className="font-heading text-xs font-semibold tracking-[0.16em] uppercase opacity-80">Administration des accès</p>
-                <h1 className="mt-1 font-heading text-2xl font-semibold">Utilisateurs & rôles</h1>
-                <p className="mt-1 text-sm leading-6 text-primary-foreground/75">Une vue unique de tous les comptes personnels et professionnels.</p>
+                <p className="font-heading text-xs font-semibold tracking-[0.16em] uppercase opacity-80">{t("eyebrow")}</p>
+                <h1 className="mt-1 font-heading text-2xl font-semibold">{t("title")}</h1>
+                <p className="mt-1 text-sm leading-6 text-primary-foreground/75">{t("subtitle")}</p>
               </div>
             </div>
-            {enAttente > 0 && <span className="rounded-full bg-primary-foreground/15 px-3 py-1.5 text-xs font-semibold">{enAttente} entreprise{enAttente > 1 ? "s" : ""} à valider</span>}
+            {enAttente > 0 && <span className="rounded-full bg-primary-foreground/15 px-3 py-1.5 text-xs font-semibold">{t("pendingEnterprises", { count: enAttente })}</span>}
           </div>
           <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-primary-foreground/15 sm:grid-cols-4">
             {[
-              [users.length, "Comptes au total"],
-              [comptesActifs, "Accès actifs"],
-              [comptesEntreprise, "Comptes entreprise"],
-              [roles?.length ?? 0, "Rôles configurés"],
+              [users.length, t("statTotal")],
+              [comptesActifs, t("statActive")],
+              [comptesEntreprise, t("statEnterprise")],
+              [roles?.length ?? 0, t("statRoles")],
             ].map(([valeur, libelle]) => (
               <div key={String(libelle)} className="bg-primary-deep/25 px-4 py-3">
                 <p className="font-heading text-xl font-bold tabular-nums">{valeur}</p>
@@ -5977,16 +6198,16 @@ function UtilisateursAdmin() {
           <div className="mt-6 flex flex-col gap-3 border-y border-border py-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-sm">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-10 pl-9 text-sm" placeholder="Rechercher un nom, e-mail, entreprise ou rôle…" />
+              <Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-10 pl-9 text-sm" placeholder={t("searchPlaceholder")} />
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="flex rounded-lg bg-muted p-1">
-                {([['all', 'Tous'], ['PARTICULIER', 'Particuliers'], ['ENTREPRISE', 'Entreprises']] as const).map(([valeur, libelle]) => (
+                {([['all', t("typeAll")], ['PARTICULIER', t("typeIndividual")], ['ENTREPRISE', t("typeEnterprise")]] as const).map(([valeur, libelle]) => (
                   <button key={valeur} type="button" onClick={() => setFiltreType(valeur)} className={cn("rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors", filtreType === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{libelle}</button>
                 ))}
               </div>
               <div className="flex rounded-lg bg-muted p-1">
-                {([['all', 'Tous'], ['active', 'Actifs'], ['inactive', 'Suspendus']] as const).map(([valeur, libelle]) => (
+                {([['all', t("stateAll")], ['active', t("stateActive")], ['inactive', t("stateInactive")]] as const).map(([valeur, libelle]) => (
                   <button key={valeur} type="button" onClick={() => setFiltreEtat(valeur)} className={cn("rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors", filtreEtat === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}>{libelle}</button>
                 ))}
               </div>
@@ -5996,7 +6217,7 @@ function UtilisateursAdmin() {
           <div className="mt-5 overflow-hidden rounded-xl border border-border">
             <TableauAdmin
               codeColumn={false}
-              colonnes={["Compte", "Profil", "Rôle et accès", "Création", "Statut"]}
+              colonnes={[t("columns.account"), t("columns.profile"), t("columns.roleAccess"), t("columns.created"), t("columns.status")]}
               lignes={comptesFiltres.map((u) => [
                 <div key={u.id} className="flex min-w-55 items-center gap-3">
                   <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg text-xs font-bold", u.isActive ? "bg-accent text-primary" : "bg-muted text-muted-foreground")}>{initiales(u.fullname)}</span>
@@ -6007,21 +6228,21 @@ function UtilisateursAdmin() {
                   <VoirCompteButton user={u} />
                 </div>,
                 <div key={`profile-${u.id}`} className="min-w-32">
-                  <Puce label={u.accountType === "ENTREPRISE" ? "Entreprise" : "Particulier"} tone={u.accountType === "ENTREPRISE" ? "info" : "success"} />
+                  <Puce label={u.accountType === "ENTREPRISE" ? tDetail("enterprise") : tDetail("individual")} tone={u.accountType === "ENTREPRISE" ? "info" : "success"} />
                   {u.accountType === "ENTREPRISE" && <p className="mt-1 max-w-36 truncate text-xs text-muted-foreground">{u.companyName ?? "—"}</p>}
                   {u.accountType === "ENTREPRISE" && <EnterpriseApprovalActions user={u} onUpdated={refetch} />}
                 </div>,
                 <UserRoleSelect key={`role-${u.id}`} user={u} roles={roles ?? []} onUpdated={refetch} />,
                 <span key={`date-${u.id}`} className="whitespace-nowrap text-xs text-muted-foreground">{formaterDate(u.dateJoined)}</span>,
-                <div key={`status-${u.id}`} className="flex flex-col items-start gap-1.5"><UserActiveToggle user={u} onUpdated={refetch} />{!u.emailVerified && <span className="text-[10px] font-medium text-warning-foreground">E-mail non vérifié</span>}</div>,
+                <div key={`status-${u.id}`} className="flex flex-col items-start gap-1.5"><UserActiveToggle user={u} onUpdated={refetch} />{!u.emailVerified && <span className="text-[10px] font-medium text-warning-foreground">{t("emailNotVerified")}</span>}</div>,
               ])}
             />
           </div>
           {comptesFiltres.length === 0 && (
             <div className="py-10 text-center">
               <Users className="mx-auto size-8 text-muted-foreground/50" aria-hidden />
-              <p className="mt-3 text-sm font-medium">Aucun compte ne correspond aux filtres sélectionnés.</p>
-              <button type="button" onClick={() => { setRecherche(""); setFiltreType("all"); setFiltreEtat("all"); }} className="mt-2 text-xs font-semibold text-primary hover:underline">Réinitialiser les filtres</button>
+              <p className="mt-3 text-sm font-medium">{t("noResults")}</p>
+              <button type="button" onClick={() => { setRecherche(""); setFiltreType("all"); setFiltreEtat("all"); }} className="mt-2 text-xs font-semibold text-primary hover:underline">{tCommon("reset")}</button>
             </div>
           )}
         </div>
@@ -6034,6 +6255,7 @@ function UtilisateursAdmin() {
 }
 
 function AdminLogin() {
+  const t = useTranslations("admin");
   const { login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -6046,7 +6268,7 @@ function AdminLogin() {
     try {
       await login(String(data.get("email")), String(data.get("password")), "admin");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessayez.");
+      setError(err instanceof ApiError ? err.message : t("login.genericError"));
     } finally {
       setSubmitting(false);
     }
@@ -6055,23 +6277,23 @@ function AdminLogin() {
   return (
     <div className="grid h-full place-items-center p-6">
       <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-soft">
-        <h1 className="text-xl font-bold">Administration ARPT</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Réservé au personnel de l'Autorité.</p>
+        <h1 className="text-xl font-bold">{t("login.title")}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t("login.subtitle")}</p>
         <div className="mt-6 grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="admin-email">Adresse e-mail</Label>
+            <Label htmlFor="admin-email">{t("login.email")}</Label>
             <Input id="admin-email" name="email" type="email" required placeholder="vous@arpt.gov.gn" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="admin-password">Mot de passe</Label>
+            <Label htmlFor="admin-password">{t("login.password")}</Label>
             <Input id="admin-password" name="password" type="password" required />
           </div>
           {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
           <Button type="submit" disabled={submitting} className="mt-1">
-            {submitting ? "Connexion…" : "Se connecter"}
+            {submitting ? t("login.signingIn") : t("login.signIn")}
           </Button>
           <Link href="/mot-de-passe" className="text-center text-xs font-medium text-primary hover:underline">
-            Première connexion ou mot de passe oublié ?
+            {t("login.firstLogin")}
           </Link>
         </div>
       </form>

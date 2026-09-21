@@ -1,5 +1,8 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/** Émis quand une requête échoue en 401 (token absent/expiré/invalide) — écouté par AuthStateProvider pour déconnecter et renvoyer vers la connexion, voir lib/auth.tsx. */
+export const SESSION_EXPIRED_EVENT = "arpt:session-expired";
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -39,6 +42,16 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const data = isJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
+    // Token absent/expiré/invalide : purge locale + signal global (une requête
+    // de login avec mauvais mot de passe renvoie aussi 401 mais sans token à
+    // purger, donc sans effet ici — AuthStateProvider distingue en pratique
+    // via l'état déjà null). Le composant appelant reçoit quand même l'erreur
+    // normalement, pour son propre message d'erreur éventuel.
+    if (response.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("arpt_access_token");
+      localStorage.removeItem("arpt_refresh_token");
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
     const message = Array.isArray(data?.message)
       ? data.message.join(" ")
       : (data?.message ?? `Erreur ${response.status}`);
