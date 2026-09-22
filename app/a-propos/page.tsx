@@ -111,6 +111,14 @@ const DIRECTIONS_DEFAUT: DirectionItem[] = [
 
 const TIMELINE_DEFAUT: TimelineItem[] = [
   { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
+  { annee: "2005", texte: "Création de l'Autorité de régulation du secteur." },
   { annee: "2015", texte: "Adoption de la loi L/2015/018/AN sur les télécommunications et les TIC." },
   { annee: "2016", texte: "Nouvelle organisation de l'ARPT par décret présidentiel." },
   { annee: "2026", texte: "Lancement du chantier d'attribution des fréquences 5G." },
@@ -207,7 +215,7 @@ export default function APropos() {
                     key={i}
                     className="rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/40"
                   >
-                    <span className="flex size-10 items-center justify-center rounded-full bg-accent text-primary">
+                    <span className="flex size-10 items-center justify-center rounded-full bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                       <Icone className="size-4.5" aria-hidden />
                     </span>
                     <h3 className="mt-3 text-sm font-semibold">{d.nom}</h3>
@@ -220,7 +228,7 @@ export default function APropos() {
           <div>
             <SectionTitle surtitre={t("timelineSurtitre")} titre={t("timelineTitre")} />
             <ol className="mt-8 space-y-6 border-l-2 border-border pl-6">
-              {reperes.map((r, i) => (
+              {reperes.slice(0, 9).map((r, i) => (
                 <li key={i} className="relative">
                   <span className="absolute top-1.5 left-[-1.9rem] size-3 rounded-full bg-gold" />
                   <p className="font-heading font-semibold text-primary">{r.annee}</p>

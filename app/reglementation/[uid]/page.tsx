@@ -76,7 +76,7 @@ export default function TexteReglementaire() {
                 <p className="mt-6 max-w-[68ch] text-base leading-8 text-foreground/85">{texte.description}</p>
               )}
               <Button asChild className="mt-8">
-                <a href={`${API_BASE_URL}${texte.downloadUrl}`} target="_blank" rel="noopener noreferrer">
+                <a href={`${API_BASE_URL}${texte.downloadUrl}`}>
                   <Download className="size-4" aria-hidden /> {t("downloadDocument")}
                 </a>
               </Button>

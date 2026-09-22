@@ -16,6 +16,8 @@ import { formaterDate } from "@/data/mock";
 import { useApiOne } from "@/lib/hooks";
 import { useLocale } from "@/lib/locale-context";
 import { apiFetch, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { AuthTrigger } from "@/components/site/AuthModal";
 
 interface Career {
   id: number;
@@ -37,6 +39,7 @@ interface Career {
 export default function OffreDetail() {
   const t = useTranslations("careerDetail");
   const { locale } = useLocale();
+  const { user, loading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
   const { data: offre, loading, error } = useApiOne<Career>(id ? `/careers/${id}?lang=${locale}` : null);
   const [envoye, setEnvoye] = useState(false);
@@ -45,7 +48,7 @@ export default function OffreDetail() {
 
   async function postuler(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!offre) return;
+    if (!offre || !user) return;
     setErreurEnvoi("");
     setEnvoiEnCours(true);
     const form = new FormData(event.currentTarget);
@@ -74,7 +77,7 @@ export default function OffreDetail() {
   if (error || !offre) {
     return (
       <div className="container-content section-y text-center">
-        <div className="mx-auto grid size-14 place-items-center rounded-full bg-muted">
+        <div className="mx-auto grid size-14 place-items-center rounded-full bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
           <Search className="size-6 text-muted-foreground" aria-hidden />
         </div>
         <h1 className="mt-5 text-2xl font-bold">{t("notFoundTitle")}</h1>
@@ -136,7 +139,14 @@ export default function OffreDetail() {
             {t("applyBody", { name: offre.contactName, email: offre.contactEmail })}
           </p>
 
-          {envoye ? (
+          {authLoading ? <p className="mt-6 text-sm text-muted-foreground">{t("loading")}</p> : !user ? (
+            <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-5 text-sm">
+              <p className="mb-4">{t("loginRequired")}</p>
+              <Button asChild><AuthTrigger>{t("loginToApply")}</AuthTrigger></Button>
+            </div>
+          ) : offre.limitDate.slice(0, 10) < new Date().toISOString().slice(0, 10) ? (
+            <p className="mt-6 text-sm text-muted-foreground">{t("closed")}</p>
+          ) : envoye ? (
             <div className="mt-6 rounded-lg border border-success/40 bg-success/10 p-5 text-sm">
               <p className="font-semibold text-success">{t("submittedTitle")}</p>
               <p className="mt-1 text-muted-foreground">{t("submittedBody")}</p>
@@ -146,6 +156,7 @@ export default function OffreDetail() {
             </div>
           ) : (
             <form className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={postuler}>
+              <p className="text-sm text-muted-foreground sm:col-span-2">{t("accountUsed", { name: user.fullname, email: user.email })}</p>
               <div className="grid gap-2">
                 <Label htmlFor="dispo">{t("availabilityDate")}</Label>
                 <Input id="dispo" name="dispo" type="date" required />

@@ -33,24 +33,24 @@ export const members = [
       image: "/images/arpt/adama-conde.jpg" 
       
       },
-    // { 
-    //   name: "M. Djiba Diakite",
-    //   role: "Membre du conseil d'administration",
-    //   image: "/images/arpt/djiba-arpt.jpeg" 
+    { 
+      name: "M. Djiba Diakite",
+      role: "Membre du conseil d'administration",
+      image: "/images/arpt/djiba-arpt.jpeg" 
       
-    //   },
-    // { 
-    //   name: "M. Mohamed Sacko",
-    //   role: "Member",
-    //   image: "/images/arpt/mohamed.jpeg" 
+      },
+    { 
+      name: "M. Mohamed Sacko",
+      role: "Member",
+      image: "/images/arpt/mohamed.jpeg" 
       
-    //   },
-    // { 
-    //   name: "M. Moussa Kaba",
-    //   role: "Member",
-    //   image: "/images/arpt/kabaci.jpeg" 
+      },
+    { 
+      name: "M. Moussa Kaba",
+      role: "Member",
+      image: "/images/arpt/kabaci.jpeg" 
       
-    //   },
+      },
     { 
       name: "M. Fany Zeze  Camara",
       role: "Member",

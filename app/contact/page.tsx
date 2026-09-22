@@ -5,11 +5,10 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
   Clock, Mail, MapPin, Phone, CheckCircle2, ArrowUpRight, Navigation,
-  User, MessageSquare, Loader2, ClipboardList
+  LogIn, MessageSquare, Loader2, ClipboardList
 } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,6 +19,8 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { AuthTrigger } from "@/components/site/AuthModal";
 import { useApiOne, useContentBlock } from "@/lib/hooks";
 
 interface HeroContent {
@@ -41,6 +42,7 @@ interface SiteConfigPublic {
 
 export default function Contact() {
   const t = useTranslations("contactPage");
+  const { user, loading: authLoading } = useAuth();
   const { data: hero } = useContentBlock<HeroContent>("contact.hero", HERO_DEFAUT);
   const { data: config } = useApiOne<SiteConfigPublic>("/site-config");
   const contactArpt = {
@@ -70,8 +72,6 @@ export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [erreur, setErreur] = useState("");
   const [formData, setFormData] = useState({
-    nom: "",
-    email: "",
     objet: "",
     message: "",
   });
@@ -90,12 +90,15 @@ export default function Contact() {
     setErreur("");
     setIsSubmitting(true);
 
+    if (!formData.objet) {
+      setErreur(t("subjectPlaceholder"));
+      setIsSubmitting(false);
+      return;
+    }
     const motif = motifReclamations.find((m) => m.value === formData.objet)?.label ?? formData.objet;
 
     try {
-      await api.post("/contact", {
-        name: formData.nom,
-        email: formData.email,
+      await api.post("/contact/me", {
         subject: motif,
         message: formData.message,
       });
@@ -168,7 +171,7 @@ export default function Contact() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-card md:p-8 lg:p-10">
             {envoye ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="grid size-16 place-items-center rounded-full bg-success/10 text-success">
+                <div className="grid size-16 place-items-center rounded-full bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                   <CheckCircle2 className="size-8" aria-hidden="true" />
                 </div>
                 <h2 className="mt-6 font-heading text-2xl font-semibold">{t("sentTitle")}</h2>
@@ -180,10 +183,21 @@ export default function Contact() {
                   className="mt-8"
                   onClick={() => {
                     setEnvoye(false);
-                    setFormData({ nom: "", email: "", objet: "", message: "" });
+                    setFormData({ objet: "", message: "" });
                   }}
                 >
                   {t("sendAnother")}
+                </Button>
+              </div>
+            ) : authLoading ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">{t("loading")}</p>
+            ) : !user ? (
+              <div className="py-10 text-center">
+                <LogIn className="mx-auto size-12 text-primary" aria-hidden />
+                <h2 className="mt-4 font-heading text-xl font-semibold">{t("loginRequiredTitle")}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{t("loginRequiredBody")}</p>
+                <Button asChild className="mt-6">
+                  <AuthTrigger>{t("loginOrCreateAccount")}</AuthTrigger>
                 </Button>
               </div>
             ) : (
@@ -196,64 +210,22 @@ export default function Contact() {
                   </p>
                 </div>
 
-                  <div className="grid content-start gap-2">
-                    <Label htmlFor="c-nom">{t("fullName")}</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" aria-hidden="true" />
-                      <Input
-                        id="c-nom"
-                        name="nom"
-                        value={formData.nom}
-                        onChange={handleInputChange}
-                        className="h-11 bg-background pl-10 transition-all focus-visible:border-primary focus-visible:ring-primary/20"
-                        required
-                        maxLength={120}
-                        placeholder={t("fullNamePlaceholder")}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid content-start gap-2">
-                    <Label htmlFor="c-email">{t("email2")}</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" aria-hidden="true" />
-                      <Input
-                        id="c-email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="h-11 bg-background pl-10 transition-all focus-visible:border-primary focus-visible:ring-primary/20"
-                        required
-                        maxLength={255}
-                        placeholder="fanta@exemple.com"
-                      />
-                    </div>
-                  </div>
-
-                <div className="grid content-start gap-2 sm:col-span-2">
+                <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="c-objet">{t("subject")}</Label>
                   <div className="relative">
-                    <ClipboardList className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" aria-hidden="true" />
-                    <Select
-                      required
-                      value={formData.objet}
-                      onValueChange={handleSelectChange}
-                    >
-                      <SelectTrigger id="c-objet" className="h-11 bg-background pl-10 text-left transition-all focus-visible:border-primary focus-visible:ring-primary/20">
+                    <ClipboardList className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                    <Select value={formData.objet} onValueChange={handleSelectChange} required>
+                      <SelectTrigger id="c-objet" className="h-11 bg-background pl-10">
                         <SelectValue placeholder={t("subjectPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {motifReclamations.map((motif) => (
-                          <SelectItem key={motif.value} value={motif.value}>
-                            {motif.label}
-                          </SelectItem>
+                          <SelectItem key={motif.value} value={motif.value}>{motif.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-
                 <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="c-message">{t("message")}</Label>
                   <div className="relative">
@@ -266,6 +238,7 @@ export default function Contact() {
                       className="min-h-[160px] resize-y bg-background pl-10 transition-all focus-visible:border-primary focus-visible:ring-primary/20"
                       required
                       rows={5}
+                      minLength={10}
                       maxLength={2000}
                       placeholder={t("messagePlaceholder")}
                     />

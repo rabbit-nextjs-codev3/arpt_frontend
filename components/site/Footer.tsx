@@ -102,7 +102,7 @@ export function Footer() {
                 key={r.label}
                 href={r.href}
                 aria-label={r.label}
-                className="grid size-9 place-items-center rounded-full bg-primary-foreground/10 transition-colors hover:bg-primary-foreground/20"
+                className="grid size-9 place-items-center rounded-full bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"
               >
                 <r.icon className="size-4" />
               </a>

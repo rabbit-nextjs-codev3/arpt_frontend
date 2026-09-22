@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -48,7 +48,7 @@ import {
   Vote,
   X,
 } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { toast } from "sonner";
 import { StatutBadge } from "@/components/site/StatutBadge";
@@ -63,11 +63,15 @@ import { useAuth, ApiError } from "@/lib/auth";
 import { useApiOne, useApiList, useContentBlockRaw } from "@/lib/hooks";
 import { apiFetch, type PaginatedResult } from "@/lib/api";
 import { formaterDate } from "@/data/mock";
+import { ApplicationsAdmin } from "@/components/admin/ApplicationsAdmin";
+import { Sidebar } from "@/components/sidebar";
+import { useDocumentPreview } from "@/components/site/DocumentPreview";
+import { exporterTableau, type ExportFormat } from "@/lib/export-table";
 
 interface MenuItem {
   id: string;
   icon: typeof LayoutDashboard;
-  badgeKey?: "reclamationsOuvertes" | "demandesNouvelles" | "messagesNonLus";
+  badgeKey?: "reclamationsOuvertes" | "messagesNonLus";
 }
 
 // titreKey/id résolus via t(`nav.groups.${titreKey}`) / t(`nav.${id}`)
@@ -82,7 +86,7 @@ const menuGroups: { titreKey: string; items: MenuItem[] }[] = [
     titreKey: "users",
     items: [
       { id: "reclamations", icon: MessageSquareWarning, badgeKey: "reclamationsOuvertes" },
-      { id: "demandes", icon: FileText, badgeKey: "demandesNouvelles" },
+      { id: "candidatures", icon: Briefcase },
       { id: "messages", icon: Inbox, badgeKey: "messagesNonLus" },
     ],
   },
@@ -119,7 +123,7 @@ const menuGroups: { titreKey: string; items: MenuItem[] }[] = [
 const menus = menuGroups.flatMap((g) => g.items).map((m) => ({ ...m, href: `/admin?section=${m.id}` }));
 
 
-const kpiIcons = [MessageSquareWarning, FileText, Users, Inbox];
+const kpiIcons = [MessageSquareWarning, Users, Inbox];
 
 /**
  * Remplace window.confirm() pour toutes les suppressions du panneau admin —
@@ -183,7 +187,6 @@ function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
 interface AdminOverview {
   reclamations: { total: number; ouvertes: number } | null;
-  demandesService: { total: number; nouvelles: number } | null;
   candidatures: { total: number; offresActives: number } | null;
   messagesContact: { nonLus: number } | null;
 }
@@ -243,17 +246,16 @@ interface NotificationItem {
 
 /** Fait le lien entre le type d'événement (voir NotificationsService côté backend) et l'onglet du dashboard où le traiter. */
 const NOTIFICATION_SECTION_BY_TYPE: Record<string, string> = {
-  "submission.created": "marches",
-  "submission.status_changed": "marches",
+  "submission.created": "candidatures",
+  "submission.status_changed": "candidatures",
   "user.registered": "utilisateurs",
   "user.enterprise_registered": "utilisateurs",
   "user.enterprise_status_changed": "utilisateurs",
-  "candidature.created": "carrieres",
-  "candidature.status_changed": "carrieres",
+  "candidature.created": "candidatures",
+  "candidature.status_changed": "candidatures",
   "contact_message.created": "messages",
   "claim.created": "reclamations",
   "claim.status_changed": "reclamations",
-  "service_request.created": "demandes",
 };
 
 const NOTIFICATIONS_POLL_MS = 30_000;
@@ -301,7 +303,7 @@ function NotificationsBell({ onNavigate }: { onNavigate: (section: string) => vo
     if (!n.isRead) {
       setItems((prev) => prev.map((it) => (it.id === n.id ? { ...it, isRead: true } : it)));
       setUnread((c) => Math.max(0, c - 1));
-      apiFetch(`/notifications/${n.id}/read`, { method: "POST" }).catch(() => {});
+      apiFetch(`/notifications/${n.id}/read`, { method: "POST" }).catch(() => { });
     }
     setOpen(false);
     const section = NOTIFICATION_SECTION_BY_TYPE[n.type];
@@ -375,13 +377,12 @@ export default function Admin() {
   const t = useTranslations("admin");
   const [section, setSection] = useState<string>("tableau");
   const courant = menus.find((m) => m.id === section) ?? menus[0];
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, hasPermission } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const staff = Boolean(user?.isStaff || user?.isSuperuser || user?.role);
   const { data: overview } = useApiOne<AdminOverview>(staff ? "/dashboard/admin-overview" : null);
   const { data: overviewStats } = useApiOne<SectorOverview>(staff ? "/statistics/overview?lang=fr" : null);
   const { data: reclamationsRecentes } = useApiList<ClaimAdmin>(staff ? "/claims?lang=fr&pageSize=3" : null);
-  const { data: activiteRecente } = useApiList<AuditLogEntry>(staff ? "/audit-logs?pageSize=5" : null);
   const { data: newsReelles } = useApiList<{ id: number }>(staff ? "/news?pageSize=100" : null);
   const { data: communiquesReels } = useApiList<{ id: number }>(staff ? "/communiques?pageSize=100" : null);
   const { data: tendersReels } = useApiList<{ status: string }>(staff ? "/tenders?pageSize=100" : null);
@@ -393,21 +394,15 @@ export default function Admin() {
 
   const kpisReels = overview
     ? [
-        { libelle: t("dashboard.kpi.openClaims"), valeur: overview.reclamations?.ouvertes ?? "—" },
-        { libelle: t("dashboard.kpi.serviceRequests"), valeur: overview.demandesService?.total ?? "—" },
-        { libelle: t("dashboard.kpi.candidatures"), valeur: overview.candidatures?.total ?? "—" },
-        { libelle: t("dashboard.kpi.unreadMessages"), valeur: overview.messagesContact?.nonLus ?? "—" },
-      ]
+      { libelle: t("dashboard.kpi.openClaims"), valeur: overview.reclamations?.ouvertes ?? "—" },
+      { libelle: t("dashboard.kpi.candidatures"), valeur: overview.candidatures?.total ?? "—" },
+      { libelle: t("dashboard.kpi.unreadMessages"), valeur: overview.messagesContact?.nonLus ?? "—" },
+    ]
     : [];
 
   const caReel = (overviewStats?.quarterlySeries ?? []).map((q) => ({
     trimestre: `T${q.quarter} ${q.year}`,
     ca: q.revenueBillionGNF,
-  }));
-
-  const abonnesReel = (overviewStats?.monthlySeries ?? []).map((m) => ({
-    mois: MOIS_COURTS[m.month - 1] ?? m.month,
-    abonnes: m.subscribersMillion,
   }));
 
   // Chaque champ de kpis est optionnel côté admin (voir PointStatistiqueForm)
@@ -417,11 +412,11 @@ export default function Admin() {
   // properties of null).
   const indicateursSectoriels = overviewStats?.kpis
     ? [
-        { libelle: t("dashboard.sectorKpi.mobileSubscribers"), valeur: overviewStats.kpis.subscribersMillion != null ? `${overviewStats.kpis.subscribersMillion.toLocaleString("fr-FR")} M` : "—", icon: Smartphone },
-        { libelle: t("dashboard.sectorKpi.penetrationRate"), valeur: overviewStats.kpis.penetrationRate != null ? `${overviewStats.kpis.penetrationRate} %` : "—", icon: TrendingUp },
-        { libelle: t("dashboard.sectorKpi.activeOperators"), valeur: overviewStats.kpis.activeOperators != null ? `${overviewStats.kpis.activeOperators}` : "—", icon: Users },
-        { libelle: t("dashboard.sectorKpi.active4GSites"), valeur: overviewStats.kpis.active4GSites != null ? overviewStats.kpis.active4GSites.toLocaleString("fr-FR") : "—", icon: TowerControl },
-      ]
+      { libelle: t("dashboard.sectorKpi.mobileSubscribers"), valeur: overviewStats.kpis.subscribersMillion != null ? `${overviewStats.kpis.subscribersMillion.toLocaleString("fr-FR")} M` : "—", icon: Smartphone },
+      { libelle: t("dashboard.sectorKpi.penetrationRate"), valeur: overviewStats.kpis.penetrationRate != null ? `${overviewStats.kpis.penetrationRate} %` : "—", icon: TrendingUp },
+      { libelle: t("dashboard.sectorKpi.activeOperators"), valeur: overviewStats.kpis.activeOperators != null ? `${overviewStats.kpis.activeOperators}` : "—", icon: Users },
+      { libelle: t("dashboard.sectorKpi.active4GSites"), valeur: overviewStats.kpis.active4GSites != null ? overviewStats.kpis.active4GSites.toLocaleString("fr-FR") : "—", icon: TowerControl },
+    ]
     : [];
 
   const variationCA =
@@ -431,25 +426,19 @@ export default function Admin() {
 
   const actionsReelles = overview
     ? [
-        {
-          label: t("dashboard.todo.qualifyClaims"),
-          detail: t("dashboard.todo.qualifyClaimsDetail", { count: overview.reclamations?.ouvertes ?? 0 }),
-          icon: AlertCircle,
-          tone: "text-warning",
-        },
-        {
-          label: t("dashboard.todo.newServiceRequests"),
-          detail: t("dashboard.todo.newServiceRequestsDetail", { count: overview.demandesService?.nouvelles ?? 0 }),
-          icon: Clock3,
-          tone: "text-primary",
-        },
-        {
-          label: t("dashboard.todo.unreadContactMessages"),
-          detail: t("dashboard.todo.unreadContactMessagesDetail", { count: overview.messagesContact?.nonLus ?? 0 }),
-          icon: Newspaper,
-          tone: "text-chart-2",
-        },
-      ]
+      {
+        label: t("dashboard.todo.qualifyClaims"),
+        detail: t("dashboard.todo.qualifyClaimsDetail", { count: overview.reclamations?.ouvertes ?? 0 }),
+        icon: AlertCircle,
+        tone: "text-warning",
+      },
+      {
+        label: t("dashboard.todo.unreadContactMessages"),
+        detail: t("dashboard.todo.unreadContactMessagesDetail", { count: overview.messagesContact?.nonLus ?? 0 }),
+        icon: Newspaper,
+        tone: "text-chart-2",
+      },
+    ]
     : [];
 
   if (authLoading) {
@@ -467,196 +456,153 @@ export default function Admin() {
 
   return (
     <ConfirmProvider>
-    <Group orientation="horizontal" className="h-full min-h-0 w-full">
-      <Panel id="sidebar" defaultSize="18" minSize="14" maxSize="30" className="h-full min-w-0">
-        <aside className="sticky top-0 z-10 flex h-full flex-col self-start overflow-y-auto bg-sidebar text-sidebar-foreground">
-          <div className="border-b border-sidebar-border px-5 py-6">
-            <div className="flex items-center gap-3">
-              <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">A</div>
-              <div className="min-w-0">
-                <p className="font-heading text-sm font-semibold tracking-wide uppercase">{t("nav.groups.administration")}</p>
-                <p className="mt-1 truncate text-xs opacity-60">{user.email}</p>
-              </div>
-            </div>
-          </div>
-          <nav className="grid gap-4 px-3 py-5">
-            {menuGroups.map((group) => (
-              <div key={group.titreKey} className="grid gap-1">
-                <p className="px-3 pb-1 text-[10px] font-semibold tracking-[0.14em] text-sidebar-foreground/45 uppercase">
-                  {t(`nav.groups.${group.titreKey}`)}
-                </p>
-                {group.items.map((menu) => {
-                  const badgeValue = menu.badgeKey
-                    ? menu.badgeKey === "reclamationsOuvertes"
-                      ? overview?.reclamations?.ouvertes
-                      : menu.badgeKey === "demandesNouvelles"
-                        ? overview?.demandesService?.nouvelles
-                        : overview?.messagesContact?.nonLus
-                    : undefined;
-                  return (
-                    <Link
-                      key={menu.id}
-                      href={`/admin?section=${menu.id}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setSection(menu.id);
-                      }}
-                      className={cn(
-                        "flex items-center cursor-pointer gap-3 rounded-md border-l-[3px] px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                        section === menu.id
-                          ? "border-gold bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "border-transparent opacity-75 hover:bg-sidebar-accent/60 hover:opacity-100",
-                      )}
-                    >
-                      <menu.icon className="size-4 shrink-0" aria-hidden />
-                      <span className="truncate">{t(`nav.${menu.id}`)}</span>
-                      {!!badgeValue && (
-                        <span className="ml-auto rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-gold-foreground">
-                          {badgeValue}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-          <div className="mt-auto border-t border-sidebar-border px-5 py-5">
-            <div className="flex items-center gap-2 text-xs text-sidebar-foreground/70"><span className="size-2 rounded-full bg-sidebar-primary" />{t("sidebar.connectedToApi")}</div>
-          </div>
-        </aside>
-      </Panel>
-      <Separator className="group relative w-2 shrink-0 bg-border/70 transition-colors hover:bg-primary/40 focus-visible:bg-primary/60" aria-label={t("sidebar.resizeSidebar")}>
-        <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
-      </Separator>
-      <Panel id="content" defaultSize="82" minSize="55" className="h-full min-w-0 overflow-y-auto">
+      <Group orientation="horizontal" className="h-full min-h-0 w-full">
+        <Sidebar menuGroups={menuGroups} section={section} overview={overview} onSectionChange={setSection} />
+        <Separator className="group relative w-2 shrink-0 bg-border/70 transition-colors hover:bg-primary/40 focus-visible:bg-primary/60" aria-label={t("sidebar.resizeSidebar")}>
+          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
+        </Separator>
+        <Panel id="content" defaultSize="100" minSize="80" className="h-full min-w-0 overflow-y-auto">
 
-        <div className="sticky top-0 z-10 flex h-[66px] items-center gap-5 border-b border-border bg-card px-6">
-          <div className="flex max-w-md flex-1 items-center gap-2 rounded-md border border-border bg-surface px-3.5 py-2.5">
-            <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            <input
-              type="text"
-              placeholder={t("header.searchPlaceholder")}
-              className="w-full border-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setSection("audit")}
-              title={t("header.auditLog")}
-              className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-            >
-              <History className="size-[18px]" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => setSection("messages")}
-              title={t("header.messages")}
-              className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-            >
-              <MessageSquare className="size-[18px]" aria-hidden />
-              {!!overview?.messagesContact?.nonLus && (
-                <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
-              )}
-            </button>
-            <NotificationsBell onNavigate={setSection} />
-            <LocaleSwitcher className="border-none bg-transparent shadow-none" />
-            <div className="mx-1.5 h-6 w-px bg-border" />
-            <div className="relative">
+          <div className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-6">
+            {/* 1. Controlled, compact search bar */}
+            <div className="flex w-full max-w-xs items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 transition-colors focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+              <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <input
+                type="text"
+                placeholder={t("header.searchPlaceholder")}
+                className="w-full border-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+
+            {/* Right Actions & Profile */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setUserMenuOpen((v) => !v)}
-                className="flex items-center gap-2.5 rounded-md py-1.5 pr-2 pl-1.5 transition-colors hover:bg-surface"
+                onClick={() => setSection("audit")}
+                title={t("header.auditLog")}
+                className="grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
               >
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gold text-sm font-bold text-gold-foreground">
-                  {user.fullname.charAt(0).toUpperCase()}
-                </span>
-                <span className="hidden text-left sm:block">
-                  <span className="block text-xs leading-tight font-semibold">{user.fullname}</span>
-                  <span className="block text-[11px] leading-tight text-muted-foreground">
-                    {user.isSuperuser ? t("header.superAdmin") : (user.role?.name ?? t("header.administrator"))}
-                  </span>
-                </span>
-                <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+                <History className="size-[18px]" aria-hidden />
               </button>
-              {userMenuOpen && (
-                <div className="absolute top-full right-0 z-20 mt-2 w-48 rounded-md border border-border bg-card p-1.5 shadow-lg">
-                  <div className="flex items-center gap-2 px-2.5 py-2 text-xs text-muted-foreground">
-                    <UserRound className="size-3.5" aria-hidden /> {user.email}
+              <button
+                type="button"
+                onClick={() => setSection("messages")}
+                title={t("header.messages")}
+                className="relative grid size-9 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+              >
+                <MessageSquare className="size-[18px]" aria-hidden />
+                {!!overview?.messagesContact?.nonLus && (
+                  <span className="absolute top-1.5 right-1.5 size-2 rounded-full border border-card bg-gold" />
+                )}
+              </button>
+
+              <NotificationsBell onNavigate={setSection} />
+
+              {/* 2. Compacted Locale Switcher wrapper */}
+              <div className="flex items-center px-1">
+                <LocaleSwitcher className="h-9 px-2.5 rounded-md border border-border bg-transparent text-xs font-medium shadow-none hover:bg-surface" />
+              </div>
+
+              {/* Divider */}
+              <div className="h-5 w-px bg-border mx-1" />
+
+              {/* 3. User Profile Dropdown with secure text wrapping protection */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-3 rounded-md py-1.5 px-2 transition-colors hover:bg-surface"
+                >
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gold text-sm font-bold text-gold-foreground">
+                    {user.fullname.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden text-left sm:block whitespace-nowrap">
+                    <span className="block text-xs leading-tight font-semibold">{user.fullname}</span>
+                    <span className="block text-[11px] leading-tight text-muted-foreground">
+                      {user.isSuperuser ? t("header.superAdmin") : (user.role?.name ?? t("header.administrator"))}
+                    </span>
+                  </span>
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute top-full right-0 z-20 mt-2 w-48 rounded-md border border-border bg-card p-1.5 shadow-lg">
+                    <div className="flex items-center gap-2 px-2.5 py-2 text-xs text-muted-foreground truncate">
+                      <UserRound className="size-3.5 shrink-0" aria-hidden />
+                      <span className="truncate">{user.email}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => logout()}
+                      className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
+                    >
+                      <LogOut className="size-4 shrink-0" aria-hidden /> {t("header.logout")}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => logout()}
-                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
-                  >
-                    <LogOut className="size-4" aria-hidden /> {t("header.logout")}
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="min-w-0 bg-surface-fade p-6 lg:p-10">
-          <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-bold">{t(`nav.${courant.id}`)}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
-            </div>
+          <div className="min-w-0 bg-surface-fade p-6 lg:p-10">
+            <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-bold">{t(`nav.${courant.id}`)}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
+              </div>
 
-          </header>
+            </header>
 
-          {section === "tableau" && (
-            <div className="mt-8 grid gap-6">
-              <section className="relative overflow-hidden rounded-2xl bg-institution p-6 text-primary-foreground shadow-lifted lg:p-8">
-                <div className="relative z-1 max-w-2xl">
-                  <p className="text-xs font-semibold tracking-[0.16em] text-primary-foreground/65 uppercase">
-                    {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} · {t("dashboard.overviewSuffix")}
-                  </p>
-                  <h2 className="mt-3 font-heading text-2xl font-semibold lg:text-3xl">{t("dashboard.greeting", { name: user.fullname.split(" ")[0] })}</h2>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/75">{t("dashboard.heroBody")}</p>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button onClick={() => setSection("reclamations")} className="inline-flex items-center gap-2 rounded-md bg-sidebar-primary px-4 py-2.5 text-sm font-semibold text-sidebar-primary-foreground transition-transform hover:-translate-y-0.5">{t("dashboard.handleClaims")} <ArrowUpRight className="size-4" aria-hidden /></button>
-                    <button onClick={() => setSection("audit")} className="inline-flex items-center gap-2 rounded-md border border-primary-foreground/25 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/10">{t("dashboard.viewLog")} <ChevronRight className="size-4" aria-hidden /></button>
-                  </div>
-                </div>
-                <div className="absolute -right-12 -bottom-24 size-64 rounded-full border-24 border-primary-foreground/10" aria-hidden />
-              </section>
-
-              <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {kpisReels.map((k, index) => {
-                  const Icon = kpiIcons[index];
-                  return (
-                    <div key={k.libelle} className="rounded-xl border border-border bg-card p-5 shadow-soft">
-                      <div className="flex items-start justify-between gap-3"><dt className="max-w-48 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{k.libelle}</dt><Icon className="size-4 text-primary" aria-hidden /></div>
-                      <dd className="mt-4 font-heading text-3xl font-bold text-foreground">{k.valeur}</dd>
+            {section === "tableau" && (
+              <div className="mt-8 grid gap-6">
+                <section className="relative overflow-hidden rounded-2xl bg-institution p-6 text-primary-foreground shadow-lifted lg:p-8">
+                  <div className="relative z-1 max-w-2xl">
+                    <p className="text-xs font-semibold tracking-[0.16em] text-primary-foreground/65 uppercase">
+                      {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} · {t("dashboard.overviewSuffix")}
+                    </p>
+                    <h2 className="mt-3 font-heading text-2xl font-semibold lg:text-3xl">{t("dashboard.greeting", { name: user.fullname.split(" ")[0] })}</h2>
+                    <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/75">{t("dashboard.heroBody")}</p>
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      <button onClick={() => setSection("reclamations")} className="inline-flex items-center gap-2 rounded-md bg-sidebar-primary px-4 py-2.5 text-sm font-semibold text-sidebar-primary-foreground transition-transform hover:-translate-y-0.5">{t("dashboard.handleClaims")} <ArrowUpRight className="size-4" aria-hidden /></button>
+                      <button onClick={() => setSection("audit")} className="inline-flex items-center gap-2 rounded-md border border-primary-foreground/25 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-foreground/10">{t("dashboard.viewLog")} <ChevronRight className="size-4" aria-hidden /></button>
                     </div>
-                  );
-                })}
-              </dl>
+                  </div>
+                  <div className="absolute -right-12 -bottom-24 size-64 rounded-full border-24 border-primary-foreground/10" aria-hidden />
+                </section>
 
-              {indicateursSectoriels.length > 0 && (
-                <div>
-                  <p className="mb-3 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                    {t("dashboard.sectorObservatory", { year: overviewStats?.year ?? "" })}
-                  </p>
-                  <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {indicateursSectoriels.map((k) => (
-                      <div key={k.libelle} className="rounded-xl border border-border bg-surface p-5">
-                        <div className="flex items-start justify-between gap-3">
-                          <dt className="max-w-48 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{k.libelle}</dt>
-                          <k.icon className="size-4 text-primary" aria-hidden />
-                        </div>
-                        <dd className="mt-4 font-heading text-2xl font-bold text-foreground">{k.valeur}</dd>
+                <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {kpisReels.map((k, index) => {
+                    const Icon = kpiIcons[index];
+                    return (
+                      <div key={k.libelle} className="rounded-xl border border-border bg-card p-5 shadow-soft">
+                        <div className="flex items-start justify-between gap-3"><dt className="max-w-48 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{k.libelle}</dt><Icon className="size-4 text-primary" aria-hidden /></div>
+                        <dd className="mt-4 font-heading text-3xl font-bold text-foreground">{k.valeur}</dd>
                       </div>
-                    ))}
-                  </dl>
-                </div>
-              )}
+                    );
+                  })}
+                </dl>
 
-              <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-                <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
+                {indicateursSectoriels.length > 0 && (
+                  <div>
+                    <p className="mb-3 text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                      {t("dashboard.sectorObservatory", { year: overviewStats?.year ?? "" })}
+                    </p>
+                    <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      {indicateursSectoriels.map((k) => (
+                        <div key={k.libelle} className="rounded-xl border border-border bg-surface p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <dt className="max-w-48 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{k.libelle}</dt>
+                            <k.icon className="size-4 text-primary" aria-hidden />
+                          </div>
+                          <dd className="mt-4 font-heading text-2xl font-bold text-foreground">{k.valeur}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                )}
+
+                <div className="grid gap-6 grid-cols-2">
+                  {/* <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h2 className="font-heading text-lg font-semibold">{t("dashboard.revenue.title")}</h2>
@@ -693,131 +639,65 @@ export default function Admin() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                </div>
+                </div> */}
 
-                <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h2 className="font-heading text-lg font-semibold">{t("dashboard.todo.title")}</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.todo.subtitle")}</p>
+                  <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h2 className="font-heading text-lg font-semibold">{t("dashboard.todo.title")}</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.todo.subtitle")}</p>
+                      </div>
+                      <span className="grid size-8 place-items-center rounded-full bg-warning/15 text-sm font-bold text-warning-foreground">
+                        {(overview?.reclamations?.ouvertes ?? 0) +
+                          (overview?.messagesContact?.nonLus ?? 0)}
+                      </span>
                     </div>
-                    <span className="grid size-8 place-items-center rounded-full bg-warning/15 text-sm font-bold text-warning-foreground">
-                      {(overview?.reclamations?.ouvertes ?? 0) +
-                        (overview?.demandesService?.nouvelles ?? 0) +
-                        (overview?.messagesContact?.nonLus ?? 0)}
-                    </span>
+                    <ul className="mt-5 divide-y divide-border">
+                      {actionsReelles.map((action) => <li key={action.label} className="flex gap-3 py-4 first:pt-0 last:pb-0"><action.icon className={cn("mt-0.5 size-4 shrink-0", action.tone)} aria-hidden /><div className="min-w-0"><p className="text-sm font-medium">{action.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{action.detail}</p></div></li>)}
+                    </ul>
                   </div>
-                  <ul className="mt-5 divide-y divide-border">
-                    {actionsReelles.map((action) => <li key={action.label} className="flex gap-3 py-4 first:pt-0 last:pb-0"><action.icon className={cn("mt-0.5 size-4 shrink-0", action.tone)} aria-hidden /><div className="min-w-0"><p className="text-sm font-medium">{action.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{action.detail}</p></div></li>)}
-                  </ul>
-                </div>
-              </div>
 
-              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <h2 className="font-heading text-lg font-semibold">{t("dashboard.subscribers.title")}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.subscribers.subtitle")}</p>
-                  <div className="mt-6 h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={abonnesReel}>
-                        <defs>
-                          <linearGradient id="grad-abonnes-admin" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity={0.4} />
-                            <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                        <XAxis dataKey="mois" tickLine={false} axisLine={false} fontSize={11} />
-                        <YAxis tickLine={false} axisLine={false} fontSize={12} />
-                        <Tooltip
-                          contentStyle={{
-                            background: "var(--color-card)",
-                            border: "1px solid var(--color-border)",
-                            borderRadius: "var(--radius)",
-                            fontSize: "0.8rem",
-                          }}
-                        />
-                        <Area type="monotone" dataKey="abonnes" name={t("dashboard.subscribers.seriesName")} stroke="var(--color-chart-1)" strokeWidth={2} fill="url(#grad-abonnes-admin)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <h2 className="font-heading text-lg font-semibold">{t("dashboard.contentBreakdown.title")}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.contentBreakdown.subtitle")}</p>
-                  <dl className="mt-5 grid grid-cols-2 gap-4">
-                    <ContenuStat label={t("dashboard.contentBreakdown.news")} value={newsReelles.length} icon={Newspaper} />
-                    <ContenuStat label={t("dashboard.contentBreakdown.releases")} value={communiquesReels.length} icon={FileCheck2} />
-                    <ContenuStat label={t("dashboard.contentBreakdown.regulations")} value={reglementationsReelles.length} icon={ScrollText} />
-                    <ContenuStat label={t("dashboard.contentBreakdown.consultations")} value={consultationsReelles.length} icon={Vote} />
-                    <ContenuStat label={t("dashboard.contentBreakdown.openTenders")} value={tendersReels.filter((tender) => tender.status === "OUVERT").length} icon={Gavel} />
-                    <ContenuStat label={t("dashboard.contentBreakdown.openPositions")} value={careersReels.length} icon={Briefcase} />
-                  </dl>
-                </div>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="min-w-0 rounded-xl border border-border bg-card shadow-soft">
-                  <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 lg:px-6"><div><h2 className="font-heading text-lg font-semibold">{t("dashboard.recentClaims.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("dashboard.recentClaims.subtitle")}</p></div><button onClick={() => setSection("reclamations")} className="text-xs font-semibold text-primary hover:underline">{t("dashboard.recentClaims.viewAll")}</button></div>
-                  <TableauAdmin
-                    compact
-                    colonnes={t.raw("dashboard.recentClaims.columns") as string[]}
-                    lignes={reclamationsRecentes.map((r) => [
-                      `REC-${r.id}`,
-                      r.claimType,
-                      r.concernedOperator,
-                      <StatutBadge key={r.id} statut={r.status} />,
-                    ])}
-                  />
-                  {reclamationsRecentes.length === 0 && (
-                    <p className="px-5 py-6 text-center text-xs text-muted-foreground">{t("dashboard.recentClaims.empty")}</p>
-                  )}
-                </div>
-                <div className="rounded-xl border border-border bg-card p-5 shadow-soft lg:p-6">
-                  <div className="flex items-center justify-between gap-4"><div><h2 className="font-heading text-lg font-semibold">{t("dashboard.recentActivity.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("dashboard.recentActivity.subtitle")}</p></div><History className="size-4 text-muted-foreground" aria-hidden /></div>
-                  <ul className="mt-5 space-y-4">
-                    {activiteRecente.map((j) => (
-                      <li key={j.id} className="flex gap-3">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
-                        <div>
-                          <p className="text-sm font-medium">{j.action}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {j.actor?.email ?? t("dashboard.recentActivity.system")} · {formaterDate(j.createdAt)}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                    {activiteRecente.length === 0 && (
-                      <p className="text-center text-xs text-muted-foreground">{t("dashboard.recentActivity.empty")}</p>
+                  <div className="min-w-0 rounded-xl border border-border bg-card shadow-soft">
+                    <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 lg:px-6"><div><h2 className="font-heading text-lg font-semibold">{t("dashboard.recentClaims.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("dashboard.recentClaims.subtitle")}</p></div><button onClick={() => setSection("reclamations")} className="text-xs font-semibold text-primary hover:underline">{t("dashboard.recentClaims.viewAll")}</button></div>
+                    <TableauAdmin
+                      compact
+                      colonnes={t.raw("dashboard.recentClaims.columns") as string[]}
+                      lignes={reclamationsRecentes.map((r) => [
+                        `REC-${r.id}`,
+                        r.claimType,
+                        r.concernedOperator,
+                        <StatutBadge key={r.id} statut={r.status} />,
+                      ])}
+                    />
+                    {reclamationsRecentes.length === 0 && (
+                      <p className="px-5 py-6 text-center text-xs text-muted-foreground">{t("dashboard.recentClaims.empty")}</p>
                     )}
-                  </ul>
+                  </div>
+
                 </div>
               </div>
+            )}
 
-            </div>
-          )}
+            {section === "pages" && <PagesPubliquesAdmin />}
+            {section === "reclamations" && <ReclamationsAdmin />}
+            {section === "candidatures" && (hasPermission("view_candidatures") || hasPermission("view_submissions")) && <ApplicationsAdmin canViewCareers={hasPermission("view_candidatures")} canViewTenders={hasPermission("view_submissions")} canManageCareers={hasPermission("manage_carrieres")} canManageTenders={hasPermission("manage_appels_offres")} />}
+            {section === "audit" && <AuditAdmin />}
+            {section === "actualites" && <ActualitesAdmin />}
+            {section === "communiques" && <CommuniquesAdmin />}
+            {section === "services" && <ServicesAdmin />}
+            {section === "marches" && <AppelsOffresAdmin />}
+            {section === "carrieres" && <CarrieresAdmin />}
+            {section === "equipements" && <EquipementsAdmin />}
+            {section === "messages" && <MessagesAdmin />}
+            {section === "reglementation" && <ReglementationAdmin />}
+            {section === "consultations" && <ConsultationsAdmin />}
+            {section === "utilisateurs" && <UtilisateursAdmin />}
+            {section === "statistiques" && <StatistiquesAdmin />}
+            {section === "config" && <ConfigurationAdmin />}
 
-          {section === "pages" && <PagesPubliquesAdmin />}
-          {section === "reclamations" && <ReclamationsAdmin />}
-          {section === "demandes" && <DemandesServiceAdmin />}
-          {section === "audit" && <AuditAdmin />}
-          {section === "actualites" && <ActualitesAdmin />}
-          {section === "communiques" && <CommuniquesAdmin />}
-          {section === "services" && <ServicesAdmin />}
-          {section === "marches" && <AppelsOffresAdmin />}
-          {section === "carrieres" && <CarrieresAdmin />}
-          {section === "equipements" && <EquipementsAdmin />}
-          {section === "messages" && <MessagesAdmin />}
-          {section === "reglementation" && <ReglementationAdmin />}
-          {section === "consultations" && <ConsultationsAdmin />}
-          {section === "utilisateurs" && <UtilisateursAdmin />}
-          {section === "statistiques" && <StatistiquesAdmin />}
-          {section === "config" && <ConfigurationAdmin />}
-
-        </div>
-      </Panel>
-    </Group>
+          </div>
+        </Panel>
+      </Group>
     </ConfirmProvider>
   );
 }
@@ -894,7 +774,7 @@ function RowActions({ onEdit, onDelete }: { onEdit?: () => void; onDelete?: () =
 function ContenuStat({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Newspaper }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
-      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-primary">
+      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
         <Icon className="size-4" aria-hidden />
       </div>
       <div className="min-w-0">
@@ -969,8 +849,8 @@ function EquipementsAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((e) => [e.code, e.name, e.brand, e.model, e.category.name, t(`statutOptions.${e.status}`)]),
@@ -1049,7 +929,7 @@ function EquipementsAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <Radio className="size-5" aria-hidden />
           </span>
           <div>
@@ -1058,9 +938,7 @@ function EquipementsAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newEquipment")}
           </Button>
@@ -1090,9 +968,9 @@ function EquipementsAdmin() {
             <Input id="eq-type" name="typeFr" required placeholder={t("fields.typePlaceholder")} defaultValue={editing?.type} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="eq-status">{t("fields.status")}</Label>
+            <Label htmlFor="eq-status">{t("fields.status")} <span aria-hidden="true" className="text-destructive">*</span></Label>
             <Select value={status} onValueChange={(v) => setStatus(v as EquipementAdmin["status"])}>
-              <SelectTrigger id="eq-status">
+              <SelectTrigger id="eq-status" aria-required="true">
                 <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -1119,7 +997,7 @@ function EquipementsAdmin() {
           <div className="grid gap-2">
             <Label htmlFor="eq-category">{tCommon("category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger id="eq-category">
+              <SelectTrigger id="eq-category" aria-required="true">
                 <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -1223,18 +1101,6 @@ function formaterHeure(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function exporterCsv(fichier: string, colonnes: string[], lignes: (string | number)[][]) {
-  const echapper = (valeur: string | number) => `"${String(valeur).replace(/"/g, '""')}"`;
-  const contenu = [colonnes, ...lignes].map((ligne) => ligne.map(echapper).join(";")).join("\n");
-  const blob = new Blob([`﻿${contenu}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const lien = document.createElement("a");
-  lien.href = url;
-  lien.download = fichier;
-  lien.click();
-  URL.revokeObjectURL(url);
-}
-
 function StatTrendCard({
   icon: Icon,
   tone,
@@ -1250,10 +1116,10 @@ function StatTrendCard({
 }) {
   const tCommon = useTranslations("admin.common");
   const toneStyles: Record<typeof tone, string> = {
-    primary: "bg-primary/10 text-primary",
-    warning: "bg-warning/15 text-warning-foreground",
-    success: "bg-success/10 text-success",
-    destructive: "bg-destructive/10 text-destructive",
+    primary: "bg-teal-600 text-white shadow transition-colors hover:bg-teal-700",
+    warning: "bg-teal-600 text-white shadow transition-colors hover:bg-teal-700",
+    success: "bg-teal-600 text-white shadow transition-colors hover:bg-teal-700",
+    destructive: "bg-teal-600 text-white shadow transition-colors hover:bg-teal-700",
   };
   const deltaStyle = !delta ? "text-muted-foreground" : delta > 0 ? "text-success" : "text-destructive";
   const deltaTexte = !delta ? "0" : delta > 0 ? `↑ ${delta}` : `↓ ${Math.abs(delta)}`;
@@ -1267,7 +1133,7 @@ function StatTrendCard({
         <p className="font-heading text-2xl font-bold text-foreground">{value}</p>
         <p className="truncate text-xs text-muted-foreground">{label}</p>
         {delta !== undefined && (
-        <p className={cn("mt-0.5 text-[11px] font-semibold", deltaStyle)}>{deltaTexte} {tCommon("thisWeek")}</p>
+          <p className={cn("mt-0.5 text-[11px] font-semibold", deltaStyle)}>{deltaTexte} {tCommon("thisWeek")}</p>
         )}
       </div>
     </div>
@@ -1359,32 +1225,28 @@ function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpda
   const t = useTranslations("admin.reclamations");
   const tCommon = useTranslations("admin.common");
   const tStatus = useTranslations("status");
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState(false);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState("");
 
-  async function changer(status: string) {
-    if (status === claim.status) return;
-    if (status === "REJETE") {
-      const reason = window.prompt(t("rejectReasonPrompt"));
-      if (!reason || reason.trim().length < 10) {
-        toast.error(t("rejectReasonRequired"));
-        return;
-      }
-      setPending(true);
-      try {
-        await apiFetch(`/claims/${claim.id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason }) });
-        toast.success(t("statusUpdated"));
-        onUpdated();
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : tCommon("error"));
-      } finally {
-        setPending(false);
-      }
+  async function updateStatus(status: ClaimAdminFull["status"], rejectionReason?: string) {
+    if (status === "REJETE" && (!rejectionReason || rejectionReason.trim().length < 10)) {
+      setReasonError(t("rejectReasonRequired"));
       return;
     }
     setPending(true);
     try {
-      await apiFetch(`/claims/${claim.id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+      const result = await apiFetch<{ emailSent?: boolean | null }>(`/claims/${claim.id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status,
+          ...(rejectionReason ? { reason: rejectionReason.trim() } : {}),
+        }),
+      });
+      dialogRef.current?.close();
       toast.success(t("statusUpdated"));
+      if (result.emailSent === false) toast.warning(t("emailNotSent"));
       onUpdated();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon("error"));
@@ -1393,22 +1255,67 @@ function ClaimStatusSelect({ claim, onUpdated }: { claim: ClaimAdminFull; onUpda
     }
   }
 
+  function changer(status: string) {
+    if (status === claim.status) return;
+    if (status === "REJETE") {
+      setReason("");
+      setReasonError("");
+      dialogRef.current?.showModal();
+      return;
+    }
+    void updateStatus(status as ClaimAdminFull["status"]);
+  }
+
   return (
-    <Select value={claim.status} onValueChange={changer} disabled={pending}>
-      <SelectTrigger className="h-8 w-40 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {CLAIM_STATUTS.map((s) => (
-          <SelectItem key={s} value={s}>
-            {tStatus(s)}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <>
+      <Select value={claim.status} onValueChange={changer} disabled={pending}>
+        <SelectTrigger className="h-8 w-40 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {CLAIM_STATUTS.map((status) => (
+            <SelectItem key={status} value={status}>
+              {tStatus(status)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <dialog
+        ref={dialogRef}
+        onCancel={(event) => {
+          if (pending) event.preventDefault();
+        }}
+        onClick={(event) => {
+          if (!pending && event.target === event.currentTarget) dialogRef.current?.close();
+        }}
+        className="fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-lg rounded-xl border border-border bg-card p-6 text-card-foreground shadow-soft backdrop:bg-black/40"
+      >
+        <form onSubmit={(event) => { event.preventDefault(); void updateStatus("REJETE", reason); }}>
+          <h3 className="font-heading text-lg font-semibold">{t("confirmRejection")}</h3>
+          <label htmlFor={`claim-rejection-reason-${claim.id}`} className="mt-4 block text-sm font-medium">
+            {t("rejectReasonPrompt")}
+          </label>
+          <Textarea
+            id={`claim-rejection-reason-${claim.id}`}
+            value={reason}
+            onChange={(event) => { setReason(event.target.value); setReasonError(""); }}
+            minLength={10}
+            rows={4}
+            required
+            className="mt-2"
+            aria-invalid={Boolean(reasonError)}
+            aria-describedby={reasonError ? `claim-rejection-error-${claim.id}` : undefined}
+          />
+          {reasonError && <p id={`claim-rejection-error-${claim.id}`} className="mt-2 text-sm text-destructive" role="alert">{reasonError}</p>}
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="outline" disabled={pending} onClick={() => dialogRef.current?.close()}>{tCommon("cancel")}</Button>
+            <Button type="submit" disabled={pending || reason.trim().length < 10}>{t("confirmRejection")}</Button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }
-
 function ReclamationsAdmin() {
   const t = useTranslations("admin.reclamations");
   const tCommon = useTranslations("admin.common");
@@ -1506,8 +1413,8 @@ function ReclamationsAdmin() {
     }
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((c) => [c.firstname, c.lastname, c.email, c.telephone ?? "", c.concernedOperator, c.claimType, tStatus(c.status), formaterDate(c.createdAt)]),
@@ -1521,7 +1428,7 @@ function ReclamationsAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <MessageSquareWarning className="size-5" aria-hidden />
           </span>
           <div>
@@ -1529,9 +1436,7 @@ function ReclamationsAdmin() {
             <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
-        <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-          <Download className="size-4" aria-hidden /> {t("export")}
-        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1672,7 +1577,7 @@ function ReclamationsAdmin() {
                             <ul className="mt-1.5 flex flex-wrap gap-2">
                               {claim.attachments.map((piece) => (
                                 <li key={piece.id}>
-                                  <a href={piece.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-primary hover:underline">
+                                  <a href={piece.url} data-document-preview target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-primary hover:underline">
                                     <Paperclip className="size-3.5" aria-hidden /> {piece.filename}
                                   </a>
                                 </li>
@@ -1680,383 +1585,6 @@ function ReclamationsAdmin() {
                             </ul>
                           </div>
                         )}
-                      </div>
-                    </td>
-                  </tr>,
-                ];
-              })}
-              {resultatPage.length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <PaginationAdmin page={pageCourante} totalItems={resultat.length} pageSize={PAGE_SIZE_ADMIN} onPageChange={changerPage} />
-      </div>
-    </section>
-  );
-}
-
-interface ServiceRequestAdmin {
-  id: number;
-  fullname: string;
-  email: string;
-  phone: string | null;
-  company: string | null;
-  message: string | null;
-  service: { id: number; name: string };
-  status: "NOUVEAU" | "EN_COURS" | "TRAITE" | "REJETE";
-  createdAt: string;
-  updatedAt: string;
-  attachments: { id: number; url: string }[];
-}
-
-const SERVICE_REQUEST_STATUTS: ServiceRequestAdmin["status"][] = ["NOUVEAU", "EN_COURS", "TRAITE", "REJETE"];
-
-function ServiceRequestStatusSelect({ demande, onUpdated }: { demande: ServiceRequestAdmin; onUpdated: () => void }) {
-  const t = useTranslations("admin.demandes");
-  const tCommon = useTranslations("admin.common");
-  const tStatus = useTranslations("status");
-  const [pending, setPending] = useState(false);
-
-  async function changer(status: string) {
-    if (status === demande.status) return;
-    setPending(true);
-    try {
-      await apiFetch(`/service-requests/${demande.id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
-      toast.success(t("statusUpdated"));
-      onUpdated();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <Select value={demande.status} onValueChange={changer} disabled={pending}>
-      <SelectTrigger className="h-8 w-36 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {SERVICE_REQUEST_STATUTS.map((s) => (
-          <SelectItem key={s} value={s}>
-            {tStatus(s)}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function ServiceRequestReplyForm({ demande }: { demande: ServiceRequestAdmin }) {
-  const t = useTranslations("admin.demandes");
-  const tCommon = useTranslations("admin.common");
-  const [message, setMessage] = useState("");
-  const [envoi, setEnvoi] = useState(false);
-
-  async function envoyer(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (message.trim().length < 1) return;
-    setEnvoi(true);
-    try {
-      await apiFetch(`/service-requests/${demande.id}/reply`, { method: "POST", body: JSON.stringify({ replyMessage: message }) });
-      toast.success(t("replySent"));
-      setMessage("");
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
-    } finally {
-      setEnvoi(false);
-    }
-  }
-
-  return (
-    <form onSubmit={envoyer} className="mt-2 flex flex-col gap-2 sm:flex-row">
-      <Textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        rows={2}
-        placeholder={t("replyPlaceholder", { name: demande.fullname })}
-        className="text-sm"
-        required
-      />
-      <Button type="submit" size="sm" disabled={envoi} className="shrink-0 gap-1.5 sm:self-end">
-        <Send className="size-3.5" aria-hidden /> {envoi ? t("sending") : t("send")}
-      </Button>
-    </form>
-  );
-}
-
-function DemandesServiceAdmin() {
-  const t = useTranslations("admin.demandes");
-  const tCommon = useTranslations("admin.common");
-  const tStatus = useTranslations("status");
-  const confirm = useConfirm();
-  const { data: demandes, loading, error, refetch } = useApiList<ServiceRequestAdmin>("/service-requests?lang=fr&pageSize=100");
-  const [recherche, setRecherche] = useState("");
-  const [filtreStatut, setFiltreStatut] = useState<"all" | ServiceRequestAdmin["status"]>("all");
-  const [filtreService, setFiltreService] = useState("all");
-  const [dateDebut, setDateDebut] = useState("");
-  const [dateFin, setDateFin] = useState("");
-  const [page, setPage] = useState(1);
-  const [selection, setSelection] = useState<Set<number>>(new Set());
-  const [ouvert, setOuvert] = useState<number | null>(null);
-  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
-
-  const services = Array.from(new Set(demandes.map((d) => d.service.name))).filter(Boolean);
-
-  function reinitialiser() {
-    setRecherche("");
-    setFiltreStatut("all");
-    setFiltreService("all");
-    setDateDebut("");
-    setDateFin("");
-    setPage(1);
-  }
-
-  const resultat = demandes.filter((d) => {
-    const termes = `${d.fullname} ${d.company ?? ""} ${d.email} ${d.phone ?? ""} ${d.service.name}`.toLocaleLowerCase("fr");
-    const correspondRecherche = termes.includes(recherche.trim().toLocaleLowerCase("fr"));
-    const correspondStatut = filtreStatut === "all" || d.status === filtreStatut;
-    const correspondService = filtreService === "all" || d.service.name === filtreService;
-    const date = d.createdAt.slice(0, 10);
-    const correspondDateDebut = !dateDebut || date >= dateDebut;
-    const correspondDateFin = !dateFin || date <= dateFin;
-    return correspondRecherche && correspondStatut && correspondService && correspondDateDebut && correspondDateFin;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(resultat.length / PAGE_SIZE_ADMIN));
-  const pageCourante = Math.min(page, totalPages);
-  const resultatPage = resultat.slice((pageCourante - 1) * PAGE_SIZE_ADMIN, pageCourante * PAGE_SIZE_ADMIN);
-
-  const enCours = demandes.filter((d) => d.status === "EN_COURS");
-  const traitees = demandes.filter((d) => d.status === "TRAITE");
-  const rejetees = demandes.filter((d) => d.status === "REJETE");
-  const nouvellesCetteSemaine = demandes.filter((d) => depuisMoinsDuneSemaine(d.createdAt)).length;
-
-  function changerPage(p: number) {
-    setPage(Math.min(Math.max(p, 1), totalPages));
-  }
-
-  function basculerSelection(id: number) {
-    setSelection((prev) => {
-      const suivant = new Set(prev);
-      if (suivant.has(id)) suivant.delete(id);
-      else suivant.add(id);
-      return suivant;
-    });
-  }
-
-  function basculerSelectionPage() {
-    const idsPage = resultatPage.map((d) => d.id);
-    const tousSelectionnes = idsPage.every((id) => selection.has(id));
-    setSelection((prev) => {
-      const suivant = new Set(prev);
-      idsPage.forEach((id) => (tousSelectionnes ? suivant.delete(id) : suivant.add(id)));
-      return suivant;
-    });
-  }
-
-  async function supprimerSelection() {
-    if (selection.size === 0) return;
-    if (!(await confirm(t("confirmDeleteSelection", { count: selection.size })))) return;
-    setSuppressionEnCours(true);
-    try {
-      await Promise.all(Array.from(selection).map((id) => apiFetch(`/service-requests/${id}`, { method: "DELETE" })));
-      toast.success(t("deletedSelection"));
-      setSelection(new Set());
-      refetch();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
-    } finally {
-      setSuppressionEnCours(false);
-    }
-  }
-
-  async function supprimerUne(demande: ServiceRequestAdmin) {
-    if (!(await confirm(t("confirmDeleteOne", { name: demande.fullname })))) return;
-    try {
-      await apiFetch(`/service-requests/${demande.id}`, { method: "DELETE" });
-      toast.success(t("deletedOne"));
-      refetch();
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
-    }
-  }
-
-  function exporter() {
-    exporterCsv(
-      `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
-      t.raw("csv.headers") as string[],
-      resultat.map((d) => [d.fullname, d.company ?? "", d.email, d.phone ?? "", d.service.name, tStatus(d.status), formaterDate(d.createdAt)]),
-    );
-  }
-
-  if (loading) return <p className="mt-8 text-sm text-muted-foreground">{tCommon("loading")}</p>;
-  if (error) return <p className="mt-8 text-sm text-destructive">{error}</p>;
-
-  return (
-    <section className="mt-8 space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <FileText className="size-5" aria-hidden />
-          </span>
-          <div>
-            <h2 className="font-heading text-xl font-semibold">{t("title")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-          </div>
-        </div>
-        <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-          <Download className="size-4" aria-hidden /> {t("export")}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTrendCard icon={FileText} tone="primary" value={demandes.length} label={t("stats.total")} delta={nouvellesCetteSemaine} />
-        <StatTrendCard icon={Clock3} tone="warning" value={enCours.length} label={t("stats.inProgress")} delta={enCours.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
-        <StatTrendCard icon={CheckCircle2} tone="success" value={traitees.length} label={t("stats.processed")} delta={traitees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
-        <StatTrendCard icon={X} tone="destructive" value={rejetees.length} label={t("stats.rejected")} delta={rejetees.filter((d) => depuisMoinsDuneSemaine(d.updatedAt)).length} />
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,1fr)_10rem_10rem_9rem_9rem_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              value={recherche}
-              onChange={(event) => { setRecherche(event.target.value); setPage(1); }}
-              className="h-9 bg-card pl-9 text-xs"
-              placeholder={t("searchPlaceholder")}
-            />
-          </div>
-          <Select value={filtreStatut} onValueChange={(value) => { setFiltreStatut(value as typeof filtreStatut); setPage(1); }}>
-            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allStatuses")}</SelectItem>
-              {SERVICE_REQUEST_STATUTS.map((item) => <SelectItem key={item} value={item}>{tStatus(item)}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filtreService} onValueChange={(value) => { setFiltreService(value); setPage(1); }}>
-            <SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allServices")}</SelectItem>
-              {services.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input type="date" value={dateDebut} onChange={(event) => { setDateDebut(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={t("startDate")} />
-          <Input type="date" value={dateFin} onChange={(event) => { setDateFin(event.target.value); setPage(1); }} className="h-9 bg-card text-xs" aria-label={t("endDate")} />
-          <Button type="button" size="sm" variant="ghost" onClick={reinitialiser} className="justify-self-start text-xs lg:justify-self-end">
-            {t("reset")}
-          </Button>
-        </div>
-
-        {selection.size > 0 && (
-          <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-2.5">
-            <p className="text-xs font-medium text-destructive">{t("selectedCount", { count: selection.size })}</p>
-            <Button type="button" size="sm" variant="outline" onClick={supprimerSelection} disabled={suppressionEnCours} className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive">
-              <Trash2 className="size-3.5" aria-hidden /> {t("deleteSelection")}
-            </Button>
-          </div>
-        )}
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[54rem] text-left text-sm">
-            <thead className="border-b border-border text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-              <tr>
-                <th className="w-10 px-5 py-3">
-                  <input
-                    type="checkbox"
-                    checked={resultatPage.length > 0 && resultatPage.every((d) => selection.has(d.id))}
-                    onChange={basculerSelectionPage}
-                    aria-label={t("selectPage")}
-                  />
-                </th>
-                <th className="px-4 py-3">{t("columns.requester")}</th>
-                <th className="px-4 py-3">{t("columns.nature")}</th>
-                <th className="px-4 py-3">{t("columns.service")}</th>
-                <th className="px-4 py-3">{t("columns.date")}</th>
-                <th className="px-4 py-3">{t("columns.status")}</th>
-                <th className="px-5 py-3 text-right">{tCommon("actions")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {resultatPage.flatMap((demande) => {
-                const ligne = (
-                  <tr key={demande.id} className="transition-colors hover:bg-accent/25">
-                    <td className="px-5 py-3.5">
-                      <input type="checkbox" checked={selection.has(demande.id)} onChange={() => basculerSelection(demande.id)} aria-label={t("selectRow", { name: demande.fullname })} />
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-primary">
-                          {initiales(demande.fullname)}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold">{demande.fullname}</p>
-                          {demande.company && <p className="truncate text-xs text-muted-foreground">{demande.company}</p>}
-                          <p className="truncate text-xs text-muted-foreground">{demande.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-muted-foreground">{t("natureValue")}</td>
-                    <td className="px-4 py-3.5">
-                      <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{demande.service.name}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                      <p>{formaterDate(demande.createdAt)}</p>
-                      <p>{formaterHeure(demande.createdAt)}</p>
-                    </td>
-                    <td className="px-4 py-3.5"><StatutBadge statut={demande.status} /></td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button type="button" onClick={() => setOuvert((v) => (v === demande.id ? null : demande.id))} aria-label={t("viewDetails")} title={t("viewDetails")} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary">
-                          <Eye className="size-4" aria-hidden />
-                        </button>
-                        <button type="button" onClick={() => supprimerUne(demande)} aria-label={tCommon("delete")} title={tCommon("delete")} className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
-                          <Trash2 className="size-4" aria-hidden />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-                if (ouvert !== demande.id) return [ligne];
-                return [
-                  ligne,
-                  <tr key={`${demande.id}-detail`}>
-                    <td colSpan={7} className="bg-surface/60 px-5 py-5 sm:px-8">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.phone")}</p>
-                          <p className="mt-1 text-sm">{demande.phone ?? "—"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.fileStatus")}</p>
-                          <div className="mt-1"><ServiceRequestStatusSelect demande={demande} onUpdated={refetch} /></div>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.message")}</p>
-                          <p className="mt-1 text-sm leading-6 whitespace-pre-line text-muted-foreground">{demande.message || "—"}</p>
-                        </div>
-                        {demande.attachments.length > 0 && (
-                          <div className="sm:col-span-2">
-                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.attachments")}</p>
-                            <ul className="mt-1.5 flex flex-wrap gap-2">
-                              {demande.attachments.map((piece, i) => (
-                                <li key={piece.id}>
-                                  <a href={piece.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-primary hover:underline">
-                                    <Paperclip className="size-3.5" aria-hidden /> {t("detail.attachment", { index: i + 1 })}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        <div className="sm:col-span-2">
-                          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("detail.replyByEmail")}</p>
-                          <ServiceRequestReplyForm demande={demande} />
-                        </div>
                       </div>
                     </td>
                   </tr>,
@@ -2104,6 +1632,7 @@ interface TendersCallAdmin {
   contactName: string;
   contactEmail: string;
   submissionCount: number;
+  fileUrl: string | null;
   status: "OUVERT" | "CLOTURE" | "ANNULE";
 }
 
@@ -2162,8 +1691,8 @@ function AppelsOffresAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((tender) => [tender.code, tender.name, tender.category.name, tStatus(tender.status), formaterDate(tender.limitDate)]),
@@ -2244,7 +1773,7 @@ function AppelsOffresAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <Gavel className="size-5" aria-hidden />
           </span>
           <div>
@@ -2253,9 +1782,7 @@ function AppelsOffresAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newTender")}
           </Button>
@@ -2287,7 +1814,7 @@ function AppelsOffresAdmin() {
           <div className="grid gap-2">
             <Label htmlFor="ao-category">{tCommon("category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger id="ao-category">
+              <SelectTrigger id="ao-category" aria-required="true">
                 <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -2335,8 +1862,8 @@ function AppelsOffresAdmin() {
             <Input id="ao-contact-email" name="contactEmail" type="email" required defaultValue={editing?.contactEmail} />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="ao-dossier">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
-            <Input id="ao-dossier" name="dossier" type="file" accept=".pdf" />
+            <Label htmlFor="ao-dossier">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintRequired") })}</Label>
+            <Input id="ao-dossier" name="dossier" type="file" accept=".pdf" required={!editing || !editing.fileUrl} />
           </div>
           {formError && <p className="text-sm text-destructive sm:col-span-2" role="alert">{formError}</p>}
           <div className="flex gap-3 sm:col-span-2">
@@ -2389,7 +1916,7 @@ function AppelsOffresAdmin() {
           colonnes={[t("columns.reference"), t("columns.title"), t("columns.category"), t("columns.limitDate"), t("columns.submissions"), tCommon("status"), tCommon("actions")]}
           lignes={resultatPage.map((tender) => [
             tender.code,
-            tender.name,
+            <div key={tender.id}><span>{tender.name}</span>{!tender.fileUrl && <span className="mt-1 block text-xs font-semibold text-destructive">{t("missingDocument")}</span>}</div>,
             tender.category.name,
             formaterDate(tender.limitDate),
             tender.submissionCount,
@@ -2474,8 +2001,8 @@ function CarrieresAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((c) => [c.code, c.name, c.departement, c.category.name, c.candidatCount, formaterDate(c.limitDate)]),
@@ -2553,7 +2080,7 @@ function CarrieresAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <Briefcase className="size-5" aria-hidden />
           </span>
           <div>
@@ -2562,9 +2089,7 @@ function CarrieresAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newOffer")}
           </Button>
@@ -2600,7 +2125,7 @@ function CarrieresAdmin() {
           <div className="grid gap-2">
             <Label htmlFor="cr-category">{tCommon("category")}</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger id="cr-category">
+              <SelectTrigger id="cr-category" aria-required="true">
                 <SelectValue placeholder={tCommon("selectPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -2773,7 +2298,7 @@ function StatistiquesAdmin() {
             r.year,
             r.format,
             r.downloadCount.toLocaleString("fr-FR"),
-            <a key={r.id} href={r.fileUrl} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
+            <a key={r.id} href={r.fileUrl} data-document-preview target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
               {t("reports.open")}
             </a>,
           ])}
@@ -3342,7 +2867,7 @@ function FileField({ label, value, onChange }: { label: string; value: string; o
     <div className="grid gap-1.5">
       <Label className="text-xs">{label}</Label>
       {value && (
-        <a href={value} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+        <a href={value} data-document-preview target="_blank" rel="noreferrer" className="text-sm text-primary underline">
           {t("viewCurrentFile")}
         </a>
       )}
@@ -3734,7 +3259,7 @@ function ConsumerRightsDocumentAdmin() {
         {t("subtitle")}
       </p>
       {!loading && data?.fileUrl && (
-        <a href={data.fileUrl} target="_blank" rel="noreferrer" className="mt-3 block text-sm text-primary underline">
+        <a href={data.fileUrl} data-document-preview target="_blank" rel="noreferrer" className="mt-3 block text-sm text-primary underline">
           {t("viewCurrent")}
         </a>
       )}
@@ -3757,7 +3282,7 @@ function PagesPubliquesAdmin() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><LayoutTemplate className="size-5" aria-hidden /></span>
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><LayoutTemplate className="size-5" aria-hidden /></span>
             <div>
               <p className="font-heading text-xs font-semibold tracking-[0.15em] text-primary uppercase">{t("editorTitle")}</p>
               <h2 className="mt-1 font-heading text-xl font-semibold">{t("title")}</h2>
@@ -3777,458 +3302,458 @@ function PagesPubliquesAdmin() {
       </div>
 
       <div className="mt-6">
-      {pageSelectionnee === "home" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.home`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="home.hero"
-            title="Bandeau d'accueil (hero)"
-            description="Titre, texte et image affichés en haut de la page d'accueil."
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre principal", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-              { name: "image", label: "Image de fond", type: "image" },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "République de Guinée", en: "Republic of Guinea", ar: "جمهورية غينيا" },
-              titre: {
-                fr: "Réguler pour un secteur numérique fiable et accessible à tous",
-                en: "Regulating for a reliable digital sector accessible to all",
-                ar: "التنظيم من أجل قطاع رقمي موثوق ومتاح للجميع",
-              },
-              description: {
-                fr: "L'ARPT encadre les marchés des postes et des télécommunications, protège les usagers et accompagne les opérateurs dans leurs démarches administratives.",
-                en: "ARPT oversees the postal and telecommunications markets, protects users, and supports operators with their administrative procedures.",
-                ar: "تشرف الهيئة على أسواق البريد والاتصالات، وتحمي المستخدمين، وترافق المشغلين في إجراءاتهم الإدارية.",
-              },
-              image: "/images/hero-arpt.jpg",
-            }}
-          />
-          <ListBlockAdmin
-            blockKey="home.quickLinks"
-            title="Cartes d'accès rapide"
-            description="Les raccourcis affichés juste sous le bandeau d'accueil."
-            itemLabel={(it) => blockLabel(it.label) || "Nouvelle carte"}
-            fields={[
-              { name: "label", label: "Titre", type: "text", translatable: true },
-              { name: "texte", label: "Texte", type: "text", translatable: true },
-              { name: "to", label: "Lien (ex: /services)", type: "text" },
-              { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_ACCUEIL },
-            ]}
-            defaultItems={[
-              { to: "/services", label: { fr: "Démarches et services", en: "Procedures and services", ar: "الإجراءات والخدمات" }, icone: "services", texte: { fr: "Licences, homologations, fréquences", en: "Licenses, approvals, frequencies", ar: "التراخيص، الاعتمادات، الترددات" } },
-              { to: "/equipements", label: { fr: "Équipements homologués", en: "Approved equipment", ar: "المعدات المعتمدة" }, icone: "equipements", texte: { fr: "Vérifier un terminal agréé", en: "Check an approved device", ar: "التحقق من جهاز معتمد" } },
-              { to: "/appels-offres", label: { fr: "Appels d'offres", en: "Tenders", ar: "المناقصات" }, icone: "marches", texte: { fr: "Consulter les marchés en cours", en: "Browse ongoing contracts", ar: "تصفح الصفقات الجارية" } },
-              { to: "/carrieres", label: { fr: "Carrières", en: "Careers", ar: "الوظائف" }, icone: "carrieres", texte: { fr: "Rejoindre l'Autorité", en: "Join the Authority", ar: "انضم إلى الهيئة" } },
-              { to: "/reclamations", label: { fr: "Réclamations", en: "Complaints", ar: "الشكاوى" }, icone: "reclamations", texte: { fr: "Signaler un litige opérateur", en: "Report a dispute with an operator", ar: "الإبلاغ عن نزاع مع مشغل" } },
-              { to: "/statistiques", label: { fr: "Observatoire", en: "Observatory", ar: "المرصد" }, icone: "statistiques", texte: { fr: "Chiffres clés du secteur", en: "Key sector figures", ar: "الأرقام الرئيسية للقطاع" } },
-            ]}
-          />
-          <ListBlockAdmin
-            blockKey="home.gallery"
-            title="Galerie « En images »"
-            description="Les photos affichées dans la section « En images » de l'accueil."
-            itemLabel={(it) => blockLabel(it.titre) || "Nouvelle photo"}
-            fields={[
-              { name: "image", label: "Photo", type: "image" },
-              { name: "categorie", label: "Catégorie", type: "text", translatable: true },
-              { name: "titre", label: "Légende", type: "text", translatable: true },
-            ]}
-            defaultItems={[
-              { image: "/images/hero-arpt.jpg", categorie: { fr: "Événements", en: "Events", ar: "الفعاليات" }, titre: { fr: "Participation de l'ARPT à une conférence internationale", en: "ARPT's participation in an international conference", ar: "مشاركة الهيئة في مؤتمر دولي" } },
-              { image: "/images/group.jpeg", categorie: { fr: "Galerie", en: "Gallery", ar: "معرض الصور" }, titre: { fr: "Visite officielle à l'ARPT", en: "Official visit to ARPT", ar: "زيارة رسمية إلى الهيئة" } },
-            ]}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "home" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.home`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="home.hero"
+              title="Bandeau d'accueil (hero)"
+              description="Titre, texte et image affichés en haut de la page d'accueil."
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre principal", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+                { name: "image", label: "Image de fond", type: "image" },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "République de Guinée", en: "Republic of Guinea", ar: "جمهورية غينيا" },
+                titre: {
+                  fr: "Réguler pour un secteur numérique fiable et accessible à tous",
+                  en: "Regulating for a reliable digital sector accessible to all",
+                  ar: "التنظيم من أجل قطاع رقمي موثوق ومتاح للجميع",
+                },
+                description: {
+                  fr: "L'ARPT encadre les marchés des postes et des télécommunications, protège les usagers et accompagne les opérateurs dans leurs démarches administratives.",
+                  en: "ARPT oversees the postal and telecommunications markets, protects users, and supports operators with their administrative procedures.",
+                  ar: "تشرف الهيئة على أسواق البريد والاتصالات، وتحمي المستخدمين، وترافق المشغلين في إجراءاتهم الإدارية.",
+                },
+                image: "/images/hero-arpt.jpg",
+              }}
+            />
+            <ListBlockAdmin
+              blockKey="home.quickLinks"
+              title="Cartes d'accès rapide"
+              description="Les raccourcis affichés juste sous le bandeau d'accueil."
+              itemLabel={(it) => blockLabel(it.label) || "Nouvelle carte"}
+              fields={[
+                { name: "label", label: "Titre", type: "text", translatable: true },
+                { name: "texte", label: "Texte", type: "text", translatable: true },
+                { name: "to", label: "Lien (ex: /services)", type: "text" },
+                { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_ACCUEIL },
+              ]}
+              defaultItems={[
+                { to: "/services", label: { fr: "Démarches et services", en: "Procedures and services", ar: "الإجراءات والخدمات" }, icone: "services", texte: { fr: "Licences, homologations, fréquences", en: "Licenses, approvals, frequencies", ar: "التراخيص، الاعتمادات، الترددات" } },
+                { to: "/equipements", label: { fr: "Équipements homologués", en: "Approved equipment", ar: "المعدات المعتمدة" }, icone: "equipements", texte: { fr: "Vérifier un terminal agréé", en: "Check an approved device", ar: "التحقق من جهاز معتمد" } },
+                { to: "/appels-offres", label: { fr: "Appels d'offres", en: "Tenders", ar: "المناقصات" }, icone: "marches", texte: { fr: "Consulter les marchés en cours", en: "Browse ongoing contracts", ar: "تصفح الصفقات الجارية" } },
+                { to: "/carrieres", label: { fr: "Carrières", en: "Careers", ar: "الوظائف" }, icone: "carrieres", texte: { fr: "Rejoindre l'Autorité", en: "Join the Authority", ar: "انضم إلى الهيئة" } },
+                { to: "/reclamations", label: { fr: "Réclamations", en: "Complaints", ar: "الشكاوى" }, icone: "reclamations", texte: { fr: "Signaler un litige opérateur", en: "Report a dispute with an operator", ar: "الإبلاغ عن نزاع مع مشغل" } },
+                { to: "/statistiques", label: { fr: "Observatoire", en: "Observatory", ar: "المرصد" }, icone: "statistiques", texte: { fr: "Chiffres clés du secteur", en: "Key sector figures", ar: "الأرقام الرئيسية للقطاع" } },
+              ]}
+            />
+            <ListBlockAdmin
+              blockKey="home.gallery"
+              title="Galerie « En images »"
+              description="Les photos affichées dans la section « En images » de l'accueil."
+              itemLabel={(it) => blockLabel(it.titre) || "Nouvelle photo"}
+              fields={[
+                { name: "image", label: "Photo", type: "image" },
+                { name: "categorie", label: "Catégorie", type: "text", translatable: true },
+                { name: "titre", label: "Légende", type: "text", translatable: true },
+              ]}
+              defaultItems={[
+                { image: "/images/hero-arpt.jpg", categorie: { fr: "Événements", en: "Events", ar: "الفعاليات" }, titre: { fr: "Participation de l'ARPT à une conférence internationale", en: "ARPT's participation in an international conference", ar: "مشاركة الهيئة في مؤتمر دولي" } },
+                { image: "/images/group.jpeg", categorie: { fr: "Galerie", en: "Gallery", ar: "معرض الصور" }, titre: { fr: "Visite officielle à l'ARPT", en: "Official visit to ARPT", ar: "زيارة رسمية إلى الهيئة" } },
+              ]}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "about" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.about`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="about.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "L'Autorité", en: "The Authority", ar: "السلطة" },
-              titre: { fr: "Une institution au service d'un marché numérique équitable", en: "An institution serving a fair digital market", ar: "مؤسسة في خدمة سوق رقمي عادل" },
-              description: { fr: "L'ARPT est l'autorité administrative indépendante chargée de la régulation des secteurs des postes et des télécommunications en République de Guinée.", en: "ARPT is the independent administrative authority responsible for regulating the postal and telecommunications sectors in the Republic of Guinea.", ar: "الهيئة هي السلطة الإدارية المستقلة المكلفة بتنظيم قطاعي البريد والاتصالات في جمهورية غينيا." },
-            }}
-          />
-          <ObjectBlockAdmin
-            blockKey="about.banner"
-            title="Photo institutionnelle"
-            description="Grande image affichée juste sous le bandeau d'introduction."
-            fields={[
-              { name: "image", label: "Image", type: "image" },
-              { name: "phrase", label: "Phrase affichée sur l'image", type: "text", translatable: true },
-            ]}
-            defaultValue={{ image: "/images/hero-arpt.jpg", phrase: { fr: "Réguler les infrastructures qui connectent la Guinée", en: "Regulating the infrastructure that connects Guinea", ar: "تنظيم البنية التحتية التي تربط غينيا" } }}
-          />
-          <ObjectBlockAdmin
-            blockKey="about.missionsImage"
-            title="Image de la section « Nos missions »"
-            fields={[{ name: "image", label: "Image", type: "image" }]}
-            defaultValue={{ image: "/images/arpt/controle-qualite.jpg" }}
-          />
-          <ListBlockAdmin
-            blockKey="about.missions"
-            title="Nos missions"
-            description="Les quatre responsabilités fondamentales affichées sur la page Autorité."
-            itemLabel={(it) => blockLabel(it.titre) || "Nouvelle mission"}
-            fields={[
-              { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_AUTORITE },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "texte", label: "Texte", type: "textarea", translatable: true },
-            ]}
-            defaultItems={[
-              { icone: "scale", titre: { fr: "Garantir une concurrence loyale", en: "Ensure fair competition", ar: "ضمان منافسة نزيهة" }, texte: { fr: "Surveiller les marchés, encadrer les tarifs d'interconnexion et prévenir les pratiques anticoncurrentielles.", en: "Monitor markets, regulate interconnection tariffs and prevent anti-competitive practices.", ar: "مراقبة الأسواق، وتأطير تعرفات الربط البيني، ومنع الممارسات المنافية للمنافسة." } },
-              { icone: "radio", titre: { fr: "Gérer les ressources rares", en: "Manage scarce resources", ar: "إدارة الموارد النادرة" }, texte: { fr: "Planifier et attribuer le spectre radioélectrique ainsi que les ressources en numérotation.", en: "Plan and allocate the radio spectrum as well as numbering resources.", ar: "تخطيط وتوزيع الطيف الترددي وموارد الترقيم." } },
-              { icone: "users", titre: { fr: "Protéger les consommateurs", en: "Protect consumers", ar: "حماية المستهلكين" }, texte: { fr: "Traiter les réclamations, contrôler la qualité de service et informer les usagers de leurs droits.", en: "Handle complaints, monitor service quality and inform users of their rights.", ar: "معالجة الشكاوى، ومراقبة جودة الخدمة، وإعلام المستخدمين بحقوقهم." } },
-              { icone: "shield", titre: { fr: "Sécuriser le secteur", en: "Secure the sector", ar: "تأمين القطاع" }, texte: { fr: "Homologuer les équipements, contrôler les opérateurs et veiller au respect du cadre légal.", en: "Approve equipment, oversee operators and ensure compliance with the legal framework.", ar: "اعتماد المعدات، ومراقبة المشغلين، والسهر على احترام الإطار القانوني." } },
-            ]}
-          />
-          <ListBlockAdmin
-            blockKey="about.directions"
-            title="Nos directions"
-            description="L'organisation interne de l'Autorité."
-            itemLabel={(it) => blockLabel(it.nom) || "Nouvelle direction"}
-            fields={[
-              { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_AUTORITE },
-              { name: "nom", label: "Nom de la direction", type: "text", translatable: true },
-              { name: "texte", label: "Texte", type: "textarea", translatable: true },
-            ]}
-            defaultItems={[
-              { icone: "building", nom: { fr: "Direction générale", en: "General Management", ar: "الإدارة العامة" }, texte: { fr: "Pilotage stratégique, représentation institutionnelle et coordination de l'ensemble des directions.", en: "Strategic direction, institutional representation and coordination of all departments.", ar: "القيادة الاستراتيجية والتمثيل المؤسسي وتنسيق جميع المديريات." } },
-              { icone: "radio", nom: { fr: "Direction technique et du spectre", en: "Technical and Spectrum Department", ar: "المديرية التقنية والطيف" }, texte: { fr: "Planification des fréquences, contrôle du spectre et homologation des équipements radioélectriques.", en: "Frequency planning, spectrum monitoring and approval of radio equipment.", ar: "تخطيط الترددات، ومراقبة الطيف، واعتماد الأجهزة اللاسلكية." } },
-              { icone: "scale", nom: { fr: "Direction des affaires juridiques", en: "Legal Affairs Department", ar: "مديرية الشؤون القانونية" }, texte: { fr: "Élaboration des textes réglementaires, avis juridiques et suivi des contentieux sectoriels.", en: "Drafting of regulatory texts, legal opinions and monitoring of sector disputes.", ar: "إعداد النصوص التنظيمية، وإبداء الآراء القانونية، ومتابعة النزاعات القطاعية." } },
-              { icone: "users", nom: { fr: "Direction des consommateurs", en: "Consumer Department", ar: "مديرية المستهلكين" }, texte: { fr: "Traitement des réclamations des usagers et actions de sensibilisation sur leurs droits.", en: "Handling user complaints and awareness actions on their rights.", ar: "معالجة شكاوى المستخدمين وأنشطة التوعية بحقوقهم." } },
-              { icone: "trending", nom: { fr: "Direction de l'économie et des marchés", en: "Economics and Markets Department", ar: "مديرية الاقتصاد والأسواق" }, texte: { fr: "Analyse tarifaire, observatoire du secteur et surveillance de la concurrence entre opérateurs.", en: "Tariff analysis, sector observatory and monitoring of competition between operators.", ar: "تحليل التعرفات، ومرصد القطاع، ومراقبة المنافسة بين المشغلين." } },
-              { icone: "mail", nom: { fr: "Direction du secteur postal", en: "Postal Sector Department", ar: "مديرية القطاع البريدي" }, texte: { fr: "Régulation, autorisation et développement des activités postales et de courrier express.", en: "Regulation, authorization and development of postal and express mail activities.", ar: "تنظيم وترخيص وتطوير أنشطة البريد والبريد السريع." } },
-            ]}
-          />
-          <ListBlockAdmin
-            blockKey="about.timeline"
-            title="Repères — dates clés"
-            itemLabel={(it) => blockLabel(it.annee) || "Nouvelle date"}
-            fields={[
-              { name: "annee", label: "Année", type: "text" },
-              { name: "texte", label: "Texte", type: "text", translatable: true },
-            ]}
-            defaultItems={[
-              { annee: "2005", texte: { fr: "Création de l'Autorité de régulation du secteur.", en: "Creation of the sector's regulatory Authority.", ar: "إنشاء هيئة تنظيم القطاع." } },
-              { annee: "2015", texte: { fr: "Adoption de la loi L/2015/018/AN sur les télécommunications et les TIC.", en: "Adoption of Law L/2015/018/AN on telecommunications and ICT.", ar: "اعتماد القانون L/2015/018/AN المتعلق بالاتصالات وتكنولوجيا المعلومات." } },
-              { annee: "2016", texte: { fr: "Nouvelle organisation de l'ARPT par décret présidentiel.", en: "New organization of ARPT by presidential decree.", ar: "تنظيم جديد للهيئة بموجب مرسوم رئاسي." } },
-              { annee: "2026", texte: { fr: "Lancement du chantier d'attribution des fréquences 5G.", en: "Launch of the 5G frequency allocation project.", ar: "إطلاق ورش توزيع ترددات الجيل الخامس." } },
-            ]}
-          />
-          <ObjectBlockAdmin
-            blockKey="about.teamImage"
-            title="Photo d'équipe"
-            fields={[{ name: "image", label: "Image", type: "image" }]}
-            defaultValue={{ image: "/images/group.jpeg" }}
-          />
-          <ListBlockAdmin
-            blockKey="about.council"
-            title="Direction générale — membres"
-            description="Le carrousel des responsables affiché sur la page Autorité."
-            itemLabel={(it) => blockLabel(it.name) || "Nouveau membre"}
-            fields={[
-              { name: "name", label: "Nom", type: "text" },
-              { name: "role", label: "Fonction", type: "text", translatable: true },
-              { name: "image", label: "Photo", type: "image" },
-            ]}
-            defaultItems={[
-              { name: "M. Mamady Doumbouya", role: { fr: "Directeur général", en: "Director General", ar: "المدير العام" }, image: "/images/arpt/mamady-doumbouya.jpeg" },
-              { name: "M. Adama Condé", role: { fr: "Directeur général adjoint", en: "Deputy Director General", ar: "نائب المدير العام" }, image: "/images/arpt/adama-conde.jpg" },
-              { name: "M. Fany Zeze Camara", role: { fr: "Membre", en: "Member", ar: "عضو" }, image: "/images/arpt/zeze.jpeg" },
-            ]}
-          />
-          <ObjectBlockAdmin
-            blockKey="about.support"
-            title="Encart « Besoin d'un accompagnement ? »"
-            description="Le téléphone et l'email affichés proviennent de la Configuration du site."
-            fields={[{ name: "description", label: "Texte", type: "textarea", translatable: true }]}
-            defaultValue={{
-              description: {
-                fr: "Notre équipe vous oriente vers le bon service pour vos démarches, vos réclamations et vos questions réglementaires.",
-                en: "Our team directs you to the right department for your procedures, complaints and regulatory questions.",
-                ar: "يوجهكم فريقنا إلى المصلحة المناسبة لإجراءاتكم وشكاواكم وأسئلتكم التنظيمية.",
-              },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "about" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.about`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="about.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "L'Autorité", en: "The Authority", ar: "السلطة" },
+                titre: { fr: "Une institution au service d'un marché numérique équitable", en: "An institution serving a fair digital market", ar: "مؤسسة في خدمة سوق رقمي عادل" },
+                description: { fr: "L'ARPT est l'autorité administrative indépendante chargée de la régulation des secteurs des postes et des télécommunications en République de Guinée.", en: "ARPT is the independent administrative authority responsible for regulating the postal and telecommunications sectors in the Republic of Guinea.", ar: "الهيئة هي السلطة الإدارية المستقلة المكلفة بتنظيم قطاعي البريد والاتصالات في جمهورية غينيا." },
+              }}
+            />
+            <ObjectBlockAdmin
+              blockKey="about.banner"
+              title="Photo institutionnelle"
+              description="Grande image affichée juste sous le bandeau d'introduction."
+              fields={[
+                { name: "image", label: "Image", type: "image" },
+                { name: "phrase", label: "Phrase affichée sur l'image", type: "text", translatable: true },
+              ]}
+              defaultValue={{ image: "/images/hero-arpt.jpg", phrase: { fr: "Réguler les infrastructures qui connectent la Guinée", en: "Regulating the infrastructure that connects Guinea", ar: "تنظيم البنية التحتية التي تربط غينيا" } }}
+            />
+            <ObjectBlockAdmin
+              blockKey="about.missionsImage"
+              title="Image de la section « Nos missions »"
+              fields={[{ name: "image", label: "Image", type: "image" }]}
+              defaultValue={{ image: "/images/arpt/controle-qualite.jpg" }}
+            />
+            <ListBlockAdmin
+              blockKey="about.missions"
+              title="Nos missions"
+              description="Les quatre responsabilités fondamentales affichées sur la page Autorité."
+              itemLabel={(it) => blockLabel(it.titre) || "Nouvelle mission"}
+              fields={[
+                { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_AUTORITE },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "texte", label: "Texte", type: "textarea", translatable: true },
+              ]}
+              defaultItems={[
+                { icone: "scale", titre: { fr: "Garantir une concurrence loyale", en: "Ensure fair competition", ar: "ضمان منافسة نزيهة" }, texte: { fr: "Surveiller les marchés, encadrer les tarifs d'interconnexion et prévenir les pratiques anticoncurrentielles.", en: "Monitor markets, regulate interconnection tariffs and prevent anti-competitive practices.", ar: "مراقبة الأسواق، وتأطير تعرفات الربط البيني، ومنع الممارسات المنافية للمنافسة." } },
+                { icone: "radio", titre: { fr: "Gérer les ressources rares", en: "Manage scarce resources", ar: "إدارة الموارد النادرة" }, texte: { fr: "Planifier et attribuer le spectre radioélectrique ainsi que les ressources en numérotation.", en: "Plan and allocate the radio spectrum as well as numbering resources.", ar: "تخطيط وتوزيع الطيف الترددي وموارد الترقيم." } },
+                { icone: "users", titre: { fr: "Protéger les consommateurs", en: "Protect consumers", ar: "حماية المستهلكين" }, texte: { fr: "Traiter les réclamations, contrôler la qualité de service et informer les usagers de leurs droits.", en: "Handle complaints, monitor service quality and inform users of their rights.", ar: "معالجة الشكاوى، ومراقبة جودة الخدمة، وإعلام المستخدمين بحقوقهم." } },
+                { icone: "shield", titre: { fr: "Sécuriser le secteur", en: "Secure the sector", ar: "تأمين القطاع" }, texte: { fr: "Homologuer les équipements, contrôler les opérateurs et veiller au respect du cadre légal.", en: "Approve equipment, oversee operators and ensure compliance with the legal framework.", ar: "اعتماد المعدات، ومراقبة المشغلين، والسهر على احترام الإطار القانوني." } },
+              ]}
+            />
+            <ListBlockAdmin
+              blockKey="about.directions"
+              title="Nos directions"
+              description="L'organisation interne de l'Autorité."
+              itemLabel={(it) => blockLabel(it.nom) || "Nouvelle direction"}
+              fields={[
+                { name: "icone", label: "Icône", type: "select", options: ICONE_OPTIONS_AUTORITE },
+                { name: "nom", label: "Nom de la direction", type: "text", translatable: true },
+                { name: "texte", label: "Texte", type: "textarea", translatable: true },
+              ]}
+              defaultItems={[
+                { icone: "building", nom: { fr: "Direction générale", en: "General Management", ar: "الإدارة العامة" }, texte: { fr: "Pilotage stratégique, représentation institutionnelle et coordination de l'ensemble des directions.", en: "Strategic direction, institutional representation and coordination of all departments.", ar: "القيادة الاستراتيجية والتمثيل المؤسسي وتنسيق جميع المديريات." } },
+                { icone: "radio", nom: { fr: "Direction technique et du spectre", en: "Technical and Spectrum Department", ar: "المديرية التقنية والطيف" }, texte: { fr: "Planification des fréquences, contrôle du spectre et homologation des équipements radioélectriques.", en: "Frequency planning, spectrum monitoring and approval of radio equipment.", ar: "تخطيط الترددات، ومراقبة الطيف، واعتماد الأجهزة اللاسلكية." } },
+                { icone: "scale", nom: { fr: "Direction des affaires juridiques", en: "Legal Affairs Department", ar: "مديرية الشؤون القانونية" }, texte: { fr: "Élaboration des textes réglementaires, avis juridiques et suivi des contentieux sectoriels.", en: "Drafting of regulatory texts, legal opinions and monitoring of sector disputes.", ar: "إعداد النصوص التنظيمية، وإبداء الآراء القانونية، ومتابعة النزاعات القطاعية." } },
+                { icone: "users", nom: { fr: "Direction des consommateurs", en: "Consumer Department", ar: "مديرية المستهلكين" }, texte: { fr: "Traitement des réclamations des usagers et actions de sensibilisation sur leurs droits.", en: "Handling user complaints and awareness actions on their rights.", ar: "معالجة شكاوى المستخدمين وأنشطة التوعية بحقوقهم." } },
+                { icone: "trending", nom: { fr: "Direction de l'économie et des marchés", en: "Economics and Markets Department", ar: "مديرية الاقتصاد والأسواق" }, texte: { fr: "Analyse tarifaire, observatoire du secteur et surveillance de la concurrence entre opérateurs.", en: "Tariff analysis, sector observatory and monitoring of competition between operators.", ar: "تحليل التعرفات، ومرصد القطاع، ومراقبة المنافسة بين المشغلين." } },
+                { icone: "mail", nom: { fr: "Direction du secteur postal", en: "Postal Sector Department", ar: "مديرية القطاع البريدي" }, texte: { fr: "Régulation, autorisation et développement des activités postales et de courrier express.", en: "Regulation, authorization and development of postal and express mail activities.", ar: "تنظيم وترخيص وتطوير أنشطة البريد والبريد السريع." } },
+              ]}
+            />
+            <ListBlockAdmin
+              blockKey="about.timeline"
+              title="Repères — dates clés"
+              itemLabel={(it) => blockLabel(it.annee) || "Nouvelle date"}
+              fields={[
+                { name: "annee", label: "Année", type: "text" },
+                { name: "texte", label: "Texte", type: "text", translatable: true },
+              ]}
+              defaultItems={[
+                { annee: "2005", texte: { fr: "Création de l'Autorité de régulation du secteur.", en: "Creation of the sector's regulatory Authority.", ar: "إنشاء هيئة تنظيم القطاع." } },
+                { annee: "2015", texte: { fr: "Adoption de la loi L/2015/018/AN sur les télécommunications et les TIC.", en: "Adoption of Law L/2015/018/AN on telecommunications and ICT.", ar: "اعتماد القانون L/2015/018/AN المتعلق بالاتصالات وتكنولوجيا المعلومات." } },
+                { annee: "2016", texte: { fr: "Nouvelle organisation de l'ARPT par décret présidentiel.", en: "New organization of ARPT by presidential decree.", ar: "تنظيم جديد للهيئة بموجب مرسوم رئاسي." } },
+                { annee: "2026", texte: { fr: "Lancement du chantier d'attribution des fréquences 5G.", en: "Launch of the 5G frequency allocation project.", ar: "إطلاق ورش توزيع ترددات الجيل الخامس." } },
+              ]}
+            />
+            <ObjectBlockAdmin
+              blockKey="about.teamImage"
+              title="Photo d'équipe"
+              fields={[{ name: "image", label: "Image", type: "image" }]}
+              defaultValue={{ image: "/images/group.jpeg" }}
+            />
+            <ListBlockAdmin
+              blockKey="about.council"
+              title="Direction générale — membres"
+              description="Le carrousel des responsables affiché sur la page Autorité."
+              itemLabel={(it) => blockLabel(it.name) || "Nouveau membre"}
+              fields={[
+                { name: "name", label: "Nom", type: "text" },
+                { name: "role", label: "Fonction", type: "text", translatable: true },
+                { name: "image", label: "Photo", type: "image" },
+              ]}
+              defaultItems={[
+                { name: "M. Mamady Doumbouya", role: { fr: "Directeur général", en: "Director General", ar: "المدير العام" }, image: "/images/arpt/mamady-doumbouya.jpeg" },
+                { name: "M. Adama Condé", role: { fr: "Directeur général adjoint", en: "Deputy Director General", ar: "نائب المدير العام" }, image: "/images/arpt/adama-conde.jpg" },
+                { name: "M. Fany Zeze Camara", role: { fr: "Membre", en: "Member", ar: "عضو" }, image: "/images/arpt/zeze.jpeg" },
+              ]}
+            />
+            <ObjectBlockAdmin
+              blockKey="about.support"
+              title="Encart « Besoin d'un accompagnement ? »"
+              description="Le téléphone et l'email affichés proviennent de la Configuration du site."
+              fields={[{ name: "description", label: "Texte", type: "textarea", translatable: true }]}
+              defaultValue={{
+                description: {
+                  fr: "Notre équipe vous oriente vers le bon service pour vos démarches, vos réclamations et vos questions réglementaires.",
+                  en: "Our team directs you to the right department for your procedures, complaints and regulatory questions.",
+                  ar: "يوجهكم فريقنا إلى المصلحة المناسبة لإجراءاتكم وشكاواكم وأسئلتكم التنظيمية.",
+                },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "claims" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.claims`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="claims.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Protection des consommateurs", en: "Consumer protection", ar: "حماية المستهلك" },
-              titre: { fr: "Déposer une réclamation", en: "File a complaint", ar: "تقديم شكوى" },
-              description: { fr: "L'ARPT reçoit et instruit les litiges opposant les usagers aux opérateurs de télécommunications et aux opérateurs postaux.", en: "ARPT receives and investigates disputes between users and telecommunications or postal operators.", ar: "تتلقى الهيئة وتحقق في النزاعات بين المستخدمين ومشغلي الاتصالات والبريد." },
-            }}
-          />
-          <ListBlockAdmin
-            blockKey="claims.steps"
-            title="Étapes avant de saisir l'Autorité"
-            itemLabel={(it, i) => `Étape ${i + 1}`}
-            fields={[{ name: "texte", label: "Texte", type: "textarea", translatable: true }]}
-            defaultItems={[
-              { texte: { fr: "Contactez d'abord le service client de votre opérateur et conservez la référence du dossier.", en: "First contact your operator's customer service and keep the case reference.", ar: "اتصل أولاً بخدمة عملاء مشغلك واحتفظ بمرجع الملف." } },
-              { texte: { fr: "Si aucune réponse satisfaisante n'est apportée sous 30 jours, saisissez l'ARPT via ce formulaire.", en: "If no satisfactory response is given within 30 days, contact ARPT via this form.", ar: "إذا لم تحصل على رد مُرضٍ خلال 30 يوماً، توجه إلى الهيئة عبر هذه الاستمارة." } },
-              { texte: { fr: "Un agent instruit votre dossier et vous informe de l'avancement depuis votre portail usager.", en: "An agent processes your case and keeps you informed of its progress via your user portal.", ar: "يتولى أحد الأعوان معالجة ملفك ويطلعك على تقدمه عبر بوابة المستخدم." } },
-            ]}
-          />
-          <ListBlockAdmin
-            blockKey="claims.operators"
-            title="Opérateurs concernés"
-            description="La liste déroulante « Opérateur concerné » du formulaire."
-            itemLabel={(it) => blockLabel(it.label) || "Nouvel opérateur"}
-            fields={[
-              { name: "value", label: "Identifiant (sans espace)", type: "text" },
-              { name: "label", label: "Nom affiché", type: "text", translatable: true },
-            ]}
-            defaultItems={[
-              { value: "orange", label: { fr: "Orange Guinée", en: "Orange Guinée", ar: "Orange Guinée" } },
-              { value: "mtn", label: { fr: "MTN Guinée", en: "MTN Guinée", ar: "MTN Guinée" } },
-              { value: "cellcom", label: { fr: "Cellcom", en: "Cellcom", ar: "Cellcom" } },
-              { value: "poste", label: { fr: "Guinée Poste", en: "Guinea Post", ar: "بريد غينيا" } },
-              { value: "autre", label: { fr: "Autre opérateur", en: "Other operator", ar: "مشغل آخر" } },
-            ]}
-          />
-          <ListBlockAdmin
-            blockKey="claims.types"
-            title="Natures de réclamation"
-            description="La liste déroulante « Nature de la réclamation » du formulaire."
-            itemLabel={(it) => blockLabel(it.label) || "Nouvelle nature"}
-            fields={[
-              { name: "value", label: "Identifiant (sans espace)", type: "text" },
-              { name: "label", label: "Nom affiché", type: "text", translatable: true },
-            ]}
-            defaultItems={[
-              { value: "qualite", label: { fr: "Qualité de service", en: "Quality of service", ar: "جودة الخدمة" } },
-              { value: "facturation", label: { fr: "Facturation", en: "Billing", ar: "الفوترة" } },
-              { value: "reseau", label: { fr: "Réseau / couverture", en: "Network / coverage", ar: "الشبكة / التغطية" } },
-              { value: "autre", label: { fr: "Autre", en: "Other", ar: "أخرى" } },
-            ]}
-          />
-          <ObjectBlockAdmin
-            blockKey="claims.guide"
-            title="Encart « Droits des consommateurs »"
-            fields={[
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Texte", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              titre: { fr: "Droits des consommateurs", en: "Consumer rights", ar: "حقوق المستهلك" },
-              description: {
-                fr: "Guide officiel des droits et recours des usagers des services de télécommunications.",
-                en: "Official guide to the rights and remedies of telecommunications service users.",
-                ar: "الدليل الرسمي لحقوق وسبل انتصاف مستخدمي خدمات الاتصالات.",
-              },
-            }}
-          />
-          <ConsumerRightsDocumentAdmin />
-        </div>
-      </section>}
+        {pageSelectionnee === "claims" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.claims`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="claims.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Protection des consommateurs", en: "Consumer protection", ar: "حماية المستهلك" },
+                titre: { fr: "Déposer une réclamation", en: "File a complaint", ar: "تقديم شكوى" },
+                description: { fr: "L'ARPT reçoit et instruit les litiges opposant les usagers aux opérateurs de télécommunications et aux opérateurs postaux.", en: "ARPT receives and investigates disputes between users and telecommunications or postal operators.", ar: "تتلقى الهيئة وتحقق في النزاعات بين المستخدمين ومشغلي الاتصالات والبريد." },
+              }}
+            />
+            <ListBlockAdmin
+              blockKey="claims.steps"
+              title="Étapes avant de saisir l'Autorité"
+              itemLabel={(it, i) => `Étape ${i + 1}`}
+              fields={[{ name: "texte", label: "Texte", type: "textarea", translatable: true }]}
+              defaultItems={[
+                { texte: { fr: "Contactez d'abord le service client de votre opérateur et conservez la référence du dossier.", en: "First contact your operator's customer service and keep the case reference.", ar: "اتصل أولاً بخدمة عملاء مشغلك واحتفظ بمرجع الملف." } },
+                { texte: { fr: "Si aucune réponse satisfaisante n'est apportée sous 30 jours, saisissez l'ARPT via ce formulaire.", en: "If no satisfactory response is given within 30 days, contact ARPT via this form.", ar: "إذا لم تحصل على رد مُرضٍ خلال 30 يوماً، توجه إلى الهيئة عبر هذه الاستمارة." } },
+                { texte: { fr: "Un agent instruit votre dossier et vous informe de l'avancement depuis votre portail usager.", en: "An agent processes your case and keeps you informed of its progress via your user portal.", ar: "يتولى أحد الأعوان معالجة ملفك ويطلعك على تقدمه عبر بوابة المستخدم." } },
+              ]}
+            />
+            <ListBlockAdmin
+              blockKey="claims.operators"
+              title="Opérateurs concernés"
+              description="La liste déroulante « Opérateur concerné » du formulaire."
+              itemLabel={(it) => blockLabel(it.label) || "Nouvel opérateur"}
+              fields={[
+                { name: "value", label: "Identifiant (sans espace)", type: "text" },
+                { name: "label", label: "Nom affiché", type: "text", translatable: true },
+              ]}
+              defaultItems={[
+                { value: "orange", label: { fr: "Orange Guinée", en: "Orange Guinée", ar: "Orange Guinée" } },
+                { value: "mtn", label: { fr: "MTN Guinée", en: "MTN Guinée", ar: "MTN Guinée" } },
+                { value: "cellcom", label: { fr: "Cellcom", en: "Cellcom", ar: "Cellcom" } },
+                { value: "poste", label: { fr: "Guinée Poste", en: "Guinea Post", ar: "بريد غينيا" } },
+                { value: "autre", label: { fr: "Autre opérateur", en: "Other operator", ar: "مشغل آخر" } },
+              ]}
+            />
+            <ListBlockAdmin
+              blockKey="claims.types"
+              title="Natures de réclamation"
+              description="La liste déroulante « Nature de la réclamation » du formulaire."
+              itemLabel={(it) => blockLabel(it.label) || "Nouvelle nature"}
+              fields={[
+                { name: "value", label: "Identifiant (sans espace)", type: "text" },
+                { name: "label", label: "Nom affiché", type: "text", translatable: true },
+              ]}
+              defaultItems={[
+                { value: "qualite", label: { fr: "Qualité de service", en: "Quality of service", ar: "جودة الخدمة" } },
+                { value: "facturation", label: { fr: "Facturation", en: "Billing", ar: "الفوترة" } },
+                { value: "reseau", label: { fr: "Réseau / couverture", en: "Network / coverage", ar: "الشبكة / التغطية" } },
+                { value: "autre", label: { fr: "Autre", en: "Other", ar: "أخرى" } },
+              ]}
+            />
+            <ObjectBlockAdmin
+              blockKey="claims.guide"
+              title="Encart « Droits des consommateurs »"
+              fields={[
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Texte", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                titre: { fr: "Droits des consommateurs", en: "Consumer rights", ar: "حقوق المستهلك" },
+                description: {
+                  fr: "Guide officiel des droits et recours des usagers des services de télécommunications.",
+                  en: "Official guide to the rights and remedies of telecommunications service users.",
+                  ar: "الدليل الرسمي لحقوق وسبل انتصاف مستخدمي خدمات الاتصالات.",
+                },
+              }}
+            />
+            <ConsumerRightsDocumentAdmin />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "regulation" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.regulation`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="regulation.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Ressources", en: "Resources", ar: "الموارد" },
-              titre: { fr: "Cadre réglementaire du secteur", en: "Sector regulatory framework", ar: "الإطار التنظيمي للقطاع" },
-              description: { fr: "Consultez et téléchargez l'ensemble des textes en vigueur applicables aux postes et aux télécommunications.", en: "Browse and download all texts currently in force applicable to posts and telecommunications.", ar: "اطّلع على جميع النصوص السارية المطبقة على البريد والاتصالات وقم بتحميلها." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "regulation" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.regulation`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="regulation.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Ressources", en: "Resources", ar: "الموارد" },
+                titre: { fr: "Cadre réglementaire du secteur", en: "Sector regulatory framework", ar: "الإطار التنظيمي للقطاع" },
+                description: { fr: "Consultez et téléchargez l'ensemble des textes en vigueur applicables aux postes et aux télécommunications.", en: "Browse and download all texts currently in force applicable to posts and telecommunications.", ar: "اطّلع على جميع النصوص السارية المطبقة على البريد والاتصالات وقم بتحميلها." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "equipment" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.equipment`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="equipment.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Registre public", en: "Public register", ar: "السجل العمومي" },
-              titre: { fr: "Équipements et terminaux homologués", en: "Approved equipment and terminals", ar: "المعدات والأجهزة المعتمدة" },
-              description: { fr: "Avant tout achat ou importation, vérifiez le statut d'homologation d'un équipement radioélectrique auprès de l'ARPT.", en: "Before any purchase or import, check the approval status of a radio equipment with ARPT.", ar: "قبل أي شراء أو استيراد، تحقق من حالة اعتماد الجهاز اللاسلكي لدى الهيئة." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "equipment" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.equipment`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="equipment.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Registre public", en: "Public register", ar: "السجل العمومي" },
+                titre: { fr: "Équipements et terminaux homologués", en: "Approved equipment and terminals", ar: "المعدات والأجهزة المعتمدة" },
+                description: { fr: "Avant tout achat ou importation, vérifiez le statut d'homologation d'un équipement radioélectrique auprès de l'ARPT.", en: "Before any purchase or import, check the approval status of a radio equipment with ARPT.", ar: "قبل أي شراء أو استيراد، تحقق من حالة اعتماد الجهاز اللاسلكي لدى الهيئة." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "tenders" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.tenders`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="tenders.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Marchés publics", en: "Public procurement", ar: "الصفقات العمومية" },
-              titre: { fr: "Appels d'offres de l'Autorité", en: "Authority tenders", ar: "مناقصات الهيئة" },
-              description: { fr: "Les avis publiés ci-dessous précisent l'objet du marché, le budget prévisionnel et la date limite de dépôt des plis.", en: "The notices published below specify the subject of the contract, the estimated budget and the submission deadline.", ar: "توضح الإعلانات المنشورة أدناه موضوع الصفقة والميزانية التقديرية والموعد النهائي لإيداع الملفات." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "tenders" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.tenders`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="tenders.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Marchés publics", en: "Public procurement", ar: "الصفقات العمومية" },
+                titre: { fr: "Appels d'offres de l'Autorité", en: "Authority tenders", ar: "مناقصات الهيئة" },
+                description: { fr: "Les avis publiés ci-dessous précisent l'objet du marché, le budget prévisionnel et la date limite de dépôt des plis.", en: "The notices published below specify the subject of the contract, the estimated budget and the submission deadline.", ar: "توضح الإعلانات المنشورة أدناه موضوع الصفقة والميزانية التقديرية والموعد النهائي لإيداع الملفات." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "careers" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.careers`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="careers.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Rejoindre l'Autorité", en: "Join the Authority", ar: "انضم إلى الهيئة" },
-              titre: { fr: "Carrières à l'ARPT", en: "Careers at ARPT", ar: "الوظائف في الهيئة" },
-              description: { fr: "L'Autorité recrute des profils techniques, juridiques et économiques engagés au service du secteur numérique guinéen.", en: "The Authority recruits technical, legal and economic profiles committed to serving Guinea's digital sector.", ar: "تعمل الهيئة على توظيف كفاءات تقنية وقانونية واقتصادية ملتزمة بخدمة القطاع الرقمي الغيني." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "careers" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.careers`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="careers.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Rejoindre l'Autorité", en: "Join the Authority", ar: "انضم إلى الهيئة" },
+                titre: { fr: "Carrières à l'ARPT", en: "Careers at ARPT", ar: "الوظائف في الهيئة" },
+                description: { fr: "L'Autorité recrute des profils techniques, juridiques et économiques engagés au service du secteur numérique guinéen.", en: "The Authority recruits technical, legal and economic profiles committed to serving Guinea's digital sector.", ar: "تعمل الهيئة على توظيف كفاءات تقنية وقانونية واقتصادية ملتزمة بخدمة القطاع الرقمي الغيني." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "news" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.news`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="news.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Salle de presse", en: "Press room", ar: "غرفة الصحافة" },
-              titre: { fr: "Actualités et communiqués", en: "News and press releases", ar: "الأخبار والبلاغات" },
-              description: {
-                fr: "Suivez les décisions, les publications et les événements de l'Autorité.",
-                en: "Follow the Authority's decisions, publications and events.",
-                ar: "تابع قرارات الهيئة ومنشوراتها وفعالياتها.",
-              },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "news" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.news`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="news.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Salle de presse", en: "Press room", ar: "غرفة الصحافة" },
+                titre: { fr: "Actualités et communiqués", en: "News and press releases", ar: "الأخبار والبلاغات" },
+                description: {
+                  fr: "Suivez les décisions, les publications et les événements de l'Autorité.",
+                  en: "Follow the Authority's decisions, publications and events.",
+                  ar: "تابع قرارات الهيئة ومنشوراتها وفعالياتها.",
+                },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "services" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.services`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="services.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Démarches", en: "Procedures", ar: "الإجراءات" },
-              titre: { fr: "Services aux opérateurs, entreprises et particuliers", en: "Services for operators, businesses and individuals", ar: "خدمات للمشغلين والشركات والأفراد" },
-              description: { fr: "Pour chaque service, retrouvez les pièces exigées, le délai d'instruction et le coût applicable. Les demandes se déposent en ligne depuis le portail usager.", en: "For each service, find the required documents, processing time and applicable cost. Requests are submitted online via the user portal.", ar: "لكل خدمة، تجد الوثائق المطلوبة ومدة المعالجة والتكلفة المطبقة. تُقدَّم الطلبات عبر الإنترنت من خلال بوابة المستخدم." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "services" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.services`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="services.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Démarches", en: "Procedures", ar: "الإجراءات" },
+                titre: { fr: "Services aux opérateurs, entreprises et particuliers", en: "Services for operators, businesses and individuals", ar: "خدمات للمشغلين والشركات والأفراد" },
+                description: { fr: "Pour chaque service, retrouvez les pièces exigées, le délai d'instruction et le coût applicable. Les demandes se déposent en ligne depuis le portail usager.", en: "For each service, find the required documents, processing time and applicable cost. Requests are submitted online via the user portal.", ar: "لكل خدمة، تجد الوثائق المطلوبة ومدة المعالجة والتكلفة المطبقة. تُقدَّم الطلبات عبر الإنترنت من خلال بوابة المستخدم." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "contact" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.contact`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="contact.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Contact", en: "Contact", ar: "اتصل بنا" },
-              titre: { fr: "Nous écrire", en: "Write to us", ar: "راسلنا" },
-              description: { fr: "Une question sur une démarche, un texte réglementaire ou un dossier en cours ? Nos services vous répondent sous cinq jours ouvrés.", en: "A question about a procedure, a regulatory text or an ongoing case? Our teams respond within five business days.", ar: "هل لديك سؤال حول إجراء أو نص تنظيمي أو ملف قيد المعالجة؟ تجيبكم مصالحنا خلال خمسة أيام عمل." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "contact" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.contact`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="contact.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Contact", en: "Contact", ar: "اتصل بنا" },
+                titre: { fr: "Nous écrire", en: "Write to us", ar: "راسلنا" },
+                description: { fr: "Une question sur une démarche, un texte réglementaire ou un dossier en cours ? Nos services vous répondent sous cinq jours ouvrés.", en: "A question about a procedure, a regulatory text or an ongoing case? Our teams respond within five business days.", ar: "هل لديك سؤال حول إجراء أو نص تنظيمي أو ملف قيد المعالجة؟ تجيبكم مصالحنا خلال خمسة أيام عمل." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "statistics" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.statistics`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="statistics.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Observatoire", en: "Observatory", ar: "المرصد" },
-              titre: { fr: "Statistiques du secteur", en: "Sector statistics", ar: "إحصائيات القطاع" },
-              description: { fr: "Indicateurs mensuels et trimestriels consolidés par l'Autorité à partir des déclarations des opérateurs.", en: "Monthly and quarterly indicators consolidated by the Authority from operator filings.", ar: "مؤشرات شهرية وفصلية جمعتها الهيئة من تصريحات المشغلين." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "statistics" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.statistics`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="statistics.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Observatoire", en: "Observatory", ar: "المرصد" },
+                titre: { fr: "Statistiques du secteur", en: "Sector statistics", ar: "إحصائيات القطاع" },
+                description: { fr: "Indicateurs mensuels et trimestriels consolidés par l'Autorité à partir des déclarations des opérateurs.", en: "Monthly and quarterly indicators consolidated by the Authority from operator filings.", ar: "مؤشرات شهرية وفصلية جمعتها الهيئة من تصريحات المشغلين." },
+              }}
+            />
+          </div>
+        </section>}
 
-      {pageSelectionnee === "consultations" && <section>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.consultations`)}</p>
-        <div className="mt-3 space-y-5">
-          <ObjectBlockAdmin
-            blockKey="consultations.hero"
-            title="Bandeau d'introduction"
-            fields={[
-              { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
-              { name: "titre", label: "Titre", type: "text", translatable: true },
-              { name: "description", label: "Description", type: "textarea", translatable: true },
-            ]}
-            defaultValue={{
-              surtitre: { fr: "Participation", en: "Participation", ar: "المشاركة" },
-              titre: { fr: "Consultations publiques", en: "Public consultations", ar: "الاستشارات العمومية" },
-              description: { fr: "Avant l'adoption d'un texte structurant, l'Autorité recueille les observations des opérateurs, des associations de consommateurs et du public.", en: "Before adopting a major text, the Authority gathers input from operators, consumer associations and the public.", ar: "قبل اعتماد نص هيكلي، تجمع الهيئة ملاحظات المشغلين وجمعيات المستهلكين والجمهور." },
-            }}
-          />
-        </div>
-      </section>}
+        {pageSelectionnee === "consultations" && <section>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(`pages.consultations`)}</p>
+          <div className="mt-3 space-y-5">
+            <ObjectBlockAdmin
+              blockKey="consultations.hero"
+              title="Bandeau d'introduction"
+              fields={[
+                { name: "surtitre", label: "Surtitre", type: "text", translatable: true },
+                { name: "titre", label: "Titre", type: "text", translatable: true },
+                { name: "description", label: "Description", type: "textarea", translatable: true },
+              ]}
+              defaultValue={{
+                surtitre: { fr: "Participation", en: "Participation", ar: "المشاركة" },
+                titre: { fr: "Consultations publiques", en: "Public consultations", ar: "الاستشارات العمومية" },
+                description: { fr: "Avant l'adoption d'un texte structurant, l'Autorité recueille les observations des opérateurs, des associations de consommateurs et du public.", en: "Before adopting a major text, the Authority gathers input from operators, consumer associations and the public.", ar: "قبل اعتماد نص هيكلي، تجمع الهيئة ملاحظات المشغلين وجمعيات المستهلكين والجمهور." },
+              }}
+            />
+          </div>
+        </section>}
       </div>
     </div>
   );
@@ -4294,17 +3819,8 @@ function ActualitesAdmin() {
     }
   }
 
-  function exporter() {
-    const csv = [
-      t.raw("csv.headers") as string[],
-      ...actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), String(item.views), item.isPublished ? t("statusPublished") : t("statusDraft")]),
-    ].map((ligne) => ligne.map((valeur) => `"${valeur.replaceAll('"', '""')}"`).join(";")).join("\n");
-    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
-    const lien = document.createElement("a");
-    lien.href = url;
-    lien.download = t("csv.filename");
-    lien.click();
-    URL.revokeObjectURL(url);
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format, t("csv.filename"), t.raw("csv.headers") as string[], actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), item.views, item.isPublished ? t("statusPublished") : t("statusDraft")]));
   }
 
   async function soumettre(event: React.FormEvent<HTMLFormElement>) {
@@ -4350,11 +3866,11 @@ function ActualitesAdmin() {
       <div className="rounded-2xl border border-border bg-card shadow-card">
         <div className="flex flex-col gap-4 border-b border-border p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Newspaper className="size-5" aria-hidden /></span>
+            <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><Newspaper className="size-5" aria-hidden /></span>
             <div><h2 className="font-heading text-xl font-semibold">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p></div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={exporter}><Download className="size-3.5" aria-hidden /> {tCommon("export")}</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")}><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
             <Button size="sm" onClick={ouvrirCreation}>{showForm && !editing ? tCommon("cancel") : t("newArticle")}</Button>
           </div>
         </div>
@@ -4366,45 +3882,45 @@ function ActualitesAdmin() {
           <Select value={ordre} onValueChange={(value) => setOrdre(value as typeof ordre)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="recent">{t("sortRecent")}</SelectItem><SelectItem value="views">{t("sortViews")}</SelectItem></SelectContent></Select>
         </div>
 
-      {showForm && (
-        <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-semibold">{editing ? t("editingTitle", { name: editing.title }) : t("newArticleTitle")}</p>
-          <div className="grid gap-2">
-            <Label htmlFor="news-title">{t("fields.articleTitle")}</Label>
-            <Input id="news-title" name="titleFr" required defaultValue={editing?.title} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="news-content">{t("fields.content")}</Label>
-            <Textarea id="news-content" name="contentFr" required rows={6} defaultValue={editing?.content} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="news-category">{t("fields.category")}</Label>
-            <Input id="news-category" name="category" placeholder={t("fields.categoryPlaceholder")} defaultValue={editing?.category ?? ""} />
-          </div>
-          {editing?.imageUrl && (
-            <img src={editing.imageUrl} alt="" className="h-32 w-auto rounded-lg border border-border object-cover" />
-          )}
-          <div className="grid gap-2">
-            <Label htmlFor="news-image">{t("fields.image", { hint: editing ? t("fields.imageHintKeep") : "*" })}</Label>
-            <Input id="news-image" name="image" type="file" accept="image/*" required={!editing} />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
-            {t("fields.publishImmediately")}
-          </label>
-          {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
-          <div className="flex gap-3">
-            <Button type="submit" disabled={submitting} className="justify-self-start">
-              {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newArticleTitle")}
-            </Button>
-            {editing && (
-              <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
-                {tCommon("cancel")}
-              </Button>
+        {showForm && (
+          <form key={editing?.id ?? "new"} onSubmit={soumettre} className="mt-4 grid gap-4 rounded-xl border border-border bg-card p-5">
+            <p className="text-sm font-semibold">{editing ? t("editingTitle", { name: editing.title }) : t("newArticleTitle")}</p>
+            <div className="grid gap-2">
+              <Label htmlFor="news-title">{t("fields.articleTitle")}</Label>
+              <Input id="news-title" name="titleFr" required defaultValue={editing?.title} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="news-content">{t("fields.content")}</Label>
+              <Textarea id="news-content" name="contentFr" required rows={6} defaultValue={editing?.content} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="news-category">{t("fields.category")}</Label>
+              <Input id="news-category" name="category" placeholder={t("fields.categoryPlaceholder")} defaultValue={editing?.category ?? ""} />
+            </div>
+            {editing?.imageUrl && (
+              <img src={editing.imageUrl} alt="" className="h-32 w-auto rounded-lg border border-border object-cover" />
             )}
-          </div>
-        </form>
-      )}
+            <div className="grid gap-2">
+              <Label htmlFor="news-image">{t("fields.image", { hint: editing ? t("fields.imageHintKeep") : "*" })}</Label>
+              <Input id="news-image" name="image" type="file" accept="image/*" required={!editing} />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
+              {t("fields.publishImmediately")}
+            </label>
+            {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
+            <div className="flex gap-3">
+              <Button type="submit" disabled={submitting} className="justify-self-start">
+                {submitting ? tCommon("saving") : editing ? tCommon("save") : t("newArticleTitle")}
+              </Button>
+              {editing && (
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditing(null); }}>
+                  {tCommon("cancel")}
+                </Button>
+              )}
+            </div>
+          </form>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[55rem] text-left text-sm">
@@ -4476,8 +3992,8 @@ function CommuniquesAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((c) => [c.title, c.fileUrl ? t("csv.yes") : t("csv.no"), formaterDate(c.createdAt)]),
@@ -4541,7 +4057,7 @@ function CommuniquesAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <FileCheck2 className="size-5" aria-hidden />
           </span>
           <div>
@@ -4550,9 +4066,7 @@ function CommuniquesAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newRelease")}
           </Button>
@@ -4577,7 +4091,7 @@ function CommuniquesAdmin() {
             <Textarea id="com-content" name="contentFr" required rows={5} defaultValue={editing?.content} />
           </div>
           {editing?.fileUrl && (
-            <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+            <a href={editing.fileUrl} data-document-preview target="_blank" rel="noreferrer" className="text-sm text-primary underline">
               {t("viewCurrentDocument")}
             </a>
           )}
@@ -4684,8 +4198,8 @@ function ServicesAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((s) => [s.name, s.delai ?? "", s.cost ?? "", s.isActive ? tCommon("active") : tCommon("inactive")]),
@@ -4758,7 +4272,7 @@ function ServicesAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <Layers className="size-5" aria-hidden />
           </span>
           <div>
@@ -4767,9 +4281,7 @@ function ServicesAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newService")}
           </Button>
@@ -4821,7 +4333,7 @@ function ServicesAdmin() {
             <Label htmlFor="svc-file">{t("fields.file", { hint: editing ? t("fields.fileHintKeep") : t("fields.fileHintOptional") })}</Label>
             <Input id="svc-file" name="file" type="file" accept=".pdf" />
             {editing?.fileUrl && (
-              <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+              <a href={editing.fileUrl} data-document-preview target="_blank" rel="noreferrer" className="text-sm text-primary underline">
                 {t("viewCurrentFile")}
               </a>
             )}
@@ -5044,10 +4556,11 @@ function MessageRow({ message, onUpdated }: { message: ContactMessageAdmin; onUp
 
       {showReply && (
         <form onSubmit={envoyer} className="ml-0 mt-5 grid gap-3 rounded-xl border border-primary/15 bg-surface p-4 sm:ml-[3.4rem]">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <Label htmlFor={`message-reply-${message.id}`} className="flex items-center gap-2 text-xs text-muted-foreground">
             <Reply className="size-3.5 text-primary" aria-hidden /> {t("replyTo", { name: message.name })}
-          </div>
+          </Label>
           <Textarea
+            id={`message-reply-${message.id}`}
             value={reponse}
             onChange={(e) => setReponse(e.target.value)}
             rows={4}
@@ -5090,7 +4603,7 @@ function MessagesAdmin() {
       <div className="flex flex-col gap-4 border-b border-border bg-surface/70 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Inbox className="size-4" aria-hidden /></span>
+            <span className="grid size-8 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><Inbox className="size-4" aria-hidden /></span>
             <h2 className="font-heading text-base font-semibold">{t("inbox")}</h2>
             {nonLus > 0 && <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">{nonLus}</span>}
           </div>
@@ -5183,8 +4696,8 @@ function ReglementationAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((texte) => [texte.name, texte.category, texte.format, texte.views, formaterDate(texte.dateUpload)]),
@@ -5259,7 +4772,7 @@ function ReglementationAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <ScrollText className="size-5" aria-hidden />
           </span>
           <div>
@@ -5268,9 +4781,7 @@ function ReglementationAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newText")}
           </Button>
@@ -5320,7 +4831,7 @@ function ReglementationAdmin() {
             {t("fields.featureLabel")}
           </label>
           {editing?.fileUrl && (
-            <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline sm:col-span-2">
+            <a href={editing.fileUrl} data-document-preview target="_blank" rel="noreferrer" className="text-sm text-primary underline sm:col-span-2">
               {t("viewCurrentFile")}
             </a>
           )}
@@ -5447,8 +4958,8 @@ function ConsultationsAdmin() {
     setPage(Math.min(Math.max(p, 1), totalPages));
   }
 
-  function exporter() {
-    exporterCsv(
+  function exporter(format: ExportFormat = "csv") {
+    exporterTableau(format,
       `${t("csv.filenamePrefix")}-${new Date().toISOString().slice(0, 10)}.csv`,
       t.raw("csv.headers") as string[],
       resultat.map((c) => [c.title, tStatus(c.status), formaterDate(c.startDate), formaterDate(c.endDate)]),
@@ -5518,7 +5029,7 @@ function ConsultationsAdmin() {
     <section className="mt-8 space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
             <Vote className="size-5" aria-hidden />
           </span>
           <div>
@@ -5527,9 +5038,7 @@ function ConsultationsAdmin() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={exporter} className="gap-1.5">
-            <Download className="size-4" aria-hidden /> {tCommon("export")}
-          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => exporter("csv")} className="gap-1.5"><Download className="size-4" aria-hidden /> CSV</Button><Button type="button" size="sm" variant="outline" onClick={() => exporter("pdf")} className="gap-1.5"><FileText className="size-4" aria-hidden /> PDF</Button>
           <Button size="sm" onClick={ouvrirCreation}>
             {showForm && !editing ? tCommon("cancel") : t("newConsultation")}
           </Button>
@@ -5581,7 +5090,7 @@ function ConsultationsAdmin() {
             <Input id="cons-email" name="contactEmail" type="email" required defaultValue={editing?.contactEmail} />
           </div>
           {editing?.fileUrl && (
-            <a href={editing.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-primary underline sm:col-span-2">
+            <a href={editing.fileUrl} data-document-preview target="_blank" rel="noreferrer" className="text-sm text-primary underline sm:col-span-2">
               {t("viewCurrentDocument")}
             </a>
           )}
@@ -5995,13 +5504,14 @@ function RolesAdmin() {
 
 function EntrepriseDocumentLink({ userId }: { userId: number }) {
   const t = useTranslations("admin.users.document");
+  const preview = useDocumentPreview();
   const [pending, setPending] = useState(false);
 
   async function voir() {
     setPending(true);
     try {
       const res = await apiFetch<{ url: string }>(`/users/${userId}/company-document`);
-      window.open(res.url, "_blank", "noopener,noreferrer");
+      preview({ url: res.url, title: t("viewDocument") });
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t("openError"));
     } finally {
@@ -6169,7 +5679,7 @@ function UtilisateursAdmin() {
         <div className="bg-institution px-5 py-6 text-primary-foreground sm:px-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <span className="grid size-11 place-items-center rounded-xl bg-primary-foreground/15"><Users className="size-5" aria-hidden /></span>
+              <span className="grid size-11 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><Users className="size-5" aria-hidden /></span>
               <div>
                 <p className="font-heading text-xs font-semibold tracking-[0.16em] uppercase opacity-80">{t("eyebrow")}</p>
                 <h1 className="mt-1 font-heading text-2xl font-semibold">{t("title")}</h1>
@@ -6194,7 +5704,7 @@ function UtilisateursAdmin() {
         </div>
 
         <div className="p-5 sm:p-6">
-        <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
+          <CreerUtilisateurAdmin roles={roles ?? []} onCreated={refetch} />
           <div className="mt-6 flex flex-col gap-3 border-y border-border py-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-sm">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />

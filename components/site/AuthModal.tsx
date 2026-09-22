@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {open && <div className="relative p-6 sm:p-8">
           <button type="button" onClick={() => setOpen(false)} aria-label="Fermer la fenêtre" className="absolute right-3 top-3 grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"><X className="size-5" aria-hidden /></button>
           <div className="mb-5 text-center">
-            <span className="mx-auto mb-3 grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">{view === "auth" ? <ShieldCheck className="size-5" strokeWidth={1.7} aria-hidden /> : <Mail className="size-5" strokeWidth={1.7} aria-hidden />}</span>
+            <span className="mx-auto mb-3 grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">{view === "auth" ? <ShieldCheck className="size-5" strokeWidth={1.7} aria-hidden /> : <Mail className="size-5" strokeWidth={1.7} aria-hidden />}</span>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Espace usager · ARPT</p>
             <h2 id={titleId} className="font-heading text-2xl font-semibold tracking-tight">{view === "auth" ? "Bienvenue sur votre espace" : "Mot de passe oublié ?"}</h2>
             <p id={descriptionId} className="mt-2 text-sm leading-6 text-muted-foreground">{view === "auth" ? "Un seul compte pour vos démarches, vos réclamations et leur suivi." : "Saisissez votre adresse e-mail pour recevoir les instructions de réinitialisation."}</p>

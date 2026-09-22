@@ -46,7 +46,7 @@ export default function Services() {
 
           <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-start gap-3">
-              <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><Layers className="size-5" aria-hidden /></span>
+              <span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><Layers className="size-5" aria-hidden /></span>
               <div><h2 className="font-heading text-xl font-semibold">{hero.surtitre}</h2><p className="mt-1 text-sm text-muted-foreground">{services.length} service{services.length > 1 ? "s" : ""} disponible{services.length > 1 ? "s" : ""}</p></div>
             </div>
           </div>
@@ -54,7 +54,7 @@ export default function Services() {
           <div className="mt-7 grid gap-5 lg:grid-cols-2">
             {services.map((s) => (
               <article key={s.uid} className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card sm:p-6">
-                <div className="flex items-start justify-between gap-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-primary"><FileCheck2 className="size-5" aria-hidden /></span><Clock className="size-4 text-muted-foreground" aria-hidden /></div>
+                <div className="flex items-start justify-between gap-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><FileCheck2 className="size-5" aria-hidden /></span><Clock className="size-4 text-muted-foreground" aria-hidden /></div>
                 <h2 className="mt-5 font-heading text-xl font-semibold transition-colors group-hover:text-primary">{s.name}</h2>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{s.description}</p>
 

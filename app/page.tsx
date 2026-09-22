@@ -164,7 +164,7 @@ function ChiffreAnime({
     <p
       ref={ref}
       className={cn(
-        "font-heading text-2xl font-bold text-primary tabular-nums transition-transform duration-500 md:text-3xl",
+        "font-heading text-2xl font-bold text-teal-600 tabular-nums transition-transform duration-500 md:text-3xl",
         enAnimation ? "scale-110" : "scale-100",
       )}
     >
@@ -238,7 +238,7 @@ function SectionHeader({ icon: Icon, titre, lienVoirTout }: { icon: typeof Megap
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
           <Icon className="size-4" aria-hidden />
         </span>
         <h3 className="truncate font-heading text-base font-semibold whitespace-nowrap">{titre}</h3>
@@ -359,11 +359,11 @@ export default function Accueil() {
       {chiffresCles.length > 0 && (
 <section className="border-b border-border bg-surface">
   <div className="container-content pt-10 pb-5">
-    <p className="text-center font-heading text-lg sm:text-xl md:text-2xl font-bold tracking-[0.08em] text-primary uppercase">
+    <p className="text-center font-heading text-lg sm:text-xl md:text-2xl font-bold tracking-[0.08em] text-teal-700 uppercase">
       {t("sectorFigures")}
     </p>
 
-    <div className="mx-auto mt-3 h-1 w-16 rounded-full bg-primary" />
+    <div className="mx-auto mt-3 h-1 w-16 rounded-full bg-teal-600" />
   </div>
 
   <div className="container-content grid grid-cols-2 divide-y divide-border sm:grid-cols-3 sm:divide-y-0 lg:grid-cols-6">
@@ -408,7 +408,7 @@ export default function Accueil() {
                   href={r.to}
                   className="group flex items-start gap-4 rounded-lg border border-border bg-surface p-5 transition-colors hover:border-primary/40 hover:bg-accent/30"
                 >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                     <Icone className="size-4" aria-hidden />
                   </span>
                   <span className="min-w-0">
@@ -465,7 +465,7 @@ export default function Accueil() {
                 <h3 className="mt-2 line-clamp-2 font-heading text-sm font-semibold leading-snug transition-colors group-hover:text-primary">{a.title}</h3>
                 <div className="mt-auto flex items-center justify-between pt-3">
                   <button type="button" onClick={() => setActualiteApercu(a)} className="text-xs font-semibold text-primary hover:underline">Aperçu rapide</button>
-                  <Link href={`/actualites/${a.uid}`} aria-label={`Lire ${a.title}`} className="grid size-7 place-items-center rounded-full bg-accent text-primary transition-colors hover:bg-primary hover:text-primary-foreground"><ArrowRight className="size-3.5" aria-hidden /></Link>
+                  <Link href={`/actualites/${a.uid}`} aria-label={`Lire ${a.title}`} className="grid size-7 place-items-center rounded-full bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><ArrowRight className="size-3.5" aria-hidden /></Link>
                 </div>
               </div>
             </article>
@@ -481,7 +481,7 @@ export default function Accueil() {
         <div>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                 <Images className="size-4" aria-hidden />
               </span>
               <h3 className="font-heading text-base font-semibold">{t("gallery")}</h3>

@@ -94,7 +94,7 @@ export default function Reglementation() {
         <div className="container-content">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><LibraryBig className="size-5" aria-hidden /></span><div><h2 className="font-heading text-lg font-semibold">Bibliothèque réglementaire</h2><p className="mt-1 text-sm text-muted-foreground">{resultats.length} texte{resultats.length > 1 ? "s" : ""} disponible{resultats.length > 1 ? "s" : ""}</p></div></div>
+            <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><LibraryBig className="size-5" aria-hidden /></span><div><h2 className="font-heading text-lg font-semibold">Bibliothèque réglementaire</h2><p className="mt-1 text-sm text-muted-foreground">{resultats.length} texte{resultats.length > 1 ? "s" : ""} disponible{resultats.length > 1 ? "s" : ""}</p></div></div>
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <Input

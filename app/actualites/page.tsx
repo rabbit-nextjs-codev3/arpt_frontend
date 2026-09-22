@@ -172,7 +172,7 @@ export default function Actualites() {
                         {c.fileUrl && (
                           <a
                             href={c.fileUrl}
-                            target="_blank"
+                            data-document-preview target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                           >

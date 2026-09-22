@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { AuthTrigger } from "@/components/site/AuthModal";
-import { apiFetch, api, ApiError } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { useApiOne, useContentBlock } from "@/lib/hooks";
 
 interface HeroContent {
@@ -95,7 +95,7 @@ const GUIDE_DEFAUT: GuideContent = {
 
 export default function Reclamations() {
   const t = useTranslations("claims");
-  const { user, loading: authLoading, refreshUser } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { data: hero } = useContentBlock<HeroContent>("claims.hero", HERO_DEFAUT);
   const { data: etapes } = useContentBlock<StepItem[]>("claims.steps", ETAPES_DEFAUT);
   const { data: operateursListe } = useContentBlock<ChoiceItem[]>("claims.operators", OPERATEURS_DEFAUT);
@@ -110,15 +110,21 @@ export default function Reclamations() {
   const [type, setType] = useState("");
   const [operateur, setOperateur] = useState("");
   const [description, setDescription] = useState("");
-  // Filtrage préalable — l'ARPT n'intervient qu'en cas d'échec de la
-  // résolution à l'amiable avec l'opérateur. "notYet" ne bloque pas
-  // définitivement (aucun moyen de le vérifier côté serveur) mais rappelle
-  // la marche à suivre en priorité.
+  // Le parcours impose une démarche préalable auprès de l'opérateur.
+  // Le backend exige aussi sa confirmation avant le dépôt.
   const [gateStep, setGateStep] = useState<"question" | "notYet" | "form">("question");
+  const [gateUserId, setGateUserId] = useState<number | null>(null);
+  const activeGateStep = gateUserId === user?.id ? gateStep : "question";
+  const claimSubmittedForCurrentUser = envoye && gateUserId === user?.id;
+  const progressStep = claimSubmittedForCurrentUser ? 3 : activeGateStep === "form" ? 2 : 1;
 
   async function soumettre(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErreur("");
+    if (activeGateStep !== "form") {
+      setGateStep("question");
+      return;
+    }
     if (!type || !operateur) {
       setErreur(t("submitError"));
       return;
@@ -126,6 +132,7 @@ export default function Reclamations() {
     setEnvoiEnCours(true);
     const form = new FormData(event.currentTarget);
     const body = new FormData();
+    body.append("operatorContacted", "true");
     body.append("claimType", TYPES[type] ?? type);
     body.append("concernedOperator", OPERATEURS[operateur] ?? operateur);
     body.append("claimDescriptionFr", String(form.get("description")));
@@ -153,7 +160,7 @@ export default function Reclamations() {
           <aside className="space-y-5 xl:sticky xl:top-6">
             <div className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-soft">
               <div className="bg-institution px-5 py-5 text-primary-foreground">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary-foreground/15">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                   <ClipboardCheck className="size-5" aria-hidden />
                 </div>
                 <h2 className="mt-3 font-heading text-lg font-semibold">{t("beforeAuthority")}</h2>
@@ -173,7 +180,7 @@ export default function Reclamations() {
 
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
               <div className="flex items-start gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gold/15 text-gold-foreground"><Info className="size-4" aria-hidden /></span>
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><Info className="size-4" aria-hidden /></span>
                 <div>
                   <h2 className="font-heading text-base font-semibold">{guide.titre}</h2>
                   <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{guide.description}</p>
@@ -181,7 +188,7 @@ export default function Reclamations() {
               </div>
               {rightsDocument?.fileUrl && (
                 <Button asChild variant="outline" size="sm" className="mt-4 w-full justify-between">
-                  <a href={rightsDocument.fileUrl} target="_blank" rel="noreferrer">
+                  <a href={rightsDocument.fileUrl} data-document-preview target="_blank" rel="noreferrer">
                     <span className="inline-flex items-center gap-2"><FileDown className="size-4" aria-hidden /> {t("downloadGuide")}</span><ChevronRight className="size-4" aria-hidden />
                   </a>
                 </Button>
@@ -192,7 +199,7 @@ export default function Reclamations() {
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
             <div className="border-b border-border bg-surface/70 px-6 py-5 sm:px-8">
               <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><ShieldCheck className="size-5" aria-hidden /></span>
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><ShieldCheck className="size-5" aria-hidden /></span>
                 <div>
                   <p className="font-heading text-xs font-semibold tracking-[0.14em] text-primary uppercase">ARPT Guinée</p>
                   <p className="mt-1 text-sm text-muted-foreground">{t("requiredFieldsNote")}</p>
@@ -200,7 +207,7 @@ export default function Reclamations() {
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2" aria-label="Progression du dépôt">
                 {[1, 2, 3].map((step) => (
-                  <div key={step} className="h-1.5 rounded-full bg-primary/20 first:bg-primary" aria-hidden />
+                  <div key={step} className={step <= progressStep ? "h-1.5 rounded-full bg-primary" : "h-1.5 rounded-full bg-primary/20"} aria-hidden />
                 ))}
               </div>
             </div>
@@ -216,9 +223,7 @@ export default function Reclamations() {
                   <AuthTrigger>{t("loginOrCreateAccount")}</AuthTrigger>
                 </Button>
               </div>
-            ) : !user.emailVerified ? (
-              <VerificationEmail email={user.email} onVerified={refreshUser} />
-            ) : envoye ? (
+            ) : claimSubmittedForCurrentUser ? (
               <div className="py-10 text-center">
                 <CheckCircle2 className="mx-auto size-12 text-success" aria-hidden />
                 <h2 className="mt-4 font-heading text-xl font-semibold">{t("submittedTitle")}</h2>
@@ -227,39 +232,32 @@ export default function Reclamations() {
                   <Link href="/portail">{t("trackMyFile")}</Link>
                 </Button>
               </div>
-            ) : gateStep === "question" ? (
+            ) : activeGateStep === "question" ? (
               <div className="py-10 text-center">
                 <HelpCircle className="mx-auto size-12 text-primary" aria-hidden />
                 <h2 className="mt-4 font-heading text-xl font-semibold">{t("gateQuestion")}</h2>
                 <div className="mx-auto mt-6 flex w-full max-w-sm flex-col gap-3">
-                  <Button onClick={() => setGateStep("form")}>
+                  <Button onClick={() => { setGateUserId(user.id); setGateStep("form"); }}>
                     <ThumbsUp className="size-4" aria-hidden /> {t("gateYes")}
                   </Button>
-                  <Button variant="outline" onClick={() => setGateStep("notYet")}>
+                  <Button variant="outline" onClick={() => { setGateUserId(user.id); setGateStep("notYet"); }}>
                     <ThumbsDown className="size-4" aria-hidden /> {t("gateNo")}
                   </Button>
                 </div>
               </div>
-            ) : gateStep === "notYet" ? (
+            ) : activeGateStep === "notYet" ? (
               <div className="py-10 text-center">
                 <HelpCircle className="mx-auto size-12 text-primary" aria-hidden />
                 <h2 className="mt-4 font-heading text-xl font-semibold">{t("gateNotYetTitle")}</h2>
                 <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{t("gateNotYetBody")}</p>
                 <div className="mx-auto mt-6 flex w-full max-w-sm flex-col gap-3">
                   <Button onClick={() => setGateStep("question")}>{t("back")}</Button>
-                  <button
-                    type="button"
-                    onClick={() => setGateStep("form")}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {t("gateContinueAnyway")}
-                  </button>
                 </div>
               </div>
             ) : (
               <form className="grid gap-6" onSubmit={soumettre}>
                 <div className="flex items-start gap-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-primary"><ClipboardCheck className="size-4" aria-hidden /></span>
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><ClipboardCheck className="size-4" aria-hidden /></span>
                   <div>
                   <h2 className="font-heading text-xl font-semibold">{t("formTitle")}</h2>
                     <p className="mt-1 text-sm text-muted-foreground">{t("descriptionPlaceholder")}</p>
@@ -359,74 +357,5 @@ export default function Reclamations() {
         </div>
       </section>
     </>
-  );
-}
-
-function VerificationEmail({ email, onVerified }: { email: string; onVerified: () => Promise<void> }) {
-  const t = useTranslations("claims");
-  const [otp, setOtp] = useState("");
-  const [envoiEnCours, setEnvoiEnCours] = useState(false);
-  const [renvoiEnCours, setRenvoiEnCours] = useState(false);
-  const [erreur, setErreur] = useState("");
-  const [info, setInfo] = useState("");
-
-  async function verifier(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setErreur("");
-    setEnvoiEnCours(true);
-    try {
-      await api.post("/auth/email-verification/verify", { otp });
-      await onVerified();
-      toast.success(t("verifyEmailSuccess"));
-    } catch (err) {
-      setErreur(err instanceof ApiError ? err.message : t("invalidCode"));
-    } finally {
-      setEnvoiEnCours(false);
-    }
-  }
-
-  async function renvoyer() {
-    setRenvoiEnCours(true);
-    setInfo("");
-    try {
-      await api.post("/auth/email-verification/resend");
-      setInfo(t("resendCodeSuccess"));
-    } catch (err) {
-      setErreur(err instanceof ApiError ? err.message : t("resendCodeError"));
-    } finally {
-      setRenvoiEnCours(false);
-    }
-  }
-
-  return (
-    <div className="py-6 text-center">
-      <Mail className="mx-auto size-12 text-primary" aria-hidden />
-      <h2 className="mt-4 font-heading text-xl font-semibold">{t("verifyEmailTitle")}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{t("verifyEmailBody", { email })}</p>
-      <form onSubmit={verifier} className="mx-auto mt-6 grid max-w-xs gap-3">
-        <Input
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          maxLength={6}
-          inputMode="numeric"
-          placeholder="123456"
-          className="text-center tracking-[0.3em]"
-          required
-        />
-        {erreur && <p className="text-sm text-destructive" role="alert">{erreur}</p>}
-        {info && <p className="text-sm text-success">{info}</p>}
-        <Button type="submit" disabled={envoiEnCours}>
-          {envoiEnCours ? t("verifying") : t("verify")}
-        </Button>
-        <button
-          type="button"
-          onClick={renvoyer}
-          disabled={renvoiEnCours}
-          className="text-sm font-medium text-primary hover:underline disabled:opacity-50"
-        >
-          {renvoiEnCours ? t("resending") : t("resendCode")}
-        </button>
-      </form>
-    </div>
   );
 }

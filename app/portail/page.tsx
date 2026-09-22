@@ -110,7 +110,7 @@ export default function Portail() {
           <dl className="grid gap-x-8 gap-y-6 border-y border-border py-6 sm:grid-cols-2 lg:grid-cols-4">
             {resume.map((r) => (
               <div key={r.libelle} className="flex items-center gap-4 py-2">
-                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
+                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                   <r.icon className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0">

@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "10.5.9.85", port: "9000" },
       { protocol: "http", hostname: "localhost", port: "9010" },
       { protocol: "http", hostname: "10.5.9.85", port: "9010" },
+      { protocol: "http", hostname: "10.5.9.101", port: "9010" },
     ],
     // Next 16 refuse par défaut de récupérer une image sur une IP privée
     // (protection anti-SSRF) — localhost/IP LAN sont nos propres MinIO de

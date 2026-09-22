@@ -52,13 +52,13 @@ export default function Consultations() {
           {error && !loading && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><UsersRound className="size-5" aria-hidden /></span><div><h2 className="font-heading text-xl font-semibold">Participation citoyenne</h2><p className="mt-1 text-sm text-muted-foreground">{consultations.length} consultation{consultations.length > 1 ? "s" : ""} publiée{consultations.length > 1 ? "s" : ""}</p></div></div>
+            <div className="flex items-start gap-3"><span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><UsersRound className="size-5" aria-hidden /></span><div><h2 className="font-heading text-xl font-semibold">Participation citoyenne</h2><p className="mt-1 text-sm text-muted-foreground">{consultations.length} consultation{consultations.length > 1 ? "s" : ""} publiée{consultations.length > 1 ? "s" : ""}</p></div></div>
           </div>
 
           <div className="mt-7 grid gap-5 lg:grid-cols-2">
             {consultations.map((c) => (
               <article key={c.uid} className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card sm:p-6">
-                <div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-accent text-primary"><MessageSquare className="size-5" aria-hidden /></span><StatutBadge statut={c.status} /></div>
+                <div className="flex items-start justify-between gap-3"><span className="grid size-10 place-items-center rounded-xl bg-teal-600 text-white shadow transition-colors hover:bg-teal-700"><MessageSquare className="size-5" aria-hidden /></span><StatutBadge statut={c.status} /></div>
                 <h2 className="mt-5 font-heading text-xl font-semibold">{c.title}</h2>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{c.description}</p>
                 <div className="mt-5 rounded-xl bg-surface p-3">
@@ -79,7 +79,7 @@ export default function Consultations() {
                   </Button>
                   {c.fileUrl && (
                     <Button asChild variant="outline">
-                      <a href={c.fileUrl} target="_blank" rel="noreferrer">
+                      <a href={c.fileUrl} data-document-preview target="_blank" rel="noreferrer">
                         <Download className="size-4" aria-hidden /> {t("downloadDocument")}
                       </a>
                     </Button>

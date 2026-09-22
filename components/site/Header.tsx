@@ -46,7 +46,7 @@ export function Header() {
             // eslint-disable-next-line @next/next/no-img-element -- logo provenant de MinIO (hôte dynamique, non listable dans next.config.js images.domains)
             <img src={config.logoKey} alt="ARPT" className="size-11 shrink-0 rounded-md object-contain" />
           ) : (
-            <span className="grid size-11 shrink-0 place-items-center rounded-md bg-institution text-primary-foreground">
+            <span className="grid size-11 shrink-0 place-items-center rounded-md bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
               <ShieldCheck className="size-6" aria-hidden />
             </span>
           )}
@@ -104,7 +104,9 @@ export function Header() {
             <Link
               key={l.to}
               href={l.to}
-              className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors hover:text-primary ${pathname === l.to ? "border-primary text-primary" : "border-transparent text-surface-foreground"}`}
+              className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors hover:text-teal-600
+                 ${pathname === l.to ? "border-teal-600 text-teal-600" :
+                   "border-transparent text-surface-foreground"}`}
             >
               {l.label}
             </Link>

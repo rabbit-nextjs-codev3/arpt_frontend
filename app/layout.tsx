@@ -3,6 +3,7 @@ import { Public_Sans, Sora, Geist } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { SiteShell } from "@/components/site/SiteShell";
+import { DocumentPreviewProvider } from "@/components/site/DocumentPreview";
 import { LocaleProvider } from "@/lib/locale-context";
 import { getServerLocale } from "@/lib/locale";
 import "./globals.css";
@@ -38,7 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <LocaleProvider initialLocale={locale}>
           <NextIntlClientProvider messages={messages}>
-            <SiteShell>{children}</SiteShell>
+            <DocumentPreviewProvider><SiteShell>{children}</SiteShell></DocumentPreviewProvider>
           </NextIntlClientProvider>
         </LocaleProvider>
       </body>
