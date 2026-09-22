@@ -2664,6 +2664,7 @@ function ConfigurationInner({ initialValue, onSaved }: { initialValue: SiteConfi
   const tAppearance = useTranslations("admin.config.appearance");
   const tCommon = useTranslations("admin.common");
   const [submitting, setSubmitting] = useState(false);
+  const [savingAppearance, setSavingAppearance] = useState(false);
   const [logoKey, setLogoKey] = useState(initialValue.logoKey ?? "");
   const [colors, setColors] = useState<Required<ThemeColors>>({ ...DEFAULT_THEME_COLORS, ...initialValue.themeColors });
 
@@ -2684,7 +2685,7 @@ function ConfigurationInner({ initialValue, onSaved }: { initialValue: SiteConfi
       contactInfo: {
         phone: String(form.get("phone") || ""),
         phoneSecondary: String(form.get("phoneSecondary") || ""),
-        email: String(form.get("email") || ""),
+        ...(String(form.get("email") || "").trim() ? { email: String(form.get("email")).trim() } : {}),
         address: { fr: String(form.get("address") || "") },
         hours: { fr: String(form.get("hours") || "") },
       },
@@ -2695,17 +2696,30 @@ function ConfigurationInner({ initialValue, onSaved }: { initialValue: SiteConfi
         youtube: String(form.get("youtube") || ""),
       },
       footerText: { fr: String(form.get("footerText") || "") },
-      themeColors: colors,
-      logoKey: logoKey || undefined,
     };
     try {
       await apiFetch("/site-config", { method: "PATCH", body: JSON.stringify(body) });
       toast.success(t("saved"));
       onSaved();
+      window.dispatchEvent(new Event("arpt:site-config-updated"));
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon("error"));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function enregistrerApparence() {
+    setSavingAppearance(true);
+    try {
+      await apiFetch("/site-config", { method: "PATCH", body: JSON.stringify({ logoKey: logoKey || null, themeColors: colors }) });
+      toast.success(t("saved"));
+      onSaved();
+      window.dispatchEvent(new Event("arpt:site-config-updated"));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : tCommon("error"));
+    } finally {
+      setSavingAppearance(false);
     }
   }
 
@@ -2802,6 +2816,9 @@ function ConfigurationInner({ initialValue, onSaved }: { initialValue: SiteConfi
             </div>
           </div>
         </div>
+        <Button type="button" onClick={enregistrerApparence} disabled={savingAppearance} className="mt-5">
+          {savingAppearance ? tCommon("saving") : tCommon("save")}
+        </Button>
       </div>
 
       <Button type="submit" disabled={submitting} className="mt-2 justify-self-start">

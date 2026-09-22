@@ -13,12 +13,11 @@ export function useApiList<T>(path: string | null) {
 
   useEffect(() => {
     if (!path) {
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
     let annule = false;
-    setLoading(true);
-    setError(null);
+    queueMicrotask(() => { if (!annule) { setLoading(true); setError(null); } });
     api
       .get<PaginatedResult<T>>(path)
       .then((res) => {
@@ -64,7 +63,7 @@ export function useContentBlock<T>(key: string, fallback: T) {
 
   useEffect(() => {
     let annule = false;
-    setLoading(true);
+    queueMicrotask(() => { if (!annule) setLoading(true); });
     api
       .get<ContentBlockRecord<T>>(`/content-blocks/${key}?lang=${locale}`)
       .then((res) => {
@@ -97,7 +96,7 @@ export function useContentBlockRaw<T>(key: string, fallback: T) {
 
   useEffect(() => {
     let annule = false;
-    setLoading(true);
+    queueMicrotask(() => { if (!annule) setLoading(true); });
     api
       .get<ContentBlockRecord<T>>(`/content-blocks/${key}`)
       .then((res) => {
@@ -127,12 +126,11 @@ export function useApiOne<T>(path: string | null) {
 
   useEffect(() => {
     if (!path) {
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
     let annule = false;
-    setLoading(true);
-    setError(null);
+    queueMicrotask(() => { if (!annule) { setLoading(true); setError(null); } });
     api
       .get<T>(path)
       .then((res) => {
@@ -148,6 +146,13 @@ export function useApiOne<T>(path: string | null) {
       annule = true;
     };
   }, [path, version]);
+
+  useEffect(() => {
+    if (path !== "/site-config") return;
+    const refresh = () => setVersion((value) => value + 1);
+    window.addEventListener("arpt:site-config-updated", refresh);
+    return () => window.removeEventListener("arpt:site-config-updated", refresh);
+  }, [path]);
 
   return { data, loading, error, refetch: () => setVersion((v) => v + 1) };
 }
