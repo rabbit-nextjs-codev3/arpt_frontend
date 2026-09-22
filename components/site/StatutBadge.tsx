@@ -1,5 +1,8 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { libelleStatut, type Statut } from "@/data/mock";
+import { type Statut } from "@/data/mock";
 
 const styles: Record<Statut, string> = {
   NOUVEAU: "bg-accent text-accent-foreground",
@@ -14,15 +17,12 @@ const styles: Record<Statut, string> = {
   ANNULE: "bg-destructive/12 text-destructive",
   HOMOLOGUE: "bg-success/15 text-success",
   INTERDIT: "bg-destructive/12 text-destructive",
+  ACCEPTE: "bg-success/15 text-success",
+  REFUSE: "bg-destructive/12 text-destructive",
 };
 
-export function StatutBadge({
-  statut,
-  className,
-}: {
-  statut: Statut;
-  className?: string;
-}) {
+export function StatutBadge({ statut, className }: { statut: Statut; className?: string }) {
+  const t = useTranslations("status");
   return (
     <span
       className={cn(
@@ -31,7 +31,7 @@ export function StatutBadge({
         className,
       )}
     >
-      {libelleStatut[statut]}
+      {t(statut)}
     </span>
   );
 }

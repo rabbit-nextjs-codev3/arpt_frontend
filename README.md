@@ -36,3 +36,9 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 # arpt_frontend
+
+## PDF exports
+
+Admin PDF exports are rendered by Puppeteer in the Next.js Node.js route `POST /api/pdf`. The route verifies the admin access token with the existing API before rendering. CSV exports remain client-side. Existing PDF attachments are displayed directly in the document viewer; they are not recompressed.
+
+The Next.js server needs Chrome or Chromium. On Windows it uses the installed Chrome (or Edge); on other hosts set `PUPPETEER_EXECUTABLE_PATH` to the browser executable. Puppeteer's bundled browser can also be installed with `pnpm exec puppeteer browsers install chrome`.

@@ -15,44 +15,51 @@ export type Statut =
   | "HOMOLOGUE"
   | "INTERDIT"
   | "OUVERTE"
-  | "CLOTUREE";
+  | "CLOTUREE"
+  | "ACCEPTE"
+  | "REFUSE";
+
 
 export const members = [
-  {
-    name: "M. Mamady Doumbouya",
-    role: "Directeur général",
-    image: "/images/arpt/mamady-doumbouya.jpeg",
-  },
-  {
-    name: "M. Adama Condé",
-    role: "Directeur général adjoint",
-    image: "/images/arpt/adama-conde.jpg"
+    {
+      name: "M. Mamady Doumbouya",
+      role: "Directeur général",
+       image: "/images/arpt/mamady-doumbouya.jpeg"
 
     },
-  {
-    name: "M. Djiba Diakite",
-    role: "Membre du conseil d'administration",
-    image: "/images/arpt/djiba-arpt.jpeg"
+    {
+      name: "M. Adama Condé",
+      role: "Directeur général adjoint",
+      image: "/images/arpt/adama-conde.jpg"
 
-    },
-  {
-    name: "M. Mohamed Sacko",
-    role: "Member",
-    image: "/images/arpt/mohamed.jpeg"
+      },
+    {
+      name: "M. Djiba Diakite",
+      role: "Membre du conseil d'administration",
+      image: "/images/arpt/djiba-arpt.jpeg"
 
-    },
-  {
-    name: "M. Moussa Kaba",
-    role: "Member",
-    image: "/images/arpt/kabaci.jpeg"
+      },
+    {
+      name: "M. Mohamed Sacko",
+      role: "Member",
+      image: "/images/arpt/mohamed.jpeg"
 
-    },
-  {
-    name: "M. Fany Zeze  Camara",
-    role: "Member",
-    image: "/images/arpt/zeze.jpeg",
-  },
+      },
+    {
+      name: "M. Moussa Kaba",
+      role: "Member",
+      image: "/images/arpt/kabaci.jpeg"
+
+      },
+    {
+      name: "M. Fany Zeze  Camara",
+      role: "Member",
+      image: "/images/arpt/zeze.jpeg"
+
+      },
+
 ];
+
 
 export const libelleStatut: Record<Statut, string> = {
   NOUVEAU: "Nouveau",
@@ -67,11 +74,12 @@ export const libelleStatut: Record<Statut, string> = {
   INTERDIT: "Interdit",
   OUVERTE: "Ouverte",
   CLOTUREE: "Clôturée",
+  ACCEPTE: "Accepté",
+  REFUSE: "Refusé",
 };
 
 export const contactArpt = {
-  adresse:
-    "Immeuble ARPT, Centre Directionnel de Koloma, Conakry, République de Guinée",
+  adresse: "Immeuble ARPT, Centre Directionnel de Koloma, Conakry, République de Guinée",
   telephone: "+224 669 221 000",
   email: "contact@arpt.gov.gn",
   horaires: "Lundi – Vendredi, 08h00 – 17h00",
@@ -115,11 +123,7 @@ export const services = [
       "Attribution, modification et contrôle des assignations du spectre radioélectrique national.",
     delai: "30 jours ouvrés",
     cout: "Selon bande et puissance",
-    documents: [
-      "Formulaire de demande signé",
-      "Dossier technique du réseau",
-      "Licence en cours de validité",
-    ],
+    documents: ["Formulaire de demande signé", "Dossier technique du réseau", "Licence en cours de validité"],
   },
   {
     id: 4,
@@ -129,10 +133,7 @@ export const services = [
       "Gestion du plan national de numérotation : blocs de numéros, codes courts et numéros spéciaux.",
     delai: "15 jours ouvrés",
     cout: "Selon type de ressource",
-    documents: [
-      "Justificatif d'activité",
-      "Prévisions d'utilisation des ressources",
-    ],
+    documents: ["Justificatif d'activité", "Prévisions d'utilisation des ressources"],
   },
   {
     id: 5,
@@ -152,19 +153,14 @@ export const services = [
       "Autorisation d'exercice pour les opérateurs postaux et de services de courrier express sur le territoire national.",
     delai: "30 jours ouvrés",
     cout: "2 000 000 GNF",
-    documents: [
-      "Statuts",
-      "Attestation d'assurance",
-      "Description du réseau de distribution",
-    ],
+    documents: ["Statuts", "Attestation d'assurance", "Description du réseau de distribution"],
   },
 ];
 
 export const actualites = [
   {
     id: 1,
-    titre:
-      "L'ARPT publie le rapport annuel 2025 du secteur des télécommunications",
+    titre: "L'ARPT publie le rapport annuel 2025 du secteur des télécommunications",
     extrait:
       "Le rapport présente l'évolution du parc d'abonnés, la couverture 4G et les investissements réalisés par les opérateurs.",
     contenu:
@@ -188,8 +184,7 @@ export const actualites = [
   },
   {
     id: 3,
-    titre:
-      "Atelier régional sur la cybersécurité des infrastructures critiques",
+    titre: "Atelier régional sur la cybersécurité des infrastructures critiques",
     extrait:
       "L'ARPT a accueilli à Conakry les régulateurs de la sous-région pour trois jours d'échanges techniques.",
     contenu:
@@ -357,6 +352,8 @@ export const appelsOffres = [
     id: 1,
     code: "AO-2026-014",
     nom: "Fourniture d'un système de supervision du spectre radioélectrique",
+    description:
+      "Acquisition et installation d'un système de mesure et de surveillance du spectre couvrant les huit régions administratives, incluant la formation des équipes techniques. Le marché comprend également la maintenance corrective et évolutive sur trois ans ainsi que l'intégration avec les outils de contrôle déjà déployés par l'Autorité.",
     categorie: "Fournitures",
     statut: "OUVERT" as const,
     publication: "2026-08-18",
@@ -369,6 +366,8 @@ export const appelsOffres = [
     id: 2,
     code: "AO-2026-011",
     nom: "Audit organisationnel et fonctionnel des directions techniques",
+    description:
+      "Diagnostic des processus internes, des effectifs et des outils des directions techniques, avec recommandations d'optimisation à horizon 2027. Le cabinet retenu conduira des entretiens avec l'ensemble des directions concernées et proposera un plan de mise en œuvre priorisé sur dix-huit mois.",
     categorie: "Services",
     statut: "OUVERT" as const,
     publication: "2026-07-28",
@@ -381,6 +380,8 @@ export const appelsOffres = [
     id: 3,
     code: "AO-2026-006",
     nom: "Travaux de réhabilitation du centre de contrôle de Kankan",
+    description:
+      "Rénovation du bâtiment, mise aux normes électriques et remplacement des équipements de contrôle du centre régional de Kankan. Les travaux incluent la réfection de la toiture, l'installation d'un groupe électrogène de secours et la sécurisation périmétrique du site.",
     categorie: "Travaux",
     statut: "CLOTURE" as const,
     publication: "2026-04-10",
@@ -405,7 +406,7 @@ export const offresEmploi = [
     nouveau: true,
     candidats: 24,
     description:
-      "Vous participez à la planification, à l'assignation et au contrôle du spectre radioélectrique national, en lien avec les opérateurs et les instances internationales.",
+      "Vous participez à la planification, à l'assignation et au contrôle du spectre radioélectrique national, en lien avec les opérateurs et les instances internationales. Vous intervenez aussi bien sur les dossiers techniques que sur le terrain, lors des campagnes de mesure, et contribuez à la préparation des positions guinéennes dans les négociations internationales sur le spectre.",
     missions: [
       "Instruire les demandes d'assignation de fréquences",
       "Conduire les campagnes de contrôle et de mesure sur le terrain",
@@ -418,11 +419,7 @@ export const offresEmploi = [
     ],
     contactName: "Direction des ressources humaines",
     contactEmail: "recrutement@arpt.gov.gn",
-    avantages: [
-      "Couverture santé familiale",
-      "Formation continue certifiante",
-      "Prime de rendement annuelle",
-    ],
+    avantages: ["Couverture santé familiale", "Formation continue certifiante", "Prime de rendement annuelle"],
   },
   {
     id: 2,
@@ -437,7 +434,7 @@ export const offresEmploi = [
     nouveau: true,
     candidats: 37,
     description:
-      "Vous sécurisez juridiquement les décisions de l'Autorité et accompagnez l'élaboration des textes réglementaires du secteur.",
+      "Vous sécurisez juridiquement les décisions de l'Autorité et accompagnez l'élaboration des textes réglementaires du secteur. Vous travaillez en lien étroit avec les directions techniques pour anticiper les risques contentieux et représentez l'Autorité dans les procédures impliquant les opérateurs ou les instances de tutelle.",
     missions: [
       "Rédiger avis, décisions et projets de textes",
       "Assurer le suivi des contentieux sectoriels",
@@ -450,11 +447,7 @@ export const offresEmploi = [
     ],
     contactName: "Direction des ressources humaines",
     contactEmail: "recrutement@arpt.gov.gn",
-    avantages: [
-      "Couverture santé familiale",
-      "Télétravail partiel",
-      "Accompagnement à la mobilité",
-    ],
+    avantages: ["Couverture santé familiale", "Télétravail partiel", "Accompagnement à la mobilité"],
   },
   {
     id: 3,
@@ -469,7 +462,7 @@ export const offresEmploi = [
     nouveau: false,
     candidats: 12,
     description:
-      "Vous traitez les réclamations des usagers, analysez les tendances et proposez des mesures correctives auprès des opérateurs.",
+      "Vous traitez les réclamations des usagers, analysez les tendances et proposez des mesures correctives auprès des opérateurs. Basé à Kindia, vous couvrez plusieurs préfectures de l'intérieur et menez des actions de sensibilisation auprès du public sur ses droits en tant que consommateur de services télécoms et postaux.",
     missions: [
       "Instruire les réclamations reçues via le portail",
       "Produire les tableaux de bord mensuels de traitement",
@@ -482,11 +475,7 @@ export const offresEmploi = [
     ],
     contactName: "Direction des ressources humaines",
     contactEmail: "recrutement@arpt.gov.gn",
-    avantages: [
-      "Prime de terrain",
-      "Formation en médiation",
-      "Perspective de titularisation",
-    ],
+    avantages: ["Prime de terrain", "Formation en médiation", "Perspective de titularisation"],
   },
 ];
 
@@ -514,8 +503,7 @@ export const consultations = [
   {
     id: 3,
     titre: "Révision du catalogue d'interconnexion",
-    description:
-      "Consultation clôturée relative à la révision du catalogue d'interconnexion des opérateurs.",
+    description: "Consultation clôturée relative à la révision du catalogue d'interconnexion des opérateurs.",
     statut: "CLOTUREE" as const,
     debut: "2026-03-01",
     fin: "2026-04-15",
@@ -524,11 +512,7 @@ export const consultations = [
 ];
 
 export const indicateurs = [
-  {
-    libelle: "Abonnés mobiles",
-    valeur: "16,4 M",
-    evolution: "+4,2 % sur un an",
-  },
+  { libelle: "Abonnés mobiles", valeur: "16,4 M", evolution: "+4,2 % sur un an" },
   { libelle: "Taux de pénétration", valeur: "112 %", evolution: "+3,1 points" },
   { libelle: "Opérateurs actifs", valeur: "4", evolution: "Stable" },
   { libelle: "Sites 4G en service", valeur: "3 268", evolution: "+312 sites" },
@@ -555,213 +539,61 @@ export const caParTrimestre = [
 ];
 
 export const rapports = [
-  {
-    id: 1,
-    titre: "Rapport annuel du secteur des télécommunications 2025",
-    secteur: "Télécom",
-    annee: 2025,
-    format: "PDF",
-    taille: "4,2 Mo",
-    telechargements: 1820,
-  },
-  {
-    id: 2,
-    titre: "Observatoire tarifaire — 2e trimestre 2026",
-    secteur: "Tarifaire",
-    annee: 2026,
-    format: "XLSX",
-    taille: "1,1 Mo",
-    telechargements: 640,
-  },
-  {
-    id: 3,
-    titre: "Rapport du secteur postal 2025",
-    secteur: "Postal",
-    annee: 2025,
-    format: "PDF",
-    taille: "2,8 Mo",
-    telechargements: 415,
-  },
-  {
-    id: 4,
-    titre: "Observatoire du marché mobile — 1er trimestre 2026",
-    secteur: "Télécom",
-    annee: 2026,
-    format: "PDF",
-    taille: "3,4 Mo",
-    telechargements: 1102,
-  },
+  { id: 1, titre: "Rapport annuel du secteur des télécommunications 2025", secteur: "Télécom", annee: 2025, format: "PDF", taille: "4,2 Mo", telechargements: 1820 },
+  { id: 2, titre: "Observatoire tarifaire — 2e trimestre 2026", secteur: "Tarifaire", annee: 2026, format: "XLSX", taille: "1,1 Mo", telechargements: 640 },
+  { id: 3, titre: "Rapport du secteur postal 2025", secteur: "Postal", annee: 2025, format: "PDF", taille: "2,8 Mo", telechargements: 415 },
+  { id: 4, titre: "Observatoire du marché mobile — 1er trimestre 2026", secteur: "Télécom", annee: 2026, format: "PDF", taille: "3,4 Mo", telechargements: 1102 },
 ];
 
 /* ── Portail usager ── */
 
 export const mesReclamations = [
-  {
-    id: "REC-4821",
-    type: "Qualité de service",
-    operateur: "Orange Guinée",
-    statut: "EN_COURS" as const,
-    date: "2026-08-30",
-  },
-  {
-    id: "REC-4655",
-    type: "Facturation",
-    operateur: "MTN Guinée",
-    statut: "RESOLU" as const,
-    date: "2026-07-11",
-  },
-  {
-    id: "REC-4390",
-    type: "Réseau",
-    operateur: "Cellcom",
-    statut: "REJETE" as const,
-    date: "2026-05-02",
-  },
+  { id: "REC-4821", type: "Qualité de service", operateur: "Orange Guinée", statut: "EN_COURS" as const, date: "2026-08-30" },
+  { id: "REC-4655", type: "Facturation", operateur: "MTN Guinée", statut: "RESOLU" as const, date: "2026-07-11" },
+  { id: "REC-4390", type: "Réseau", operateur: "Cellcom", statut: "REJETE" as const, date: "2026-05-02" },
 ];
 
 export const mesCandidatures = [
-  {
-    id: "CAND-882",
-    poste: "Ingénieur régulation du spectre",
-    statut: "EN_COURS" as const,
-    date: "2026-08-26",
-  },
-  {
-    id: "CAND-771",
-    poste: "Analyste protection des consommateurs",
-    statut: "NOUVEAU" as const,
-    date: "2026-09-03",
-  },
+  { id: "CAND-882", poste: "Ingénieur régulation du spectre", statut: "EN_COURS" as const, date: "2026-08-26" },
+  { id: "CAND-771", poste: "Analyste protection des consommateurs", statut: "NOUVEAU" as const, date: "2026-09-03" },
 ];
 
 export const mesSoumissions = [
-  {
-    id: "SUB-311",
-    appel: "AO-2026-011 — Audit organisationnel",
-    statut: "NOUVEAU" as const,
-    date: "2026-08-29",
-  },
+  { id: "SUB-311", appel: "AO-2026-011 — Audit organisationnel", statut: "NOUVEAU" as const, date: "2026-08-29" },
 ];
 
 export const notifications = [
-  {
-    id: 1,
-    titre: "Votre réclamation REC-4821 est en cours d'instruction",
-    date: "2026-09-01",
-    lu: false,
-  },
-  {
-    id: 2,
-    titre: "Nouvel appel d'offres publié : AO-2026-014",
-    date: "2026-08-18",
-    lu: false,
-  },
-  {
-    id: 3,
-    titre: "Votre candidature CAND-882 a bien été reçue",
-    date: "2026-08-26",
-    lu: true,
-  },
+  { id: 1, titre: "Votre réclamation REC-4821 est en cours d'instruction", date: "2026-09-01", lu: false },
+  { id: 2, titre: "Nouvel appel d'offres publié : AO-2026-014", date: "2026-08-18", lu: false },
+  { id: 3, titre: "Votre candidature CAND-882 a bien été reçue", date: "2026-08-26", lu: true },
 ];
 
 /* ── Admin ── */
 
 export const kpisAdmin = [
-  {
-    libelle: "Réclamations ouvertes",
-    valeur: "128",
-    detail: "+12 cette semaine",
-  },
+  { libelle: "Réclamations ouvertes", valeur: "128", detail: "+12 cette semaine" },
   { libelle: "Demandes de service", valeur: "76", detail: "18 nouvelles" },
   { libelle: "Candidatures reçues", valeur: "342", detail: "3 offres actives" },
-  {
-    libelle: "Messages non lus",
-    valeur: "23",
-    detail: "Formulaire de contact",
-  },
+  { libelle: "Messages non lus", valeur: "23", detail: "Formulaire de contact" },
 ];
 
 export const reclamationsAdmin = [
-  {
-    id: "REC-4821",
-    usager: "Mamadou Diallo",
-    type: "Qualité de service",
-    operateur: "Orange Guinée",
-    statut: "EN_COURS" as const,
-    date: "2026-08-30",
-  },
-  {
-    id: "REC-4830",
-    usager: "Aissatou Barry",
-    type: "Facturation",
-    operateur: "MTN Guinée",
-    statut: "NOUVEAU" as const,
-    date: "2026-09-02",
-  },
-  {
-    id: "REC-4834",
-    usager: "Sékou Camara",
-    type: "Réseau",
-    operateur: "Cellcom",
-    statut: "NOUVEAU" as const,
-    date: "2026-09-04",
-  },
-  {
-    id: "REC-4799",
-    usager: "Fatoumata Sylla",
-    type: "Autre",
-    operateur: "Guinée Poste",
-    statut: "RESOLU" as const,
-    date: "2026-08-19",
-  },
+  { id: "REC-4821", usager: "Mamadou Diallo", type: "Qualité de service", operateur: "Orange Guinée", statut: "EN_COURS" as const, date: "2026-08-30" },
+  { id: "REC-4830", usager: "Aissatou Barry", type: "Facturation", operateur: "MTN Guinée", statut: "NOUVEAU" as const, date: "2026-09-02" },
+  { id: "REC-4834", usager: "Sékou Camara", type: "Réseau", operateur: "Cellcom", statut: "NOUVEAU" as const, date: "2026-09-04" },
+  { id: "REC-4799", usager: "Fatoumata Sylla", type: "Autre", operateur: "Guinée Poste", statut: "RESOLU" as const, date: "2026-08-19" },
 ];
 
 export const demandesServiceAdmin = [
-  {
-    id: "DS-1204",
-    service: "Homologation des équipements",
-    societe: "TechCom SARL",
-    statut: "NOUVEAU" as const,
-    date: "2026-09-03",
-  },
-  {
-    id: "DS-1198",
-    service: "Assignation de fréquences",
-    societe: "Radio Nimba",
-    statut: "EN_COURS" as const,
-    date: "2026-08-27",
-  },
-  {
-    id: "DS-1187",
-    service: "Agrément d'installateur",
-    societe: "Guinée Réseaux",
-    statut: "TRAITE" as const,
-    date: "2026-08-14",
-  },
+  { id: "DS-1204", service: "Homologation des équipements", societe: "TechCom SARL", statut: "NOUVEAU" as const, date: "2026-09-03" },
+  { id: "DS-1198", service: "Assignation de fréquences", societe: "Radio Nimba", statut: "EN_COURS" as const, date: "2026-08-27" },
+  { id: "DS-1187", service: "Agrément d'installateur", societe: "Guinée Réseaux", statut: "TRAITE" as const, date: "2026-08-14" },
 ];
 
 export const journalAudit = [
-  {
-    id: 1,
-    acteur: "admin@arpt.gov.gn",
-    action: "Publication d'une actualité",
-    entite: "Actuality #12",
-    date: "2026-09-04 10:22",
-  },
-  {
-    id: 2,
-    acteur: "juridique@arpt.gov.gn",
-    action: "Mise à jour d'une réglementation",
-    entite: "Regulation #5",
-    date: "2026-09-03 16:41",
-  },
-  {
-    id: 3,
-    acteur: "admin@arpt.gov.gn",
-    action: "Changement de statut réclamation",
-    entite: "Claim #4821",
-    date: "2026-09-01 09:05",
-  },
+  { id: 1, acteur: "admin@arpt.gov.gn", action: "Publication d'une actualité", entite: "Actuality #12", date: "2026-09-04 10:22" },
+  { id: 2, acteur: "juridique@arpt.gov.gn", action: "Mise à jour d'une réglementation", entite: "Regulation #5", date: "2026-09-03 16:41" },
+  { id: 3, acteur: "admin@arpt.gov.gn", action: "Changement de statut réclamation", entite: "Claim #4821", date: "2026-09-01 09:05" },
 ];
 
 export function formaterDate(iso: string) {

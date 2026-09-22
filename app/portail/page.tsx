@@ -1,54 +1,107 @@
-﻿"use client";
+"use client";
 
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import {
-  Bell,
-  Briefcase,
-  FileSignature,
-  MessageSquareWarning,
-  UserRound,
-} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Bell, Briefcase, FileSignature, MessageSquareWarning, UserRound } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { StatutBadge } from "@/components/site/StatutBadge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  formaterDate,
-  mesCandidatures,
-  mesReclamations,
-  mesSoumissions,
-  notifications,
-} from "@/data/mock";
+import { formaterDate } from "@/data/mock";
+import { useAuth } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
+import { useApiList, useApiOne } from "@/lib/hooks";
+import { useLocale } from "@/lib/locale-context";
 
-const resume = [
-  {
-    libelle: "Réclamations",
-    valeur: mesReclamations.length,
-    icon: MessageSquareWarning,
-  },
-  { libelle: "Candidatures", valeur: mesCandidatures.length, icon: Briefcase },
-  {
-    libelle: "Soumissions",
-    valeur: mesSoumissions.length,
-    icon: FileSignature,
-  },
-  {
-    libelle: "Notifications",
-    valeur: notifications.filter((n) => !n.lu).length,
-    icon: Bell,
-  },
-];
+/** Fait le lien entre le type d'événement (voir NotificationsService côté backend) et l'onglet où le traiter. */
+const NOTIFICATION_TAB_BY_TYPE: Record<string, string> = {
+  "claim.status_changed": "reclamations",
+  "candidature.status_changed": "candidatures",
+  "submission.status_changed": "soumissions",
+};
+
+interface Claim {
+  id: number;
+  claimType: string;
+  concernedOperator: string;
+  status: "NOUVEAU" | "EN_COURS" | "RESOLU" | "REJETE";
+  createdAt: string;
+}
+
+interface Candidature {
+  id: number;
+  status: "EN_COURS" | "ACCEPTE" | "REFUSE";
+  submittedAt: string;
+  career: { name: string };
+}
+
+interface Submission {
+  id: number;
+  status: "EN_COURS" | "ACCEPTE" | "REFUSE";
+  submittedAt: string;
+  tendersCall: { code: string; name: string };
+}
+
+interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
 
 export default function Portail() {
+  const t = useTranslations("portalPage");
+  const { locale } = useLocale();
+  const { user } = useAuth();
+  const { data: reclamations } = useApiOne<Claim[]>(user ? "/claims/me" : null);
+  const { data: candidatures } = useApiOne<Candidature[]>(user ? `/candidatures/me?lang=${locale}` : null);
+  const { data: soumissions } = useApiOne<Submission[]>(user ? `/submissions/me?lang=${locale}` : null);
+  const { data: notifications, refetch: refetchNotifications } = useApiList<Notification>(
+    user ? "/notifications?pageSize=50" : null,
+  );
+  const [onglet, setOnglet] = useState("reclamations");
+
+  async function cliquerNotification(n: Notification) {
+    if (!n.isRead) {
+      apiFetch(`/notifications/${n.id}/read`, { method: "POST" })
+        .then(() => refetchNotifications())
+        .catch(() => {});
+    }
+    const cible = NOTIFICATION_TAB_BY_TYPE[n.type];
+    if (cible) setOnglet(cible);
+  }
+
+  const mesReclamations = reclamations ?? [];
+  const mesCandidatures = candidatures ?? [];
+  const mesSoumissions = soumissions ?? [];
+
+  const resume = [
+    { libelle: t("summary.claims"), valeur: mesReclamations.length, icon: MessageSquareWarning },
+    { libelle: t("summary.candidatures"), valeur: mesCandidatures.length, icon: Briefcase },
+    { libelle: t("summary.submissions"), valeur: mesSoumissions.length, icon: FileSignature },
+    { libelle: t("summary.notifications"), valeur: notifications.filter((n) => !n.isRead).length, icon: Bell },
+  ];
+
+  if (!user) {
+    return (
+      <div className="container-content section-y text-center text-sm text-muted-foreground">
+        {t("loginRequired")}
+      </div>
+    );
+  }
+
   return (
     <>
       <PageHero
-        surtitre="Espace personnel"
-        titre="Portail usager"
-        description="Bienvenue, Mamadou Diallo. Retrouvez ici l'ensemble de vos dossiers en cours auprès de l'Autorité."
+        surtitre={t("surtitre")}
+        titre={t("titre")}
+        description={t("welcome", { name: user.fullname })}
       >
         <div className="inline-flex items-center gap-3 rounded-full bg-primary-foreground/10 px-4 py-2 text-sm">
-          <UserRound className="size-4" aria-hidden /> mamadou.diallo@exemple.gn
+          <UserRound className="size-4" aria-hidden /> {user.email}
         </div>
       </PageHero>
 
@@ -57,111 +110,93 @@ export default function Portail() {
           <dl className="grid gap-x-8 gap-y-6 border-y border-border py-6 sm:grid-cols-2 lg:grid-cols-4">
             {resume.map((r) => (
               <div key={r.libelle} className="flex items-center gap-4 py-2">
-                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
+                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                   <r.icon className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <dt className="text-xs tracking-wide text-muted-foreground uppercase">
-                    {r.libelle}
-                  </dt>
-                  <dd className="font-heading text-2xl font-bold">
-                    {r.valeur}
-                  </dd>
+                  <dt className="text-xs tracking-wide text-muted-foreground uppercase">{r.libelle}</dt>
+                  <dd className="font-heading text-2xl font-bold">{r.valeur}</dd>
                 </div>
               </div>
             ))}
           </dl>
 
-          <Tabs defaultValue="reclamations" className="mt-10">
+          <Tabs value={onglet} onValueChange={setOnglet} className="mt-10">
             <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1">
-              <TabsTrigger value="reclamations">Mes réclamations</TabsTrigger>
-              <TabsTrigger value="candidatures">Mes candidatures</TabsTrigger>
-              <TabsTrigger value="soumissions">Mes soumissions</TabsTrigger>
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="reclamations">{t("tabs.claims")}</TabsTrigger>
+              <TabsTrigger value="candidatures">{t("tabs.candidatures")}</TabsTrigger>
+              <TabsTrigger value="soumissions">{t("tabs.submissions")}</TabsTrigger>
+              <TabsTrigger value="notifications">{t("tabs.notifications")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reclamations" className="mt-6">
               <Tableau
-                colonnes={[
-                  "Référence",
-                  "Nature",
-                  "Opérateur",
-                  "Date",
-                  "Statut",
-                ]}
+                colonnes={t.raw("claimsColumns") as string[]}
                 lignes={mesReclamations.map((r) => [
-                  r.id,
-                  r.type,
-                  r.operateur,
-                  formaterDate(r.date),
-                  <StatutBadge key={r.id} statut={r.statut} />,
+                  `REC-${r.id}`,
+                  r.claimType,
+                  r.concernedOperator,
+                  formaterDate(r.createdAt),
+                  <StatutBadge key={r.id} statut={r.status} />,
                 ])}
-                vide="Aucune réclamation déposée."
-                action={{
-                  to: "/reclamations",
-                  label: "Déposer une réclamation",
-                }}
+                vide={t("claimsEmpty")}
+                action={{ to: "/reclamations", label: t("fileClaim") }}
               />
             </TabsContent>
 
             <TabsContent value="candidatures" className="mt-6">
               <Tableau
-                colonnes={["Référence", "Poste", "Date", "Statut"]}
+                colonnes={t.raw("candidaturesColumns") as string[]}
                 lignes={mesCandidatures.map((c) => [
-                  c.id,
-                  c.poste,
-                  formaterDate(c.date),
-                  <StatutBadge key={c.id} statut={c.statut} />,
+                  `CAND-${c.id}`,
+                  c.career.name,
+                  formaterDate(c.submittedAt),
+                  <StatutBadge key={c.id} statut={c.status} />,
                 ])}
-                vide="Aucune candidature en cours."
-                action={{ to: "/carrieres", label: "Voir les offres" }}
+                vide={t("candidaturesEmpty")}
+                action={{ to: "/carrieres", label: t("viewOffers") }}
               />
             </TabsContent>
 
             <TabsContent value="soumissions" className="mt-6">
               <Tableau
-                colonnes={["Référence", "Appel d'offres", "Date", "Statut"]}
+                colonnes={t.raw("submissionsColumns") as string[]}
                 lignes={mesSoumissions.map((s) => [
-                  s.id,
-                  s.appel,
-                  formaterDate(s.date),
-                  <StatutBadge key={s.id} statut={s.statut} />,
+                  `SUB-${s.id}`,
+                  s.tendersCall.name,
+                  formaterDate(s.submittedAt),
+                  <StatutBadge key={s.id} statut={s.status} />,
                 ])}
-                vide="Aucune soumission enregistrée."
-                action={{
-                  to: "/appels-offres",
-                  label: "Voir les appels d'offres",
-                }}
+                vide={t("submissionsEmpty")}
+                action={{ to: "/appels-offres", label: t("viewTenders") }}
               />
             </TabsContent>
 
             <TabsContent value="notifications" className="mt-6">
               <ul className="divide-y divide-border border-y border-border">
-                {notifications.map((n) => (
-                  <li key={n.id} className="flex items-start gap-4 p-5">
-                    <span
-                      className={
-                        n.lu
-                          ? "mt-1.5 size-2 shrink-0 rounded-full bg-border"
-                          : "mt-1.5 size-2 shrink-0 rounded-full bg-primary"
-                      }
-                    />
-                    <div className="min-w-0">
-                      <p
-                        className={
-                          n.lu
-                            ? "text-sm text-muted-foreground"
-                            : "text-sm font-medium"
-                        }
+                {notifications.map((n) => {
+                  const cliquable = Boolean(NOTIFICATION_TAB_BY_TYPE[n.type]);
+                  return (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={() => cliquerNotification(n)}
+                        disabled={!cliquable && n.isRead}
+                        className="flex w-full items-start gap-4 p-5 text-left transition-colors hover:bg-muted/60 disabled:cursor-default disabled:hover:bg-transparent"
                       >
-                        {n.titre}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formaterDate(n.date)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
+                        <span className={n.isRead ? "mt-1.5 size-2 shrink-0 rounded-full bg-border" : "mt-1.5 size-2 shrink-0 rounded-full bg-primary"} />
+                        <div className="min-w-0">
+                          <p className={n.isRead ? "text-sm text-muted-foreground" : "text-sm font-medium"}>{n.title}</p>
+                          {n.body && <p className="mt-1 text-xs text-muted-foreground">{n.body}</p>}
+                          <p className="mt-1 text-xs text-muted-foreground">{formaterDate(n.createdAt)}</p>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+                {notifications.length === 0 && (
+                  <li className="p-8 text-center text-sm text-muted-foreground">{t("noNotifications")}</li>
+                )}
               </ul>
             </TabsContent>
           </Tabs>
@@ -178,7 +213,7 @@ function Tableau({
   action,
 }: {
   colonnes: string[];
-  lignes: React.ReactNode[][];
+  lignes: ReactNode[][];
   vide: string;
   action: { to: string; label: string };
 }) {
@@ -199,14 +234,7 @@ function Tableau({
             {lignes.map((ligne, i) => (
               <tr key={i} className="transition-colors hover:bg-muted/60">
                 {ligne.map((cellule, j) => (
-                  <td
-                    key={j}
-                    className={
-                      j === 0
-                        ? "px-5 py-4 font-mono text-xs text-primary"
-                        : "px-5 py-4"
-                    }
-                  >
+                  <td key={j} className={j === 0 ? "px-5 py-4 font-mono text-xs text-primary" : "px-5 py-4"}>
                     {cellule}
                   </td>
                 ))}
@@ -214,10 +242,7 @@ function Tableau({
             ))}
             {lignes.length === 0 && (
               <tr>
-                <td
-                  colSpan={colonnes.length}
-                  className="px-5 py-10 text-center text-muted-foreground"
-                >
+                <td colSpan={colonnes.length} className="px-5 py-10 text-center text-muted-foreground">
                   {vide}
                 </td>
               </tr>
