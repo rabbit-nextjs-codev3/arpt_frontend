@@ -100,7 +100,7 @@ export default function OffreDetail() {
           </Link>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Badge variant="secondary" className="font-mono text-xs font-semibold">
+            <Badge variant="ghost" className="font-mono text-xs font-semibold">
               {offre.code}
             </Badge>
             <Badge variant="outline" className="gap-1.5 text-xs font-medium text-destructive">
@@ -135,9 +135,7 @@ export default function OffreDetail() {
 
         <div className="rounded-xl max-w-7xl border border-border bg-card p-6 sm:p-7 lg:sticky lg:top-40">
           <h2 className="font-heading text-lg font-semibold">{t("applyTitle")}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t("applyBody", { name: offre.contactName, email: offre.contactEmail })}
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Déposez votre candidature depuis votre compte. Votre identité sera reprise automatiquement et votre dossier transmis de manière sécurisée à l’équipe de recrutement.</p>
 
           {authLoading ? <p className="mt-6 text-sm text-muted-foreground">{t("loading")}</p> : !user ? (
             <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-5 text-sm">
@@ -145,7 +143,7 @@ export default function OffreDetail() {
               <Button asChild><AuthTrigger>{t("loginToApply")}</AuthTrigger></Button>
             </div>
           ) : offre.limitDate.slice(0, 10) < new Date().toISOString().slice(0, 10) ? (
-            <p className="mt-6 text-sm text-muted-foreground">{t("closed")}</p>
+            <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950"><p className="font-semibold">Candidatures clôturées</p><p className="mt-1">La date limite est dépassée. Vous pouvez toujours consulter la description complète de l’offre, mais aucun dossier ne peut désormais être envoyé.</p></div>
           ) : envoye ? (
             <div className="mt-6 rounded-lg border border-success/40 bg-success/10 p-5 text-sm">
               <p className="font-semibold text-success">{t("submittedTitle")}</p>

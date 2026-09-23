@@ -10,6 +10,7 @@ import { AuthTrigger } from "@/components/site/AuthModal";
 import { LocaleSwitcher } from "@/components/site/LocaleSwitcher";
 import { useAuth } from "@/lib/auth";
 import { useApiOne } from "@/lib/hooks";
+import Image from "next/image";
 
 interface SiteConfigPublic {
   logoKey?: string | null;
@@ -42,17 +43,13 @@ export function Header() {
 
       <div className="container-content flex items-center justify-between gap-4 py-3">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          {config?.logoKey ? (
+          {config?.logoKey && (
             // eslint-disable-next-line @next/next/no-img-element -- logo provenant de MinIO (hôte dynamique, non listable dans next.config.js images.domains)
-            <img src={config.logoKey} alt="ARPT" className="size-11 shrink-0 rounded-md object-contain" />
-          ) : (
-            <span className="grid size-11 shrink-0 place-items-center rounded-md bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
-              <ShieldCheck className="size-6" aria-hidden />
-            </span>
-          )}
+            <Image src={config.logoKey} width={44} height={44} loading="lazy" alt="ARPT" className="size-11 shrink-0 rounded-md object-contain" />
+          ) }
           <span className="min-w-0">
-            <span className="block font-heading text-lg leading-none font-bold tracking-tight">ARPT</span>
-            <span className="block truncate text-[0.7rem] text-muted-foreground">
+            <span className="md:block hidden font-heading text-lg leading-none font-bold tracking-tight">ARPT</span>
+            <span className="md:block  hidden truncate text-[0.7rem] text-muted-foreground">
               Autorité de Régulation des Postes et Télécommunications
             </span>
           </span>

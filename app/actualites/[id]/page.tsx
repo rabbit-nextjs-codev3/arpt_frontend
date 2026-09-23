@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, CalendarDays, Eye, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, CalendarDays, ArrowUpRight } from "lucide-react";
 import { formaterDate } from "@/data/mock";
 import { useApiOne, useApiList } from "@/lib/hooks";
 import { useLocale } from "@/lib/locale-context";
@@ -59,7 +59,6 @@ export default function Article() {
             <div className="px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" aria-hidden /> {formaterDate(article.createdAt)}</span>
-                <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5" aria-hidden /> {t("views", { count: article.views.toLocaleString(locale) })}</span>
               </div>
               <h1 className="mt-5 max-w-4xl text-3xl leading-tight font-bold tracking-tight md:text-5xl">{article.title}</h1>
               <div

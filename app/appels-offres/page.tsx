@@ -47,7 +47,7 @@ interface TendersCall {
   fileUrl: string | null;
 }
 
-const STATUTS = ["Tous", "Ouvert", "Clôturé", "Annulé"] as const;
+const STATUTS = ["Tous", "Ouvert", "Clôturé"] as const;
 
 function AppelOffreCard({ appel, onSubmitted }: { appel: TendersCall; onSubmitted: () => void }) {
   const t = useTranslations("tendersPage");
@@ -142,11 +142,10 @@ function AppelOffreCard({ appel, onSubmitted }: { appel: TendersCall; onSubmitte
     </article>
   );
 }
-const STATUT_KEYS: Record<(typeof STATUTS)[number], "all" | "open" | "closed" | "cancelled"> = {
+const STATUT_KEYS: Record<(typeof STATUTS)[number], "all" | "open" | "closed"> = {
   Tous: "all",
   Ouvert: "open",
   Clôturé: "closed",
-  Annulé: "cancelled",
 };
 
 export default function AppelsOffres() {
@@ -170,8 +169,7 @@ export default function AppelsOffres() {
       const matchStatut =
         statut === "Tous" ||
         (statut === "Ouvert" && a.status === "OUVERT") ||
-        (statut === "Clôturé" && a.status === "CLOTURE") ||
-        (statut === "Annulé" && a.status === "ANNULE");
+        (statut === "Clôturé" && a.status === "CLOTURE");
       const matchCategorie = categorie === "Toutes" || a.category.name === categorie;
       return matchRecherche && matchStatut && matchCategorie;
     });

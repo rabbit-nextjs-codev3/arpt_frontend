@@ -134,7 +134,7 @@ export default function Reglementation() {
             {!chargement && !erreur && (
               <ul className="divide-y divide-border">
                 {resultats.map((r) => (
-                  <li key={r.uid} className="grid gap-4 p-5 transition-colors hover:bg-accent/25 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                  <li key={r.uid} className="grid gap-4 p-5 transition-colors hover:translate-x-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
                       <p className="font-medium">{r.name}</p>
                       {r.description && (
@@ -151,7 +151,8 @@ export default function Reglementation() {
                         <span>{r.format}</span>
                       </p>
                     </div>
-                    <Button asChild variant="outline" size="sm" className="justify-self-start sm:justify-self-end">
+                    <Button asChild variant="outline" size="sm"
+                     className="justify-self-start sm:justify-self-end">
                       <Link href={`/reglementation/${r.uid}`}>
                         {t("viewMore")} <ArrowRight className="size-4" aria-hidden />
                       </Link>

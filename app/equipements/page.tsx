@@ -90,7 +90,7 @@ export default function Equipements() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {resultats.map((e) => (
-                    <tr key={e.uid} className="transition-colors hover:bg-accent/30">
+                    <tr key={e.uid} className=" hover:translate-x-1 transition-all">
                       <td className="px-5 py-4 font-mono text-xs text-primary">{e.code}</td>
                       <td className="px-5 py-4 font-medium">{e.name}</td>
                       <td className="px-5 py-4 text-muted-foreground">

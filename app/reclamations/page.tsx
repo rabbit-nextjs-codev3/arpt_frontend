@@ -188,8 +188,8 @@ export default function Reclamations() {
               </div>
               {rightsDocument?.fileUrl && (
                 <Button asChild variant="outline" size="sm" className="mt-4 w-full justify-between">
-                  <a href={rightsDocument.fileUrl} data-document-preview target="_blank" rel="noreferrer">
-                    <span className="inline-flex items-center gap-2"><FileDown className="size-4" aria-hidden /> {t("downloadGuide")}</span><ChevronRight className="size-4" aria-hidden />
+                  <a href={rightsDocument.fileUrl} data-document-preview>
+                    <span className="inline-flex items-center gap-2"><FileDown className="size-4" aria-hidden /> Aperçu du guide officiel</span><ChevronRight className="size-4" aria-hidden />
                   </a>
                 </Button>
               )}

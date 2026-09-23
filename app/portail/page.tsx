@@ -15,6 +15,17 @@ import { useApiList, useApiOne } from "@/lib/hooks";
 import { useLocale } from "@/lib/locale-context";
 
 /** Fait le lien entre le type d'événement (voir NotificationsService côté backend) et l'onglet où le traiter. */
+function afficherValeur(value: unknown, locale: string): string {
+  if (value == null) return "—";
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "object") {
+    const localized = value as Record<string, unknown>;
+    const preferred = localized[locale] ?? localized.fr ?? localized.en ?? Object.values(localized)[0];
+    if (typeof preferred === "string" || typeof preferred === "number") return String(preferred);
+  }
+  return "—";
+}
+
 const NOTIFICATION_TAB_BY_TYPE: Record<string, string> = {
   "claim.status_changed": "reclamations",
   "candidature.status_changed": "candidatures",
@@ -38,6 +49,8 @@ interface Candidature {
 
 interface Submission {
   id: number;
+  experience: unknown;
+  proposition: unknown;
   status: "EN_COURS" | "ACCEPTE" | "REFUSE";
   submittedAt: string;
   tendersCall: { code: string; name: string };
@@ -63,6 +76,7 @@ export default function Portail() {
     user ? "/notifications?pageSize=50" : null,
   );
   const [onglet, setOnglet] = useState("reclamations");
+  const [soumissionSelectionnee, setSoumissionSelectionnee] = useState<Submission | null>(null);
 
   async function cliquerNotification(n: Notification) {
     if (!n.isRead) {
@@ -165,7 +179,7 @@ export default function Portail() {
                   `SUB-${s.id}`,
                   s.tendersCall.name,
                   formaterDate(s.submittedAt),
-                  <StatutBadge key={s.id} statut={s.status} />,
+                  <div key={s.id} className="flex items-center gap-3"><StatutBadge statut={s.status} /><button type="button" onClick={() => setSoumissionSelectionnee(s)} className="text-xs font-semibold text-primary hover:underline">Voir les détails</button></div>,
                 ])}
                 vide={t("submissionsEmpty")}
                 action={{ to: "/appels-offres", label: t("viewTenders") }}
@@ -202,6 +216,14 @@ export default function Portail() {
           </Tabs>
         </div>
       </section>
+      {soumissionSelectionnee && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Détails de la soumission" onMouseDown={(event) => { if (event.currentTarget === event.target) setSoumissionSelectionnee(null); }}>
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-card p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">{soumissionSelectionnee.tendersCall.code}</p><h2 className="mt-1 text-xl font-bold">{soumissionSelectionnee.tendersCall.name}</h2></div><button type="button" onClick={() => setSoumissionSelectionnee(null)} className="rounded-md border px-3 py-1.5 text-sm font-semibold">Fermer</button></div>
+            <dl className="mt-6 grid gap-5"><div><dt className="text-xs font-semibold uppercase text-muted-foreground">Statut</dt><dd className="mt-2"><StatutBadge statut={soumissionSelectionnee.status} /></dd></div><div><dt className="text-xs font-semibold uppercase text-muted-foreground">Expérience présentée</dt><dd className="mt-2 whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">{afficherValeur(soumissionSelectionnee.experience, locale)}</dd></div><div><dt className="text-xs font-semibold uppercase text-muted-foreground">Proposition</dt><dd className="mt-2 whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">{afficherValeur(soumissionSelectionnee.proposition, locale)}</dd></div></dl>
+          </div>
+        </div>
+      )}
     </>
   );
 }

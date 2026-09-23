@@ -2506,7 +2506,13 @@ function PointsStatistiquesAdmin() {
   const tCommon = useTranslations("admin.common");
   const { data: entries, loading, error, refetch } = useApiOne<SectorStatisticEntry[]>("/statistics/entries");
   const [editing, setEditing] = useState<SectorStatisticEntry | "new" | null>(null);
+  const [recherche, setRecherche] = useState("");
+  const [typePeriode, setTypePeriode] = useState<"all" | "month" | "quarter">("all");
   const confirm = useConfirm();
+  const entreesFiltrees = (entries ?? []).filter((entry) => {
+    const periode = entry.month ? MOIS_COURTS[entry.month - 1] + " " + entry.year : "T" + entry.quarter + " " + entry.year;
+    return periode.toLocaleLowerCase("fr").includes(recherche.trim().toLocaleLowerCase("fr")) && (typePeriode === "all" || (typePeriode === "month" ? Boolean(entry.month) : Boolean(entry.quarter)));
+  });
 
   async function supprimer(id: number) {
     if (!(await confirm(t("entries.confirmDelete")))) return;
@@ -2538,6 +2544,11 @@ function PointsStatistiquesAdmin() {
         )}
       </div>
 
+      <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(15rem,1fr)_12rem]">
+        <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="pl-9" placeholder="Rechercher une période ou une année" /></div>
+        <Select value={typePeriode} onValueChange={(value) => setTypePeriode(value as typeof typePeriode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Toutes les périodes</SelectItem><SelectItem value="month">Mensuelles</SelectItem><SelectItem value="quarter">Trimestrielles</SelectItem></SelectContent></Select>
+      </div>
+
       {editing !== null && (
         <div className="mt-4">
           <PointStatistiqueForm
@@ -2554,7 +2565,7 @@ function PointsStatistiquesAdmin() {
       <TableauAdmin
         codeColumn={false}
         colonnes={[t("entries.columns.period"), t("entries.columns.mobileSubscribers"), t("entries.columns.mobilePenetration"), t("entries.columns.internetSubscribers"), t("entries.columns.mobileMoney"), t("entries.columns.jobs"), tCommon("actions")]}
-        lignes={(entries ?? []).map((e) => [
+        lignes={entreesFiltrees.map((e) => [
           e.month ? `${MOIS_COURTS[e.month - 1]} ${e.year}` : `T${e.quarter} ${e.year}`,
           e.subscribersMillion != null ? `${e.subscribersMillion} M` : "—",
           e.penetrationRate != null ? `${e.penetrationRate} %` : "—",
@@ -2571,8 +2582,8 @@ function PointsStatistiquesAdmin() {
           </div>,
         ])}
       />
-      {(entries ?? []).length === 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">{t("entries.noResults")}</p>
+      {entreesFiltrees.length === 0 && (
+        <p className="mt-4 text-sm text-muted-foreground">{recherche || typePeriode !== "all" ? "Aucune statistique ne correspond aux filtres." : t("entries.noResults")}</p>
       )}
     </div>
   );
@@ -3783,7 +3794,6 @@ interface NewsAdmin {
   content: string;
   category: string | null;
   isPublished: boolean;
-  views: number;
   imageUrl: string | null;
   createdAt: string;
 }
@@ -3801,7 +3811,6 @@ function ActualitesAdmin() {
   const [recherche, setRecherche] = useState("");
   const [categorie, setCategorie] = useState("all");
   const [statut, setStatut] = useState<"all" | "published" | "draft">("all");
-  const [ordre, setOrdre] = useState<"recent" | "views">("recent");
 
   const categories = Array.from(new Set(news.map((item) => item.category).filter((item): item is string => Boolean(item))));
   const actualitesFiltrees = news
@@ -3811,7 +3820,7 @@ function ActualitesAdmin() {
       const correspondStatut = statut === "all" || (statut === "published" ? item.isPublished : !item.isPublished);
       return correspondRecherche && correspondCategorie && correspondStatut;
     })
-    .sort((a, b) => ordre === "views" ? b.views - a.views : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   function ouvrirCreation() {
     setEditing(null);
@@ -3837,7 +3846,8 @@ function ActualitesAdmin() {
   }
 
   function exporter(format: ExportFormat = "csv") {
-    exporterTableau(format, t("csv.filename"), t.raw("csv.headers") as string[], actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), item.views, item.isPublished ? t("statusPublished") : t("statusDraft")]));
+    const headers = (t.raw("csv.headers") as string[]).filter((_, index) => index !== 3);
+    exporterTableau(format, t("csv.filename"), headers, actualitesFiltrees.map((item) => [item.title, item.category ?? "", formaterDate(item.createdAt), item.isPublished ? t("statusPublished") : t("statusDraft")]));
   }
 
   async function soumettre(event: React.FormEvent<HTMLFormElement>) {
@@ -3892,11 +3902,10 @@ function ActualitesAdmin() {
           </div>
         </div>
 
-        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(13rem,1fr)_10rem_10rem_9rem] lg:p-5">
+        <div className="grid gap-3 border-b border-border bg-surface/55 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(13rem,1fr)_10rem_10rem] lg:p-5">
           <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input value={recherche} onChange={(event) => setRecherche(event.target.value)} className="h-9 bg-card pl-9 text-xs" placeholder={t("searchPlaceholder")} /></div>
           <Select value={categorie} onValueChange={setCategorie}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue placeholder={tCommon("allCategories")} /></SelectTrigger><SelectContent><SelectItem value="all">{tCommon("allCategories")}</SelectItem>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
           <Select value={statut} onValueChange={(value) => setStatut(value as typeof statut)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{tCommon("allStatuses")}</SelectItem><SelectItem value="published">{t("statusPublished")}</SelectItem><SelectItem value="draft">{t("statusDraft")}</SelectItem></SelectContent></Select>
-          <Select value={ordre} onValueChange={(value) => setOrdre(value as typeof ordre)}><SelectTrigger className="h-9 bg-card text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="recent">{t("sortRecent")}</SelectItem><SelectItem value="views">{t("sortViews")}</SelectItem></SelectContent></Select>
         </div>
 
         {showForm && (
@@ -3941,19 +3950,18 @@ function ActualitesAdmin() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[55rem] text-left text-sm">
-            <thead className="border-b border-border bg-card text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"><tr><th className="px-5 py-3">{t("columns.title")}</th><th className="px-4 py-3">{t("columns.category")}</th><th className="px-4 py-3">{t("columns.date")}</th><th className="px-4 py-3">{t("columns.views")}</th><th className="px-4 py-3">{t("columns.status")}</th><th className="px-5 py-3 text-right">{tCommon("actions")}</th></tr></thead>
+            <thead className="border-b border-border bg-card text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"><tr><th className="px-5 py-3">{t("columns.title")}</th><th className="px-4 py-3">{t("columns.category")}</th><th className="px-4 py-3">{t("columns.date")}</th><th className="px-4 py-3">{t("columns.status")}</th><th className="px-5 py-3 text-right">{tCommon("actions")}</th></tr></thead>
             <tbody className="divide-y divide-border">
               {actualitesFiltrees.map((n) => (
                 <tr key={n.id} className="transition-colors hover:bg-accent/25">
                   <td className="px-5 py-3.5"><div className="flex max-w-lg items-center gap-3"><div className="relative size-11 shrink-0 overflow-hidden rounded-md bg-muted">{n.imageUrl && <img src={n.imageUrl} alt="" className="size-full object-cover" />}</div><div className="min-w-0"><p className="line-clamp-1 text-xs font-semibold">{n.title}</p><p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{n.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}</p><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} className="mt-1 text-[10px] font-semibold text-primary hover:underline">{t("readMore")}</button></div></div></td>
                   <td className="px-4 py-3.5">{n.category ? <span className="inline-flex rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground">{n.category}</span> : <span className="text-xs text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3.5 text-xs text-muted-foreground"><p>{formaterDate(n.createdAt)}</p></td>
-                  <td className="px-4 py-3.5"><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Eye className="size-3.5" aria-hidden />{n.views.toLocaleString("fr-FR")}</span></td>
                   <td className="px-4 py-3.5">{n.isPublished ? <Puce label={t("statusPublished")} tone="success" /> : <Puce label={t("statusDraft")} tone="warning" />}</td>
                   <td className="px-5 py-3.5"><div className="flex justify-end gap-1"><button type="button" onClick={() => ouvrirEdition(n)} title={tCommon("edit")} className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Pencil className="size-3.5" aria-hidden /></button><button type="button" onClick={() => window.open(`/actualites/${n.uid}`, "_blank", "noopener,noreferrer")} title={t("viewOnSite")} className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-primary"><Eye className="size-3.5" aria-hidden /></button><button type="button" onClick={() => supprimer(n)} title={tCommon("delete")} className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="size-3.5" aria-hidden /></button></div></td>
                 </tr>
               ))}
-              {actualitesFiltrees.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</td></tr>}
+              {actualitesFiltrees.length === 0 && <tr><td colSpan={5} className="px-5 py-12 text-center text-sm text-muted-foreground">{t("noResults")}</td></tr>}
             </tbody>
           </table>
         </div>

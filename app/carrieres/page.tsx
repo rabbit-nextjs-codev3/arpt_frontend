@@ -52,6 +52,8 @@ export default function Carrieres() {
     [offresEmploi],
   );
 
+  const aujourdHui = new Date().toISOString().slice(0, 10);
+
   const resultats = useMemo(() => {
     const q = recherche.toLowerCase();
     return offresEmploi.filter((o) => {
@@ -119,6 +121,7 @@ export default function Carrieres() {
                     )}
                   </div>
                   <h2 className="mt-3 font-heading text-xl font-semibold">{o.name}</h2>
+                  {o.limitDate.slice(0, 10) < aujourdHui && <p className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Offre clôturée — consultation uniquement</p>}
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{o.description}</p>
                   <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">

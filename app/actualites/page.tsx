@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { ArrowRight, CalendarDays, Download, Eye, FileText } from "lucide-react";
+import { ArrowRight, CalendarDays, Eye, FileText } from "lucide-react";
 import { PageHero, SectionTitle } from "@/components/site/PageHero";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,9 +91,6 @@ export default function Actualites() {
                       <span className="inline-flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" aria-hidden /> {formaterDate(featured.createdAt)}
                       </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Eye className="size-3.5" aria-hidden /> {featured.views.toLocaleString(locale)}
-                      </span>
                     </div>
                     <h2 className="mt-4 text-balance font-heading text-xl font-semibold tracking-tight md:text-2xl">
                       {featured.title}
@@ -172,11 +169,10 @@ export default function Actualites() {
                         {c.fileUrl && (
                           <a
                             href={c.fileUrl}
-                            data-document-preview target="_blank"
-                            rel="noreferrer"
+                            data-document-preview
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                           >
-                            <Download className="size-3.5" aria-hidden /> {t("download")}
+                            <Eye className="size-3.5" aria-hidden /> Aperçu
                           </a>
                         )}
                       </div>
