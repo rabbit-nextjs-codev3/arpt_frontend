@@ -21,7 +21,13 @@ const styles: Record<Statut, string> = {
   REFUSE: "bg-destructive/12 text-destructive",
 };
 
-export function StatutBadge({ statut, className }: { statut: Statut; className?: string }) {
+export function StatutBadge({
+  statut,
+  className,
+}: {
+  statut: Statut;
+  className?: string;
+}) {
   const t = useTranslations("status");
   return (
     <span

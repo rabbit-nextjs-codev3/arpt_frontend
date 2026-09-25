@@ -24,7 +24,7 @@ export function PageHero({
 
       <div className="container-content relative py-14 md:py-20">
         {surtitre && (
-          <p className="font-heading text-xs font-semibold tracking-[0.18em] text-primary uppercase">
+          <p className="font-heading text-xs font-semibold tracking-[0.18em] text-teal-700 uppercase">
             {surtitre}
           </p>
         )}
@@ -55,7 +55,7 @@ export function SectionTitle({
   return (
     <div className="max-w-2xl">
       {surtitre && (
-        <p className="font-heading text-xs font-semibold tracking-[0.18em] text-primary uppercase">
+        <p className="font-heading text-xs font-semibold tracking-[0.18em] text-teal-600 uppercase">
           {surtitre}
         </p>
       )}
@@ -64,7 +64,9 @@ export function SectionTitle({
         {titre}
       </h2>
       {description && (
-        <p className="mt-3 leading-relaxed text-muted-foreground">{description}</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">
+          {description}
+        </p>
       )}
     </div>
   );

@@ -1,6 +1,14 @@
-import { ACCESS_KEY, REFRESH_KEY, clearSession, isSessionInactive, rotateTokenPair, tokenExpiresSoon } from "./session";
+import {
+  ACCESS_KEY,
+  REFRESH_KEY,
+  clearSession,
+  isSessionInactive,
+  rotateTokenPair,
+  tokenExpiresSoon,
+} from "./session";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export const SESSION_EXPIRED_EVENT = "arpt:session-expired";
 
 export class ApiError extends Error {
@@ -19,18 +27,25 @@ export interface PaginatedResult<T> {
   results: T[];
 }
 
-interface TokenPair { accessToken: string; refreshToken: string }
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
 let refreshInFlight: Promise<string> | null = null;
 
 export function expireSession() {
   if (typeof window === "undefined") return;
-  const hadSession = Boolean(localStorage.getItem(ACCESS_KEY) || localStorage.getItem(REFRESH_KEY));
+  const hadSession = Boolean(
+    localStorage.getItem(ACCESS_KEY) || localStorage.getItem(REFRESH_KEY),
+  );
   clearSession();
   if (hadSession) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
 }
 
 /** One refresh at a time per tab and, where supported, across open tabs. */
-export function refreshAccessToken(staleAccessToken?: string | null): Promise<string> {
+export function refreshAccessToken(
+  staleAccessToken?: string | null,
+): Promise<string> {
   if (refreshInFlight) return refreshInFlight;
 
   async function rotate(): Promise<string> {
@@ -39,7 +54,8 @@ export function refreshAccessToken(staleAccessToken?: string | null): Promise<st
       throw new ApiError(401, "Session expirée après sept jours d'inactivité.");
     }
     const currentAccess = localStorage.getItem(ACCESS_KEY);
-    if (staleAccessToken && currentAccess && currentAccess !== staleAccessToken) return currentAccess;
+    if (staleAccessToken && currentAccess && currentAccess !== staleAccessToken)
+      return currentAccess;
 
     const refreshToken = localStorage.getItem(REFRESH_KEY);
     if (!refreshToken) {
@@ -55,13 +71,20 @@ export function refreshAccessToken(staleAccessToken?: string | null): Promise<st
     if (!response.ok) {
       const updatedRefresh = localStorage.getItem(REFRESH_KEY);
       const updatedAccess = localStorage.getItem(ACCESS_KEY);
-      if (updatedRefresh && updatedRefresh !== refreshToken && updatedAccess) return updatedAccess;
+      if (updatedRefresh && updatedRefresh !== refreshToken && updatedAccess)
+        return updatedAccess;
       if (response.status === 401) expireSession();
-      throw new ApiError(response.status, response.status === 401 ? "Session expirée." : "Renouvellement temporairement indisponible.");
+      throw new ApiError(
+        response.status,
+        response.status === 401
+          ? "Session expirée."
+          : "Renouvellement temporairement indisponible.",
+      );
     }
 
-    const pair = await response.json() as TokenPair;
-    if (!pair.accessToken || !pair.refreshToken) throw new ApiError(502, "Réponse de session invalide.");
+    const pair = (await response.json()) as TokenPair;
+    if (!pair.accessToken || !pair.refreshToken)
+      throw new ApiError(502, "Réponse de session invalide.");
     if (localStorage.getItem(REFRESH_KEY) !== refreshToken) {
       const newerAccess = localStorage.getItem(ACCESS_KEY);
       if (newerAccess) return newerAccess;
@@ -73,11 +96,16 @@ export function refreshAccessToken(staleAccessToken?: string | null): Promise<st
 
   const task: Promise<string> = (async () => {
     if (typeof navigator !== "undefined" && navigator.locks) {
-      return await navigator.locks.request("arpt-session-refresh", async () => await rotate());
+      return await navigator.locks.request(
+        "arpt-session-refresh",
+        async () => await rotate(),
+      );
     }
     return await rotate();
   })();
-  const result = task.finally(() => { refreshInFlight = null; });
+  const result = task.finally(() => {
+    refreshInFlight = null;
+  });
   refreshInFlight = result;
   return result;
 }
@@ -92,20 +120,25 @@ export async function getValidAccessToken(): Promise<string | null> {
     throw new ApiError(401, "Session expirée après sept jours d'inactivité.");
   }
   if (!refreshToken) return accessToken;
-  if (!accessToken || tokenExpiresSoon(accessToken)) return refreshAccessToken(accessToken);
+  if (!accessToken || tokenExpiresSoon(accessToken))
+    return refreshAccessToken(accessToken);
   return accessToken;
 }
 
 const AUTH_ACTION = /^\/auth\/(login|register|token\/refresh)(?:\/|$)/;
 
 /** Fetch commun : renouvelle le JWT avant expiration et réessaie une fois sur 401. */
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const isAuthAction = AUTH_ACTION.test(path);
   let token = isAuthAction ? null : await getValidAccessToken();
 
   function send(accessToken: string | null) {
     const headers = new Headers(options.headers);
-    if (!(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    if (!(options.body instanceof FormData) && !headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
     return fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   }
@@ -117,11 +150,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   if (response.status === 204) return undefined as T;
-  const isJson = response.headers.get("content-type")?.includes("application/json");
+  const isJson = response.headers
+    .get("content-type")
+    ?.includes("application/json");
   const data = isJson ? await response.json().catch(() => null) : null;
   if (!response.ok) {
     if (response.status === 401 && !isAuthAction && token) expireSession();
-    const message = Array.isArray(data?.message) ? data.message.join(" ") : (data?.message ?? `Erreur ${response.status}`);
+    const message = Array.isArray(data?.message)
+      ? data.message.join(" ")
+      : (data?.message ?? `Erreur ${response.status}`);
     throw new ApiError(response.status, message);
   }
   return data as T;
@@ -129,7 +166,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
 export const api = {
   get: <T>(path: string) => apiFetch<T>(path),
-  post: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
-  patch: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
+  post: <T>(path: string, body?: unknown) =>
+    apiFetch<T>(path, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  patch: <T>(path: string, body?: unknown) =>
+    apiFetch<T>(path, {
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
   delete: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
 };

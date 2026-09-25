@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -85,8 +84,7 @@ interface SiteConfigPublic {
 export function Footer() {
   const t = useTranslations("footer");
 
-  const { data: config } =
-    useApiOne<SiteConfigPublic>("/site-config");
+  const { data: config } = useApiOne<SiteConfigPublic>("/site-config");
 
   const reseaux = [
     {
@@ -117,7 +115,7 @@ export function Footer() {
       liens: [
         { to: "/a-propos", label: t("missions") },
         { to: "/actualites", label: t("newsAndReleases") },
-        { to: "/statistiques", label: t("observatory") },
+        { to: "/indicateurs-des-marches", label: t("observatory") },
         { to: "/carrieres", label: t("careers") },
       ],
     },
@@ -143,7 +141,6 @@ export function Footer() {
 
   return (
     <footer className="mt-auto bg-institution text-primary-foreground">
-
       {/* ==================================================
           CONTENU PRINCIPAL
           ================================================== */}
@@ -162,13 +159,11 @@ export function Footer() {
           xl:gap-x-12
         "
       >
-
         {/* ==================================================
             PREMIÈRE COLONNE : LOGO ET DESCRIPTION
             ================================================== */}
 
         <div className="flex min-w-0 flex-col items-start">
-
           {/* LOGO */}
 
           <div
@@ -265,7 +260,6 @@ export function Footer() {
               </a>
             ))}
           </div>
-
         </div>
 
         {/* ==================================================
@@ -282,7 +276,6 @@ export function Footer() {
               items-start
             "
           >
-
             {/* TITRE */}
 
             <p
@@ -314,10 +307,7 @@ export function Footer() {
               "
             >
               {col.liens.map((l) => (
-                <li
-                  key={l.to + l.label}
-                  className="w-full"
-                >
+                <li key={l.to + l.label} className="w-full">
                   {l.to === "/portail" ? (
                     <AuthTrigger
                       className="
@@ -346,10 +336,8 @@ export function Footer() {
                 </li>
               ))}
             </ul>
-
           </div>
         ))}
-
       </div>
 
       {/* ==================================================
@@ -361,7 +349,6 @@ export function Footer() {
           {t("copyright", { year: new Date().getFullYear() })}
         </div>
       </div>
-
     </footer>
   );
 }

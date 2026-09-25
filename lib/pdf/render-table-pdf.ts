@@ -8,15 +8,30 @@ export type PdfTable = {
 };
 
 function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]!);
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character]!,
+  );
 }
 
 export async function renderTablePdf(table: PdfTable): Promise<Uint8Array> {
   const heading = escapeHtml(table.title);
-  const header = table.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
-  const rows = table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
+  const header = table.columns
+    .map((column) => `<th>${escapeHtml(column)}</th>`)
+    .join("");
+  const rows = table.rows
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`,
+    )
+    .join("");
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
         @page { size: ${table.columns.length > 5 ? "A4 landscape" : "A4 portrait"}; margin: 20mm 12mm 17mm; }
         * { box-sizing: border-box; }

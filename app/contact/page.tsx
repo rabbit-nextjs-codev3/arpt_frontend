@@ -4,11 +4,21 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
-  Clock, Mail, MapPin, Phone, CheckCircle2, ArrowUpRight, Navigation,
-  LogIn, MessageSquare, Loader2, ClipboardList
+  Clock,
+  Mail,
+  MapPin,
+  Phone,
+  CheckCircle2,
+  ArrowUpRight,
+  Navigation,
+  LogIn,
+  MessageSquare,
+  Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { PageHero } from "@/components/site/PageHero";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -16,7 +26,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -37,13 +47,21 @@ const HERO_DEFAUT: HeroContent = {
 };
 
 interface SiteConfigPublic {
-  contactInfo: { address?: { fr?: string }; phone?: string; email?: string; hours?: { fr?: string } };
+  contactInfo: {
+    address?: { fr?: string };
+    phone?: string;
+    email?: string;
+    hours?: { fr?: string };
+  };
 }
 
 export default function Contact() {
   const t = useTranslations("contactPage");
   const { user, loading: authLoading } = useAuth();
-  const { data: hero } = useContentBlock<HeroContent>("contact.hero", HERO_DEFAUT);
+  const { data: hero } = useContentBlock<HeroContent>(
+    "contact.hero",
+    HERO_DEFAUT,
+  );
   const { data: config } = useApiOne<SiteConfigPublic>("/site-config");
   const contactArpt = {
     adresse: config?.contactInfo?.address?.fr || t("defaultAddress"),
@@ -60,10 +78,30 @@ export default function Contact() {
     { value: "homologation", label: t("reasons.approval") },
   ];
   const coordonnees = [
-    { type: "address" as const, icon: MapPin, libelle: t("address"), valeur: contactArpt.adresse },
-    { type: "phone" as const, icon: Phone, libelle: t("phone"), valeur: contactArpt.telephone },
-    { type: "email" as const, icon: Mail, libelle: t("email"), valeur: contactArpt.email },
-    { type: "hours" as const, icon: Clock, libelle: t("hours"), valeur: contactArpt.horaires },
+    {
+      type: "address" as const,
+      icon: MapPin,
+      libelle: t("address"),
+      valeur: contactArpt.adresse,
+    },
+    {
+      type: "phone" as const,
+      icon: Phone,
+      libelle: t("phone"),
+      valeur: contactArpt.telephone,
+    },
+    {
+      type: "email" as const,
+      icon: Mail,
+      libelle: t("email"),
+      valeur: contactArpt.email,
+    },
+    {
+      type: "hours" as const,
+      icon: Clock,
+      libelle: t("hours"),
+      valeur: contactArpt.horaires,
+    },
   ];
   const mapQuery = encodeURIComponent(contactArpt.adresse);
   const mapUrl = `https://www.google.com/maps?q=${mapQuery}&z=16&output=embed`;
@@ -76,7 +114,9 @@ export default function Contact() {
     message: "",
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -95,7 +135,9 @@ export default function Contact() {
       setIsSubmitting(false);
       return;
     }
-    const motif = motifReclamations.find((m) => m.value === formData.objet)?.label ?? formData.objet;
+    const motif =
+      motifReclamations.find((m) => m.value === formData.objet)?.label ??
+      formData.objet;
 
     try {
       await api.post("/contact/me", {
@@ -113,13 +155,17 @@ export default function Contact() {
 
   return (
     <>
-      <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
+      <PageHero
+        surtitre={hero.surtitre}
+        titre={hero.titre}
+        description={hero.description}
+      />
 
       <section className="section-y bg-[linear-gradient(180deg,var(--background)_0%,var(--surface)_100%)]">
         <div className="container-content grid gap-8 lg:grid-cols-[0.8fr_1.4fr] lg:items-start">
           {/* Contact Info Sidebar */}
           <aside className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-            <div className="bg-primary px-6 py-7 text-primary-foreground">
+            <div className="bg-teal-600 px-6 py-7 text-primary-foreground">
               <p className="text-xs font-semibold tracking-[0.16em] uppercase text-primary-foreground/70">
                 {t("coordinatesLabel")}
               </p>
@@ -131,32 +177,37 @@ export default function Contact() {
 
             <div className="divide-y divide-border px-6">
               {coordonnees.map((c) => {
-              const href = c.type === "phone" ? `tel:${c.valeur.replace(/\s+/g, "")}` : c.type === "email" ? `mailto:${c.valeur}` : undefined;
+                const href =
+                  c.type === "phone"
+                    ? `tel:${c.valeur.replace(/\s+/g, "")}`
+                    : c.type === "email"
+                      ? `mailto:${c.valeur}`
+                      : undefined;
 
-              return (
-                <div key={c.type} className="flex gap-4 py-5">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                    <c.icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {c.libelle}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 font-medium break-words">
-                      {href ? (
-                        <a
-                          href={href}
-                          className="transition-colors hover:text-primary hover:underline"
-                        >
-                          {c.valeur}
-                        </a>
-                      ) : (
-                        c.valeur
-                      )}
-                    </p>
+                return (
+                  <div key={c.type} className="flex gap-4 py-5">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal-100 text-teal-600">
+                      <c.icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        {c.libelle}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 font-medium break-words">
+                        {href ? (
+                          <a
+                            href={href}
+                            className="transition-colors hover:text-primary hover:underline"
+                          >
+                            {c.valeur}
+                          </a>
+                        ) : (
+                          c.valeur
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
+                );
               })}
             </div>
 
@@ -174,7 +225,9 @@ export default function Contact() {
                 <div className="grid size-16 place-items-center rounded-full bg-teal-600 text-white shadow transition-colors hover:bg-teal-700">
                   <CheckCircle2 className="size-8" aria-hidden="true" />
                 </div>
-                <h2 className="mt-6 font-heading text-2xl font-semibold">{t("sentTitle")}</h2>
+                <h2 className="mt-6 font-heading text-2xl font-semibold">
+                  {t("sentTitle")}
+                </h2>
                 <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
                   {t("sentBody")}
                 </p>
@@ -190,21 +243,35 @@ export default function Contact() {
                 </Button>
               </div>
             ) : authLoading ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">{t("loading")}</p>
+              <Loader
+                className="flex justify-center py-10"
+                label={t("loading")}
+              />
             ) : !user ? (
               <div className="py-10 text-center">
-                <LogIn className="mx-auto size-12 text-primary" aria-hidden />
-                <h2 className="mt-4 font-heading text-xl font-semibold">{t("loginRequiredTitle")}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{t("loginRequiredBody")}</p>
+                <LogIn className="mx-auto size-12 text-teal-600" aria-hidden />
+                <h2 className="mt-4 font-heading text-xl font-semibold">
+                  {t("loginRequiredTitle")}
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t("loginRequiredBody")}
+                </p>
                 <Button asChild className="mt-6">
                   <AuthTrigger>{t("loginOrCreateAccount")}</AuthTrigger>
                 </Button>
               </div>
             ) : (
-              <form className="grid gap-x-5 gap-y-6 sm:grid-cols-2" onSubmit={handleSubmit}>
+              <form
+                className="grid gap-x-5 gap-y-6 sm:grid-cols-2"
+                onSubmit={handleSubmit}
+              >
                 <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{t("yourRequest")}</p>
-                  <h2 className="mt-2 font-heading text-2xl font-semibold">{t("formTitle")}</h2>
+                  <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
+                    {t("yourRequest")}
+                  </p>
+                  <h2 className="mt-2 font-heading text-2xl font-semibold">
+                    {t("formTitle")}
+                  </h2>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     {t("requiredFieldsNote")}
                   </p>
@@ -213,14 +280,26 @@ export default function Contact() {
                 <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="c-objet">{t("subject")}</Label>
                   <div className="relative">
-                    <ClipboardList className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                    <Select value={formData.objet} onValueChange={handleSelectChange} required>
-                      <SelectTrigger id="c-objet" className="h-11 bg-background pl-10">
+                    <ClipboardList
+                      className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <Select
+                      value={formData.objet}
+                      onValueChange={handleSelectChange}
+                      required
+                    >
+                      <SelectTrigger
+                        id="c-objet"
+                        className="h-11 bg-background pl-10"
+                      >
                         <SelectValue placeholder={t("subjectPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {motifReclamations.map((motif) => (
-                          <SelectItem key={motif.value} value={motif.value}>{motif.label}</SelectItem>
+                          <SelectItem key={motif.value} value={motif.value}>
+                            {motif.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -229,7 +308,10 @@ export default function Contact() {
                 <div className="grid gap-2 sm:col-span-2">
                   <Label htmlFor="c-message">{t("message")}</Label>
                   <div className="relative">
-                    <MessageSquare className="absolute left-3 top-3 size-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
+                    <MessageSquare
+                      className="absolute left-3 top-3 size-4 text-muted-foreground pointer-events-none"
+                      aria-hidden="true"
+                    />
                     <Textarea
                       id="c-message"
                       name="message"
@@ -249,7 +331,10 @@ export default function Contact() {
                 </div>
 
                 {erreur && (
-                  <p className="text-sm text-destructive sm:col-span-2" role="alert">
+                  <p
+                    className="text-sm text-destructive sm:col-span-2"
+                    role="alert"
+                  >
                     {erreur}
                   </p>
                 )}
@@ -264,14 +349,17 @@ export default function Contact() {
                     disabled={isSubmitting}
                     className="w-full gap-2 shadow-sm sm:w-auto"
                   >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                      {t("submitting")}
-                    </>
-                  ) : (
-                    t("submit")
-                  )}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2
+                          className="size-4 animate-spin"
+                          aria-hidden="true"
+                        />
+                        {t("submitting")}
+                      </>
+                    ) : (
+                      t("submit")
+                    )}
                   </Button>
                 </div>
               </form>
@@ -281,14 +369,27 @@ export default function Contact() {
       </section>
 
       {/* Map Section */}
-      <section aria-labelledby="map-title" className="border-t border-border bg-surface py-12 md:py-16">
+      <section
+        aria-labelledby="map-title"
+        className="border-t border-border bg-surface py-6 md:py-16"
+      >
         <div className="container-content">
           <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">{t("visitUs")}</p>
-              <h2 id="map-title" className="mt-2 font-heading text-2xl md:text-3xl">{t("findUs")}</h2>
+              <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
+                {t("visitUs")}
+              </p>
+              <h2
+                id="map-title"
+                className="mt-2 font-heading text-2xl md:text-3xl"
+              >
+                {t("findUs")}
+              </h2>
               <p className="mt-3 flex items-start gap-2 text-sm leading-6 text-muted-foreground">
-                <MapPin className="mt-1 size-4 shrink-0 text-primary" aria-hidden="true" />
+                <MapPin
+                  className="mt-1 size-4 shrink-0 text-primary"
+                  aria-hidden="true"
+                />
                 {contactArpt.adresse}
               </p>
             </div>
@@ -296,7 +397,7 @@ export default function Contact() {
               href={directionsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md bg-teal-600 px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-teal-700"
             >
               <Navigation className="size-4" aria-hidden="true" />
               {t("getDirections")}

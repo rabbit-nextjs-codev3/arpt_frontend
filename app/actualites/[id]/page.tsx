@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, CalendarDays, ArrowUpRight } from "lucide-react";
+import { Loader } from "@/components/ui/loader";
 import { formaterDate } from "@/data/mock";
 import { useApiOne, useApiList } from "@/lib/hooks";
 import { useLocale } from "@/lib/locale-context";
@@ -23,19 +24,31 @@ export default function Article() {
   const t = useTranslations("newsDetail");
   const { locale } = useLocale();
   const { id } = useParams<{ id: string }>();
-  const { data: article, loading, error } = useApiOne<News>(id ? `/news/${id}?lang=${locale}` : null);
+  const {
+    data: article,
+    loading,
+    error,
+  } = useApiOne<News>(id ? `/news/${id}?lang=${locale}` : null);
   const { data: autres } = useApiList<News>(`/news?lang=${locale}&pageSize=10`);
   const related = autres.filter((item) => item.uid !== id);
 
   if (loading) {
-    return <div className="container-content section-y text-center text-sm text-muted-foreground">{t("loading")}</div>;
+    return (
+      <Loader
+        className="container-content section-y flex justify-center"
+        label={t("loading")}
+      />
+    );
   }
 
   if (error || !article) {
     return (
       <div className="container-content section-y text-center">
         <h1 className="text-2xl font-bold">{t("notFoundTitle")}</h1>
-        <Link href="/actualites" className="mt-4 inline-block text-primary hover:underline">
+        <Link
+          href="/actualites"
+          className="mt-4 inline-block text-primary hover:underline"
+        >
           {t("backToNews")}
         </Link>
       </div>
@@ -46,21 +59,36 @@ export default function Article() {
     <main className="section-y">
       <div className="container-content grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <article className="min-w-0">
-          <Link href="/actualites" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+          <Link
+            href="/actualites"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
             <ArrowLeft className="size-4" aria-hidden /> {t("allNews")}
           </Link>
 
           <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
             <div className="relative aspect-video bg-muted">
               {article.imageUrl && (
-                <Image src={article.imageUrl} alt="" fill priority sizes="(min-width: 1024px) 65vw, 100vw" className="object-cover" />
+                <Image
+                  src={article.imageUrl}
+                  alt=""
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 65vw, 100vw"
+                  className="object-cover"
+                />
               )}
             </div>
             <div className="px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" aria-hidden /> {formaterDate(article.createdAt)}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays className="size-3.5" aria-hidden />{" "}
+                  {formaterDate(article.createdAt)}
+                </span>
               </div>
-              <h1 className="mt-5 max-w-4xl text-3xl leading-tight font-bold tracking-tight md:text-5xl">{article.title}</h1>
+              <h1 className="mt-5 max-w-4xl text-3xl leading-tight font-bold tracking-tight md:text-5xl">
+                {article.title}
+              </h1>
               <div
                 className="prose prose-sm mt-8 max-w-[68ch] text-base leading-8 text-foreground/85"
                 dangerouslySetInnerHTML={{ __html: article.content }}
@@ -71,22 +99,41 @@ export default function Article() {
 
         <aside className="lg:sticky lg:top-8">
           <div className="border-t-2 border-foreground pt-4">
-            <p className="font-heading text-xs font-semibold tracking-[0.16em] text-primary uppercase">{t("readNext")}</p>
-            <h2 className="mt-2 font-heading text-xl font-semibold">{t("otherNews")}</h2>
+            <p className="font-heading text-xs font-semibold tracking-[0.16em] text-primary uppercase">
+              {t("readNext")}
+            </p>
+            <h2 className="mt-2 font-heading text-xl font-semibold">
+              {t("otherNews")}
+            </h2>
           </div>
           <div className="mt-6 divide-y divide-border">
-            {related.map((item) => (
-              <Link key={item.uid} href={`/actualites/${item.uid}`} className="group block py-5 first:pt-0">
+            {related.slice(0, 4).map((item) => (
+              <Link
+                key={item.uid}
+                href={`/actualites/${item.uid}`}
+                className="group block py-5 first:pt-0"
+              >
                 <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
                   {item.imageUrl && (
-                    <Image src={item.imageUrl} alt="" fill sizes="(min-width: 1024px) 20rem, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <Image
+                      src={item.imageUrl}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 20rem, 100vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
                   )}
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3 text-[11px] font-semibold tracking-wide text-primary uppercase">
                   <span>{formaterDate(item.createdAt)}</span>
                 </div>
-                <h3 className="mt-2 font-heading text-base leading-snug font-semibold transition-colors group-hover:text-primary">{item.title}</h3>
-                <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors group-hover:text-primary">{t("readArticle")} <ArrowUpRight className="size-3.5" aria-hidden /></span>
+                <h3 className="mt-2 font-heading text-base leading-snug font-semibold transition-colors group-hover:text-primary">
+                  {item.title}
+                </h3>
+                <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors group-hover:text-primary">
+                  {t("readArticle")}{" "}
+                  <ArrowUpRight className="size-3.5" aria-hidden />
+                </span>
               </Link>
             ))}
           </div>

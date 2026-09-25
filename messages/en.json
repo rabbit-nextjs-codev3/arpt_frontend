@@ -6,9 +6,10 @@
     "regulation": "Regulation",
     "equipment": "Equipment",
     "tenders": "Tenders",
-    "careers": "Careers",
+    "jobOffers": "Job opportunities",
+    "careers": "Job openings",
     "news": "News",
-    "statistics": "Statistics",
+    "statistics": "Market indicators",
     "claims": "Complaints",
     "contact": "Contact",
     "openMenu": "Open menu",
@@ -287,31 +288,31 @@
     "readArticle": "Read the article"
   },
   "statisticsPage": {
-    "loading": "Loading statistics…",
-    "mobileSubscribers": "Mobile subscribers",
-    "penetrationRate": "Penetration rate",
-    "activeOperators": "Active operators",
-    "active4GSites": "Active 4G sites",
-    "subscribersChartTitle": "Mobile subscriber base trend",
-    "subscribersChartSubtitle": "In millions of subscribers, year {year}",
-    "subscribersSeriesName": "Subscribers (M)",
-    "revenueChartTitle": "Sector revenue",
-    "revenueChartSubtitle": "In billions of GNF, per quarter",
-    "revenueSeriesName": "Revenue (Bn GNF)",
-    "months": [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec"
-    ]
+    "pageTitle": "Market indicators",
+    "loading": "Loading publications…",
+    "error": "Unable to load publications.",
+    "filteredCount": "{count} publication(s) shown out of {total}",
+    "categoryCount": "{count} publications",
+    "archiveTitle": "Market observatories",
+    "archiveDescription": "Find ARPT’s telecom, pricing and postal analyses in one place.",
+    "categories": {
+      "telecom": "Telecom Observatory",
+      "tariff": "Pricing Observatory",
+      "postal": "Postal Observatory"
+    },
+    "categoryLabel": "Filter by observatory",
+    "allCategories": "All observatories",
+    "searchLabel": "Search publications",
+    "searchPlaceholder": "Search by title…",
+    "yearLabel": "Filter by year",
+    "allYears": "All years",
+    "noResults": "No publication matches your search.",
+    "readReport": "Read report",
+    "downloadPdf": "Download PDF",
+    "backToArchive": "Back to observatories",
+    "readerDescription": "Read the complete report and its charts without leaving the ARPT website.",
+    "documentUnavailable": "The document is temporarily unavailable.",
+    "report": "Report"
   },
   "contactPage": {
     "loading": "Loading…",
@@ -387,31 +388,40 @@
       "claims": "My complaints",
       "candidatures": "My applications",
       "submissions": "My submissions",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "account": "Account"
     },
-    "claimsColumns": [
-      "Reference",
-      "Type",
-      "Operator",
-      "Date",
-      "Status"
-    ],
+    "account": {
+      "profile": "User profile",
+      "fullname": "Full name",
+      "email": "Email address",
+      "company": "Company",
+      "role": "Role",
+      "status": "Account status",
+      "access": "Access",
+      "superAdmin": "Super administrator",
+      "noRole": "No role",
+      "active": "Active",
+      "inactive": "Inactive",
+      "staff": "Staff",
+      "user": "User",
+      "summaryTitle": "Account information",
+      "emailVerified": "Email verified",
+      "verified": "Yes",
+      "unverified": "No",
+      "accountType": "Account type",
+      "enterprise": "Enterprise",
+      "individual": "Individual",
+      "memberSince": "Member since",
+      "notAvailable": "Not available"
+    },
+    "claimsColumns": ["Reference", "Type", "Operator", "Date", "Status"],
     "claimsEmpty": "No complaint filed.",
     "fileClaim": "File a complaint",
-    "candidaturesColumns": [
-      "Reference",
-      "Position",
-      "Date",
-      "Status"
-    ],
+    "candidaturesColumns": ["Reference", "Position", "Date", "Status"],
     "candidaturesEmpty": "No ongoing application.",
     "viewOffers": "View offers",
-    "submissionsColumns": [
-      "Reference",
-      "Tender",
-      "Date",
-      "Status"
-    ],
+    "submissionsColumns": ["Reference", "Tender", "Date", "Status"],
     "submissionsEmpty": "No submission recorded.",
     "viewTenders": "View tenders",
     "noNotifications": "No notification."
@@ -422,7 +432,7 @@
     "missions": "Missions and organisation",
     "newsAndReleases": "News and press releases",
     "observatory": "Sector observatory",
-    "careers": "Careers",
+    "careers": "Job openings",
     "proceduresTitle": "Procedures",
     "ourServices": "Our services",
     "approvedEquipment": "Approved equipment",
@@ -453,7 +463,7 @@
       "services": "Services",
       "equipements": "Equipment",
       "marches": "Tenders",
-      "carrieres": "Careers",
+      "carrieres": "Job openings",
       "actualites": "News",
       "communiques": "Press releases",
       "reglementation": "Regulation",
@@ -539,12 +549,7 @@
         "title": "Recent claims",
         "subtitle": "Latest user reports",
         "viewAll": "View all",
-        "columns": [
-          "Reference",
-          "Type",
-          "Operator",
-          "Status"
-        ],
+        "columns": ["Reference", "Type", "Operator", "Status"],
         "empty": "No claims yet."
       },
       "recentActivity": {
@@ -705,49 +710,44 @@
       "replySent": "Reply sent by email."
     },
     "audit": {
-      "columns": [
-        "Actor",
-        "Action",
-        "Entity",
-        "Timestamp"
-      ],
+      "columns": ["Actor", "Action", "Entity", "Timestamp"],
       "system": "System"
     },
     "applications": {
-  "careersTitle": "Applications",
-  "tendersTitle": "Tender applications",
-    "careerTab": "Careers",
-    "tenderTab": "Tenders",
-  "subtitle": "Review submitted files and manage their status.",
-  "total": "{count} files",
-  "search": "Search applicants or offers…",
-  "filterStatus": "Filter by status",
-  "allStatuses": "All statuses",
-  "inProgress": "In progress",
-  "accepted": "Accepted",
-  "rejected": "Rejected",
-  "loading": "Loading…",
-  "applicant": "Applicant",
-  "offer": "Offer",
-  "submittedAt": "Submitted on",
-  "status": "Status",
-  "actions": "Actions",
-  "viewDetails": "View file",
-  "empty": "No files match these filters.",
-  "previous": "Previous",
-  "next": "Next",
-  "detailsTitle": "File details",
-  "close": "Close",
-  "email": "Email",
-  "availability": "Availability",
-  "motivation": "Cover letter",
-  "openCv": "Open CV",
-  "experience": "Experience",
-  "proposal": "Proposal",
-  "legacyAnonymous": "Legacy anonymous submission",
-  "statusSaved": "Status saved.",
-  "genericError": "An error occurred."
-} ,
+      "careersTitle": "Applications",
+      "tendersTitle": "Tender applications",
+      "careerTab": "Job openings",
+      "tenderTab": "Tenders",
+      "subtitle": "Review submitted files and manage their status.",
+      "total": "{count} files",
+      "search": "Search applicants or offers…",
+      "filterStatus": "Filter by status",
+      "allStatuses": "All statuses",
+      "inProgress": "In progress",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "loading": "Loading…",
+      "applicant": "Applicant",
+      "offer": "Offer",
+      "submittedAt": "Submitted on",
+      "status": "Status",
+      "actions": "Actions",
+      "viewDetails": "View file",
+      "empty": "No files match these filters.",
+      "previous": "Previous",
+      "next": "Next",
+      "detailsTitle": "File details",
+      "close": "Close",
+      "email": "Email",
+      "availability": "Availability",
+      "motivation": "Cover letter",
+      "openCv": "Open CV",
+      "experience": "Experience",
+      "proposal": "Proposal",
+      "legacyAnonymous": "Legacy anonymous submission",
+      "statusSaved": "Status saved.",
+      "genericError": "An error occurred."
+    },
     "tenders": {
       "title": "Tenders",
       "subtitle": "Manage tenders and track submissions.",
@@ -787,13 +787,7 @@
       },
       "noResults": "No tenders match the filters.",
       "csv": {
-        "headers": [
-          "Reference",
-          "Title",
-          "Category",
-          "Status",
-          "Deadline"
-        ],
+        "headers": ["Reference", "Title", "Category", "Status", "Deadline"],
         "filenamePrefix": "tenders"
       },
       "confirmDelete": "Delete the tender \"{name}\"?",
@@ -802,11 +796,11 @@
       "created": "Tender created."
     },
     "careers": {
-      "title": "Careers",
+      "title": "Job openings",
       "subtitle": "Manage and track ARPT job openings.",
-      "newOffer": "+ Create career opening",
+      "newOffer": "+ Create job offer",
       "editingTitle": "Edit \"{name}\"",
-      "newOfferTitle": "New career opening",
+      "newOfferTitle": "New job offer",
       "stats": {
         "total": "Total positions",
         "inProgress": "Open",
@@ -851,7 +845,7 @@
           "Applications",
           "Deadline"
         ],
-        "filenamePrefix": "careers"
+        "filenamePrefix": "job openings"
       },
       "confirmDelete": "Delete the position \"{name}\"?",
       "deleted": "Job position deleted.",
@@ -931,14 +925,7 @@
         "seriesName": "Subscribers (M)"
       },
       "reports": {
-        "columns": [
-          "Report",
-          "Sector",
-          "Year",
-          "Format",
-          "Downloads",
-          "File"
-        ],
+        "columns": ["Report", "Sector", "Year", "Format", "Downloads", "File"],
         "open": "Open"
       },
       "entries": {
@@ -1024,11 +1011,11 @@
         "regulation": "Regulation",
         "equipment": "Equipment",
         "tenders": "Tenders",
-        "careers": "Careers",
+        "careers": "Job openings",
         "news": "News",
         "services": "Services",
         "contact": "Contact",
-        "statistics": "Statistics",
+        "statistics": "Market indicators",
         "consultations": "Public consultations"
       },
       "editorTitle": "Site editor",
@@ -1075,13 +1062,7 @@
       "viewOnSite": "View on site",
       "noResults": "No news match these filters.",
       "csv": {
-        "headers": [
-          "Title",
-          "Category",
-          "Date",
-          "Views",
-          "Status"
-        ],
+        "headers": ["Title", "Category", "Date", "Views", "Status"],
         "filename": "arpt-news.csv"
       },
       "confirmDelete": "Delete the article \"{name}\"?",
@@ -1115,11 +1096,7 @@
       },
       "noResults": "No press releases match the filters.",
       "csv": {
-        "headers": [
-          "Title",
-          "Attachment",
-          "Date"
-        ],
+        "headers": ["Title", "Attachment", "Date"],
         "filenamePrefix": "press-releases",
         "yes": "Yes",
         "no": "No"
@@ -1167,12 +1144,7 @@
       },
       "noResults": "No services match the filters.",
       "csv": {
-        "headers": [
-          "Service",
-          "Delay",
-          "Cost",
-          "State"
-        ],
+        "headers": ["Service", "Delay", "Cost", "State"],
         "filenamePrefix": "services"
       },
       "confirmDelete": "Delete the service \"{name}\"?",
@@ -1248,13 +1220,7 @@
       },
       "noResults": "No texts match the filters.",
       "csv": {
-        "headers": [
-          "Text",
-          "Category",
-          "Format",
-          "Views",
-          "Publication date"
-        ],
+        "headers": ["Text", "Category", "Format", "Views", "Publication date"],
         "filenamePrefix": "regulation"
       },
       "confirmDelete": "Delete the text \"{name}\"?",
@@ -1292,12 +1258,7 @@
       },
       "noResults": "No consultations match the filters.",
       "csv": {
-        "headers": [
-          "Title",
-          "Status",
-          "Start",
-          "End"
-        ],
+        "headers": ["Title", "Status", "Start", "End"],
         "filenamePrefix": "consultations"
       },
       "confirmDelete": "Delete the consultation \"{name}\"?",

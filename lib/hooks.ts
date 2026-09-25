@@ -17,14 +17,24 @@ export function useApiList<T>(path: string | null) {
       return;
     }
     let annule = false;
-    queueMicrotask(() => { if (!annule) { setLoading(true); setError(null); } });
+    queueMicrotask(() => {
+      if (!annule) {
+        setLoading(true);
+        setError(null);
+      }
+    });
     api
       .get<PaginatedResult<T>>(path)
       .then((res) => {
         if (!annule) setData(res.results);
       })
       .catch((err: unknown) => {
-        if (!annule) setError(err instanceof ApiError ? err.message : "Impossible de charger les données.");
+        if (!annule)
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "Impossible de charger les données.",
+          );
       })
       .finally(() => {
         if (!annule) setLoading(false);
@@ -63,7 +73,9 @@ export function useContentBlock<T>(key: string, fallback: T) {
 
   useEffect(() => {
     let annule = false;
-    queueMicrotask(() => { if (!annule) setLoading(true); });
+    queueMicrotask(() => {
+      if (!annule) setLoading(true);
+    });
     api
       .get<ContentBlockRecord<T>>(`/content-blocks/${key}?lang=${locale}`)
       .then((res) => {
@@ -96,7 +108,9 @@ export function useContentBlockRaw<T>(key: string, fallback: T) {
 
   useEffect(() => {
     let annule = false;
-    queueMicrotask(() => { if (!annule) setLoading(true); });
+    queueMicrotask(() => {
+      if (!annule) setLoading(true);
+    });
     api
       .get<ContentBlockRecord<T>>(`/content-blocks/${key}`)
       .then((res) => {
@@ -130,14 +144,24 @@ export function useApiOne<T>(path: string | null) {
       return;
     }
     let annule = false;
-    queueMicrotask(() => { if (!annule) { setLoading(true); setError(null); } });
+    queueMicrotask(() => {
+      if (!annule) {
+        setLoading(true);
+        setError(null);
+      }
+    });
     api
       .get<T>(path)
       .then((res) => {
         if (!annule) setData(res);
       })
       .catch((err: unknown) => {
-        if (!annule) setError(err instanceof ApiError ? err.message : "Impossible de charger les données.");
+        if (!annule)
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : "Impossible de charger les données.",
+          );
       })
       .finally(() => {
         if (!annule) setLoading(false);
@@ -151,7 +175,8 @@ export function useApiOne<T>(path: string | null) {
     if (path !== "/site-config") return;
     const refresh = () => setVersion((value) => value + 1);
     window.addEventListener("arpt:site-config-updated", refresh);
-    return () => window.removeEventListener("arpt:site-config-updated", refresh);
+    return () =>
+      window.removeEventListener("arpt:site-config-updated", refresh);
   }, [path]);
 
   return { data, loading, error, refetch: () => setVersion((v) => v + 1) };

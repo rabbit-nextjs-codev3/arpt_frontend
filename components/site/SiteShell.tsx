@@ -34,12 +34,15 @@ interface SiteConfigPublic {
  * `color-mix` plutôt que demandé séparément à l'admin — un choix de couleur
  * suffit, pas dix nuances à assortir à la main.
  */
-function buildThemeStyle(colors: ThemeColorsPublic | undefined): React.CSSProperties {
+function buildThemeStyle(
+  colors: ThemeColorsPublic | undefined,
+): React.CSSProperties {
   if (!colors) return {};
   const style: Record<string, string> = {};
   if (colors.primary) {
     style["--primary"] = colors.primary;
-    style["--primary-deep"] = `color-mix(in oklab, ${colors.primary} 65%, black)`;
+    style["--primary-deep"] =
+      `color-mix(in oklab, ${colors.primary} 65%, black)`;
     style["--ring"] = colors.primary;
     style["--chart-1"] = colors.primary;
   }
@@ -57,16 +60,31 @@ function buildThemeStyle(colors: ThemeColorsPublic | undefined): React.CSSProper
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const isAdmin = usePathname() === "/admin";
-  const { data: config } = useApiOne<SiteConfigPublic>(isAdmin ? null : "/site-config");
+  const { data: config } = useApiOne<SiteConfigPublic>(
+    isAdmin ? null : "/site-config",
+  );
   const themeStyle = buildThemeStyle(config?.themeColors);
   return (
     <AuthStateProvider>
-    <AuthProvider><div style={isAdmin ? undefined : themeStyle} className={isAdmin ? "flex h-screen overflow-hidden" : "flex min-h-screen flex-col"}>
-      {!isAdmin && <Header />}
-      <main className={isAdmin ? "min-h-0 flex-1 overflow-hidden" : "flex-1"}>{children}</main>
-      {!isAdmin && <Footer />}
-      <Toaster richColors position="top-right" />
-    </div></AuthProvider>
+      <AuthProvider>
+        <div
+          style={isAdmin ? undefined : themeStyle}
+          className={
+            isAdmin
+              ? "flex h-screen overflow-hidden"
+              : "flex min-h-screen flex-col"
+          }
+        >
+          {!isAdmin && <Header />}
+          <main
+            className={isAdmin ? "min-h-0 flex-1 overflow-hidden" : "flex-1"}
+          >
+            {children}
+          </main>
+          {!isAdmin && <Footer />}
+          <Toaster richColors position="top-right" />
+        </div>
+      </AuthProvider>
     </AuthStateProvider>
   );
 }

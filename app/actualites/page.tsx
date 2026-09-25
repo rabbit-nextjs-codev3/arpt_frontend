@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, Eye, FileText } from "lucide-react";
 import { PageHero, SectionTitle } from "@/components/site/PageHero";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Loader } from "@/components/ui/loader";
 import { Separator } from "@/components/ui/separator";
 import { formaterDate } from "@/data/mock";
 import { useApiList, useContentBlock } from "@/lib/hooks";
@@ -21,7 +22,8 @@ interface HeroContent {
 const HERO_DEFAUT: HeroContent = {
   surtitre: "Salle de presse",
   titre: "Actualités et communiqués",
-  description: "Suivez les décisions, les publications et les événements de l'Autorité.",
+  description:
+    "Suivez les décisions, les publications et les événements de l'Autorité.",
 };
 
 interface News {
@@ -45,31 +47,57 @@ interface Communique {
 }
 
 function extrait(html: string, maxLength = 160): string {
-  const texte = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  return texte.length > maxLength ? `${texte.slice(0, maxLength).trimEnd()}…` : texte;
+  const texte = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return texte.length > maxLength
+    ? `${texte.slice(0, maxLength).trimEnd()}…`
+    : texte;
 }
 
 export default function Actualites() {
   const t = useTranslations("newsPage");
   const { locale } = useLocale();
   const { data: hero } = useContentBlock<HeroContent>("news.hero", HERO_DEFAUT);
-  const { data: actualites, loading, error } = useApiList<News>(`/news?lang=${locale}&pageSize=20`);
-  const { data: communiques } = useApiList<Communique>(`/communiques?lang=${locale}&pageSize=10`);
+  const {
+    data: actualites,
+    loading,
+    error,
+  } = useApiList<News>(`/news?lang=${locale}&pageSize=20`);
+  const { data: communiques } = useApiList<Communique>(
+    `/communiques?lang=${locale}&pageSize=10`,
+  );
   const [featured, ...reste] = actualites;
 
   return (
     <>
-      <PageHero surtitre={hero.surtitre} titre={hero.titre} description={hero.description} />
+      <PageHero
+        surtitre={hero.surtitre}
+        titre={hero.titre}
+        description={hero.description}
+      />
 
       <section className="section-y">
-        <div className="container-content grid gap-12 lg:grid-cols-[1.6fr_1fr]">
+        {/* Added items-start to prevent grid columns from stretching */}
+        <div className="container-content grid items-start gap-12 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-8">
-            {loading && <p className="text-sm text-muted-foreground">{t("loading")}</p>}
-            {error && !loading && <p className="text-sm text-destructive">{error}</p>}
+            {loading && (
+              <Loader
+                className="flex justify-center py-8"
+                label={t("loading")}
+              />
+            )}
+            {error && !loading && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
 
             {featured && (
               <Card className="overflow-hidden py-0">
-                <Link href={`/actualites/${featured.uid}`} className="group grid gap-0 sm:grid-cols-2">
+                <Link
+                  href={`/actualites/${featured.uid}`}
+                  className="group grid gap-0 sm:grid-cols-2"
+                >
                   <div className="relative aspect-[16/11] overflow-hidden bg-muted sm:aspect-auto">
                     {featured.imageUrl && (
                       <Image
@@ -89,16 +117,22 @@ export default function Actualites() {
                         </Badge>
                       )}
                       <span className="inline-flex items-center gap-1.5">
-                        <CalendarDays className="size-3.5" aria-hidden /> {formaterDate(featured.createdAt)}
+                        <CalendarDays className="size-3.5" aria-hidden />{" "}
+                        {formaterDate(featured.createdAt)}
                       </span>
                     </div>
                     <h2 className="mt-4 text-balance font-heading text-xl font-semibold tracking-tight md:text-2xl">
                       {featured.title}
                     </h2>
-                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{extrait(featured.content)}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      {extrait(featured.content)}
+                    </p>
                     <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary">
                       {t("readArticle")}
-                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                      <ArrowRight
+                        className="size-4 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden
+                      />
                     </span>
                   </CardContent>
                 </Link>
@@ -107,8 +141,14 @@ export default function Actualites() {
 
             <div className="grid gap-6 sm:grid-cols-2">
               {reste.map((actuality) => (
-                <Card key={actuality.uid} className="overflow-hidden py-0 shadow-sm transition-shadow hover:shadow-md">
-                  <Link href={`/actualites/${actuality.uid}`} className="group flex h-full flex-col">
+                <Card
+                  key={actuality.uid}
+                  className="overflow-hidden py-0 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <Link
+                    href={`/actualites/${actuality.uid}`}
+                    className="group flex h-full flex-col"
+                  >
                     <div className="relative">
                       <div className="relative aspect-[16/9] overflow-hidden bg-muted">
                         {actuality.imageUrl && (
@@ -122,7 +162,10 @@ export default function Actualites() {
                         )}
                       </div>
                       {actuality.category && (
-                        <Badge variant="secondary" className="absolute -bottom-2.5 left-3 font-semibold shadow-sm">
+                        <Badge
+                          variant="secondary"
+                          className="absolute -bottom-2.5 left-3 font-semibold shadow-sm"
+                        >
                           {actuality.category}
                         </Badge>
                       )}
@@ -132,13 +175,15 @@ export default function Actualites() {
                         {actuality.title}
                       </h3>
                       <span className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <CalendarDays className="size-3.5" aria-hidden /> {formaterDate(actuality.createdAt)}
+                        <CalendarDays className="size-3.5" aria-hidden />{" "}
+                        {formaterDate(actuality.createdAt)}
                       </span>
                       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                         {extrait(actuality.content)}
                       </p>
                       <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-sm font-semibold text-primary">
-                        {t("readArticle")} <ArrowRight className="size-3.5" aria-hidden />
+                        {t("readArticle")}{" "}
+                        <ArrowRight className="size-3.5" aria-hidden />
                       </span>
                     </CardContent>
                   </Link>
@@ -151,7 +196,8 @@ export default function Actualites() {
             )}
           </div>
 
-          <aside>
+          {/* Added sticky positioning and top offset to the sidebar */}
+          <aside className="sticky top-24">
             <SectionTitle surtitre={t("official")} titre={t("releases")} />
             <Card className="mt-7">
               <CardContent className="p-0">
@@ -160,12 +206,19 @@ export default function Actualites() {
                     {i > 0 && <Separator />}
                     <div className="p-5">
                       <p className="flex items-start gap-2.5 font-medium">
-                        <FileText className="mt-0.5 size-4 shrink-0 text-gold" aria-hidden />
+                        <FileText
+                          className="mt-0.5 size-4 shrink-0 text-gold"
+                          aria-hidden
+                        />
                         {c.title}
                       </p>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.content}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        {c.content}
+                      </p>
                       <div className="mt-3 flex items-center justify-between gap-3">
-                        <p className="text-xs text-muted-foreground">{formaterDate(c.createdAt)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formaterDate(c.createdAt)}
+                        </p>
                         {c.fileUrl && (
                           <a
                             href={c.fileUrl}
@@ -180,7 +233,9 @@ export default function Actualites() {
                   </div>
                 ))}
                 {communiques.length === 0 && (
-                  <p className="p-5 text-sm text-muted-foreground">{t("noReleases")}</p>
+                  <p className="p-5 text-sm text-muted-foreground">
+                    {t("noReleases")}
+                  </p>
                 )}
               </CardContent>
             </Card>

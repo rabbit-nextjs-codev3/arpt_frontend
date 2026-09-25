@@ -6,9 +6,10 @@
     "regulation": "Réglementation",
     "equipment": "Équipements",
     "tenders": "Appels d'offres",
-    "careers": "Carrières",
+    "jobOffers": "Offres d'emplois",
+    "careers": "Offres d’emploi",
     "news": "Actualités",
-    "statistics": "Statistiques",
+    "statistics": "Indicateurs des marchés",
     "claims": "Réclamations",
     "contact": "Contact",
     "openMenu": "Ouvrir le menu",
@@ -287,31 +288,31 @@
     "readArticle": "Lire l'article"
   },
   "statisticsPage": {
-    "loading": "Chargement des statistiques…",
-    "mobileSubscribers": "Abonnés mobiles",
-    "penetrationRate": "Taux de pénétration",
-    "activeOperators": "Opérateurs actifs",
-    "active4GSites": "Sites 4G en service",
-    "subscribersChartTitle": "Évolution du parc d'abonnés mobiles",
-    "subscribersChartSubtitle": "En millions d'abonnés, année {year}",
-    "subscribersSeriesName": "Abonnés (M)",
-    "revenueChartTitle": "Chiffre d'affaires du secteur",
-    "revenueChartSubtitle": "En milliards de GNF, par trimestre",
-    "revenueSeriesName": "CA (Mds GNF)",
-    "months": [
-      "Jan",
-      "Fév",
-      "Mar",
-      "Avr",
-      "Mai",
-      "Juin",
-      "Juil",
-      "Août",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Déc"
-    ]
+    "pageTitle": "Indicateurs des marchés",
+    "loading": "Chargement des publications…",
+    "error": "Impossible de charger les publications.",
+    "filteredCount": "{count} publication(s) affichée(s) sur {total}",
+    "categoryCount": "{count} publications",
+    "archiveTitle": "Observatoires des marchés",
+    "archiveDescription": "Retrouvez dans un même espace les analyses télécoms, tarifaires et postales de l’ARPT.",
+    "categories": {
+      "telecom": "Observatoire Télécom",
+      "tariff": "Observatoire Tarifaire",
+      "postal": "Observatoire Postal"
+    },
+    "categoryLabel": "Filtrer par observatoire",
+    "allCategories": "Tous les observatoires",
+    "searchLabel": "Rechercher une publication",
+    "searchPlaceholder": "Rechercher par titre…",
+    "yearLabel": "Filtrer par année",
+    "allYears": "Toutes les années",
+    "noResults": "Aucune publication ne correspond à votre recherche.",
+    "readReport": "Lire le rapport",
+    "downloadPdf": "Télécharger le PDF",
+    "backToArchive": "Retour aux observatoires",
+    "readerDescription": "Consultez l’intégralité du rapport et de ses graphiques sans quitter le site de l’ARPT.",
+    "documentUnavailable": "Le document est temporairement indisponible.",
+    "report": "Rapport"
   },
   "contactPage": {
     "loading": "Chargement…",
@@ -387,31 +388,40 @@
       "claims": "Mes réclamations",
       "candidatures": "Mes candidatures",
       "submissions": "Mes soumissions",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "account": "Compte"
     },
-    "claimsColumns": [
-      "Référence",
-      "Nature",
-      "Opérateur",
-      "Date",
-      "Statut"
-    ],
+    "account": {
+      "profile": "Profil utilisateur",
+      "fullname": "Nom complet",
+      "email": "Adresse e-mail",
+      "company": "Entreprise",
+      "role": "Rôle",
+      "status": "Statut du compte",
+      "access": "Accès",
+      "superAdmin": "Super administrateur",
+      "noRole": "Aucun rôle",
+      "active": "Actif",
+      "inactive": "Inactif",
+      "staff": "Personnel",
+      "user": "Utilisateur",
+      "summaryTitle": "Informations du compte",
+      "emailVerified": "E-mail vérifié",
+      "verified": "Oui",
+      "unverified": "Non",
+      "accountType": "Type de compte",
+      "enterprise": "Entreprise",
+      "individual": "Particulier",
+      "memberSince": "Membre depuis",
+      "notAvailable": "Non disponible"
+    },
+    "claimsColumns": ["Référence", "Nature", "Opérateur", "Date", "Statut"],
     "claimsEmpty": "Aucune réclamation déposée.",
     "fileClaim": "Déposer une réclamation",
-    "candidaturesColumns": [
-      "Référence",
-      "Poste",
-      "Date",
-      "Statut"
-    ],
+    "candidaturesColumns": ["Référence", "Poste", "Date", "Statut"],
     "candidaturesEmpty": "Aucune candidature en cours.",
     "viewOffers": "Voir les offres",
-    "submissionsColumns": [
-      "Référence",
-      "Appel d'offres",
-      "Date",
-      "Statut"
-    ],
+    "submissionsColumns": ["Référence", "Appel d'offres", "Date", "Statut"],
     "submissionsEmpty": "Aucune soumission enregistrée.",
     "viewTenders": "Voir les appels d'offres",
     "noNotifications": "Aucune notification."
@@ -422,7 +432,7 @@
     "missions": "Missions et organisation",
     "newsAndReleases": "Actualités et communiqués",
     "observatory": "Observatoire du secteur",
-    "careers": "Carrières",
+    "careers": "Offres d’emploi",
     "proceduresTitle": "Démarches",
     "ourServices": "Nos services",
     "approvedEquipment": "Équipements homologués",
@@ -453,7 +463,7 @@
       "services": "Services",
       "equipements": "Équipements",
       "marches": "Appels d'offres",
-      "carrieres": "Carrières",
+      "carrieres": "Offres d’emploi",
       "actualites": "Actualités",
       "communiques": "Communiqués",
       "reglementation": "Réglementation",
@@ -539,12 +549,7 @@
         "title": "Réclamations récentes",
         "subtitle": "Derniers signalements des usagers",
         "viewAll": "Tout voir",
-        "columns": [
-          "Référence",
-          "Nature",
-          "Opérateur",
-          "Statut"
-        ],
+        "columns": ["Référence", "Nature", "Opérateur", "Statut"],
         "empty": "Aucune réclamation pour l'instant."
       },
       "recentActivity": {
@@ -705,49 +710,44 @@
       "replySent": "Réponse envoyée par email."
     },
     "audit": {
-      "columns": [
-        "Acteur",
-        "Action",
-        "Entité",
-        "Horodatage"
-      ],
+      "columns": ["Acteur", "Action", "Entité", "Horodatage"],
       "system": "Système"
     },
     "applications": {
-  "careersTitle": "Candidatures",
-  "tendersTitle": "Candidatures aux appels d'offres",
-    "careerTab": "Carrières",
-    "tenderTab": "Appels d'offres",
-  "subtitle": "Consultez les dossiers reçus et suivez leur traitement.",
-  "total": "{count} dossiers",
-  "search": "Rechercher un candidat ou une offre…",
-  "filterStatus": "Filtrer par statut",
-  "allStatuses": "Tous les statuts",
-  "inProgress": "En cours",
-  "accepted": "Accepté",
-  "rejected": "Refusé",
-  "loading": "Chargement…",
-  "applicant": "Candidat",
-  "offer": "Offre",
-  "submittedAt": "Date de dépôt",
-  "status": "Statut",
-  "actions": "Actions",
-  "viewDetails": "Voir le dossier",
-  "empty": "Aucun dossier pour ces filtres.",
-  "previous": "Précédent",
-  "next": "Suivant",
-  "detailsTitle": "Détail du dossier",
-  "close": "Fermer",
-  "email": "Email",
-  "availability": "Disponibilité",
-  "motivation": "Lettre de motivation",
-  "openCv": "Ouvrir le CV",
-  "experience": "Expérience",
-  "proposal": "Proposition",
-  "legacyAnonymous": "Dépôt anonyme ancien",
-  "statusSaved": "Statut enregistré.",
-  "genericError": "Une erreur est survenue."
-} ,
+      "careersTitle": "Candidatures",
+      "tendersTitle": "Candidatures aux appels d'offres",
+      "careerTab": "Offres d’emploi",
+      "tenderTab": "Appels d'offres",
+      "subtitle": "Consultez les dossiers reçus et suivez leur traitement.",
+      "total": "{count} dossiers",
+      "search": "Rechercher un candidat ou une offre…",
+      "filterStatus": "Filtrer par statut",
+      "allStatuses": "Tous les statuts",
+      "inProgress": "En cours",
+      "accepted": "Accepté",
+      "rejected": "Refusé",
+      "loading": "Chargement…",
+      "applicant": "Candidat",
+      "offer": "Offre",
+      "submittedAt": "Date de dépôt",
+      "status": "Statut",
+      "actions": "Actions",
+      "viewDetails": "Voir le dossier",
+      "empty": "Aucun dossier pour ces filtres.",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "detailsTitle": "Détail du dossier",
+      "close": "Fermer",
+      "email": "Email",
+      "availability": "Disponibilité",
+      "motivation": "Lettre de motivation",
+      "openCv": "Ouvrir le CV",
+      "experience": "Expérience",
+      "proposal": "Proposition",
+      "legacyAnonymous": "Dépôt anonyme ancien",
+      "statusSaved": "Statut enregistré.",
+      "genericError": "Une erreur est survenue."
+    },
     "tenders": {
       "title": "Appels d'offres",
       "subtitle": "Gérez les appels d'offres et suivez les soumissions.",
@@ -802,11 +802,11 @@
       "created": "Appel d'offres créé."
     },
     "careers": {
-      "title": "Carrières",
+      "title": "Offres d’emploi",
       "subtitle": "Gérez et suivez les offres d'emploi de l'ARPT.",
-      "newOffer": "+ Créer une offre de carrière",
+      "newOffer": "+ Créer une offre d’emploi",
       "editingTitle": "Modifier \"{name}\"",
-      "newOfferTitle": "Nouvelle offre de carrière",
+      "newOfferTitle": "Nouvelle offre d’emploi",
       "stats": {
         "total": "Total des recrutements",
         "inProgress": "En cours",
@@ -1024,11 +1024,11 @@
         "regulation": "Réglementation",
         "equipment": "Équipements",
         "tenders": "Appels d'offres",
-        "careers": "Carrières",
+        "careers": "Offres d’emploi",
         "news": "Actualités",
         "services": "Services",
         "contact": "Contact",
-        "statistics": "Statistiques",
+        "statistics": "Indicateurs des marchés",
         "consultations": "Consultations publiques"
       },
       "editorTitle": "Éditeur du site",
@@ -1075,13 +1075,7 @@
       "viewOnSite": "Voir sur le site",
       "noResults": "Aucune actualité ne correspond à ces filtres.",
       "csv": {
-        "headers": [
-          "Titre",
-          "Catégorie",
-          "Date",
-          "Vues",
-          "Statut"
-        ],
+        "headers": ["Titre", "Catégorie", "Date", "Vues", "Statut"],
         "filename": "actualites-arpt.csv"
       },
       "confirmDelete": "Supprimer l'actualité \"{name}\" ?",
@@ -1115,11 +1109,7 @@
       },
       "noResults": "Aucun communiqué ne correspond aux filtres.",
       "csv": {
-        "headers": [
-          "Titre",
-          "Pièce jointe",
-          "Date"
-        ],
+        "headers": ["Titre", "Pièce jointe", "Date"],
         "filenamePrefix": "communiques",
         "yes": "Oui",
         "no": "Non"
@@ -1167,12 +1157,7 @@
       },
       "noResults": "Aucun service ne correspond aux filtres.",
       "csv": {
-        "headers": [
-          "Service",
-          "Délai",
-          "Coût",
-          "État"
-        ],
+        "headers": ["Service", "Délai", "Coût", "État"],
         "filenamePrefix": "services"
       },
       "confirmDelete": "Supprimer le service \"{name}\" ?",
@@ -1292,12 +1277,7 @@
       },
       "noResults": "Aucune consultation ne correspond aux filtres.",
       "csv": {
-        "headers": [
-          "Titre",
-          "Statut",
-          "Début",
-          "Fin"
-        ],
+        "headers": ["Titre", "Statut", "Début", "Fin"],
         "filenamePrefix": "consultations"
       },
       "confirmDelete": "Supprimer la consultation \"{name}\" ?",

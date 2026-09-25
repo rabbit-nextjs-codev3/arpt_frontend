@@ -5,8 +5,16 @@ import { useParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Building2, CalendarDays, CheckCircle2, MapPin, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  MapPin,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +49,11 @@ export default function OffreDetail() {
   const { locale } = useLocale();
   const { user, loading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
-  const { data: offre, loading, error } = useApiOne<Career>(id ? `/careers/${id}?lang=${locale}` : null);
+  const {
+    data: offre,
+    loading,
+    error,
+  } = useApiOne<Career>(id ? `/careers/${id}?lang=${locale}` : null);
   const [envoye, setEnvoye] = useState(false);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [erreurEnvoi, setErreurEnvoi] = useState("");
@@ -60,7 +72,10 @@ export default function OffreDetail() {
     if (cv) body.append("cv", cv);
 
     try {
-      await apiFetch(`/careers/${offre.id}/candidatures`, { method: "POST", body });
+      await apiFetch(`/careers/${offre.id}/candidatures`, {
+        method: "POST",
+        body,
+      });
       setEnvoye(true);
       toast.success(t("submitSuccess"));
     } catch (err) {
@@ -71,7 +86,12 @@ export default function OffreDetail() {
   }
 
   if (loading) {
-    return <div className="container-content section-y text-center text-sm text-muted-foreground">{t("loading")}</div>;
+    return (
+      <Loader
+        className="container-content section-y flex justify-center"
+        label={t("loading")}
+      />
+    );
   }
 
   if (error || !offre) {
@@ -81,7 +101,9 @@ export default function OffreDetail() {
           <Search className="size-6 text-muted-foreground" aria-hidden />
         </div>
         <h1 className="mt-5 text-2xl font-bold">{t("notFoundTitle")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{t("notFoundBody")}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("notFoundBody")}
+        </p>
         <Button asChild variant="outline" className="mt-6">
           <Link href="/carrieres">
             <ArrowLeft className="size-4" aria-hidden /> {t("backToOffers")}
@@ -95,7 +117,10 @@ export default function OffreDetail() {
     <section className="section-y">
       <div className="container-content grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:items-start">
         <div>
-          <Link href="/carrieres" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+          <Link
+            href="/carrieres"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
             <ArrowLeft className="size-4" aria-hidden /> {t("allOffers")}
           </Link>
 
@@ -103,12 +128,18 @@ export default function OffreDetail() {
             <Badge variant="ghost" className="font-mono text-xs font-semibold">
               {offre.code}
             </Badge>
-            <Badge variant="outline" className="gap-1.5 text-xs font-medium text-destructive">
-              <CalendarDays className="size-3.5" aria-hidden /> {t("deadline", { date: formaterDate(offre.limitDate) })}
+            <Badge
+              variant="outline"
+              className="gap-1.5 text-xs font-medium text-destructive"
+            >
+              <CalendarDays className="size-3.5" aria-hidden />{" "}
+              {t("deadline", { date: formaterDate(offre.limitDate) })}
             </Badge>
           </div>
 
-          <h1 className="mt-4 text-balance text-3xl font-bold tracking-tight md:text-4xl">{offre.name}</h1>
+          <h1 className="mt-4 text-balance text-3xl font-bold tracking-tight md:text-4xl">
+            {offre.name}
+          </h1>
 
           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
@@ -120,56 +151,115 @@ export default function OffreDetail() {
               </span>
             )}
             <span className="inline-flex items-center gap-1.5">
-              <CalendarDays className="size-4" aria-hidden /> {t("publishedOn", { date: formaterDate(offre.publicationDate) })}
+              <CalendarDays className="size-4" aria-hidden />{" "}
+              {t("publishedOn", { date: formaterDate(offre.publicationDate) })}
             </span>
           </div>
 
-          <p className="mt-8 leading-8 text-foreground/90">{offre.description}</p>
+          <p className="mt-8 leading-8 text-foreground/90">
+            {offre.description}
+          </p>
 
           {offre.responsibilities.length > 0 && (
-            <Bloc titre={t("responsibilities")} items={offre.responsibilities} />
+            <Bloc
+              titre={t("responsibilities")}
+              items={offre.responsibilities}
+            />
           )}
-          {offre.desiredProfils.length > 0 && <Bloc titre={t("desiredProfile")} items={offre.desiredProfils} />}
-          {offre.advantages.length > 0 && <Bloc titre={t("advantages")} items={offre.advantages} />}
+          {offre.desiredProfils.length > 0 && (
+            <Bloc titre={t("desiredProfile")} items={offre.desiredProfils} />
+          )}
+          {offre.advantages.length > 0 && (
+            <Bloc titre={t("advantages")} items={offre.advantages} />
+          )}
         </div>
 
         <div className="rounded-xl max-w-7xl border border-border bg-card p-6 sm:p-7 lg:sticky lg:top-40">
-          <h2 className="font-heading text-lg font-semibold">{t("applyTitle")}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Déposez votre candidature depuis votre compte. Votre identité sera reprise automatiquement et votre dossier transmis de manière sécurisée à l’équipe de recrutement.</p>
+          <h2 className="font-heading text-lg font-semibold">
+            {t("applyTitle")}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Déposez votre candidature depuis votre compte. Votre identité sera
+            reprise automatiquement et votre dossier transmis de manière
+            sécurisée à l’équipe de recrutement.
+          </p>
 
-          {authLoading ? <p className="mt-6 text-sm text-muted-foreground">{t("loading")}</p> : !user ? (
+          {authLoading ? (
+            <Loader
+              className="mt-6 flex justify-center py-8"
+              label={t("loading")}
+            />
+          ) : !user ? (
             <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-5 text-sm">
               <p className="mb-4">{t("loginRequired")}</p>
-              <Button asChild><AuthTrigger>{t("loginToApply")}</AuthTrigger></Button>
+              <Button asChild>
+                <AuthTrigger>{t("loginToApply")}</AuthTrigger>
+              </Button>
             </div>
-          ) : offre.limitDate.slice(0, 10) < new Date().toISOString().slice(0, 10) ? (
-            <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950"><p className="font-semibold">Candidatures clôturées</p><p className="mt-1">La date limite est dépassée. Vous pouvez toujours consulter la description complète de l’offre, mais aucun dossier ne peut désormais être envoyé.</p></div>
+          ) : offre.limitDate.slice(0, 10) <
+            new Date().toISOString().slice(0, 10) ? (
+            <div className="mt-6 rounded-lg border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950">
+              <p className="font-semibold">Candidatures clôturées</p>
+              <p className="mt-1">
+                La date limite est dépassée. Vous pouvez toujours consulter la
+                description complète de l’offre, mais aucun dossier ne peut
+                désormais être envoyé.
+              </p>
+            </div>
           ) : envoye ? (
             <div className="mt-6 rounded-lg border border-success/40 bg-success/10 p-5 text-sm">
-              <p className="font-semibold text-success">{t("submittedTitle")}</p>
+              <p className="font-semibold text-success">
+                {t("submittedTitle")}
+              </p>
               <p className="mt-1 text-muted-foreground">{t("submittedBody")}</p>
               <Button asChild variant="outline" size="sm" className="mt-4">
                 <Link href="/portail">{t("openPortal")}</Link>
               </Button>
             </div>
           ) : (
-            <form className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={postuler}>
-              <p className="text-sm text-muted-foreground sm:col-span-2">{t("accountUsed", { name: user.fullname, email: user.email })}</p>
+            <form
+              className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
+              onSubmit={postuler}
+            >
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                {t("accountUsed", { name: user.fullname, email: user.email })}
+              </p>
               <div className="grid gap-2">
                 <Label htmlFor="dispo">{t("availabilityDate")}</Label>
                 <Input id="dispo" name="dispo" type="date" required />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="cv">{t("cv")}</Label>
-                <Input id="cv" name="cv" type="file" accept=".pdf" required className="file:text-primary" />
+                <Input
+                  id="cv"
+                  name="cv"
+                  type="file"
+                  accept=".pdf"
+                  required
+                  className="file:text-primary"
+                />
               </div>
               <div className="grid gap-2 sm:col-span-2">
                 <Label htmlFor="lettre">{t("motivationLetter")}</Label>
-                <Textarea id="lettre" name="lettre" maxLength={2000} rows={5} placeholder={t("motivationLetterPlaceholder")} />
+                <Textarea
+                  id="lettre"
+                  name="lettre"
+                  maxLength={2000}
+                  rows={5}
+                  placeholder={t("motivationLetterPlaceholder")}
+                />
               </div>
-              {erreurEnvoi && <p className="text-sm text-destructive sm:col-span-2">{erreurEnvoi}</p>}
+              {erreurEnvoi && (
+                <p className="text-sm text-destructive sm:col-span-2">
+                  {erreurEnvoi}
+                </p>
+              )}
               <Separator className="sm:col-span-2" />
-              <Button type="submit" disabled={envoiEnCours} className="sm:col-span-2">
+              <Button
+                type="submit"
+                disabled={envoiEnCours}
+                className="sm:col-span-2"
+              >
                 {envoiEnCours ? t("submitting") : t("submit")}
               </Button>
             </form>
@@ -186,8 +276,14 @@ function Bloc({ titre, items }: { titre: string; items: string[] }) {
       <h2 className="font-heading text-lg font-semibold">{titre}</h2>
       <ul className="mt-4 space-y-2.5">
         {items.map((i) => (
-          <li key={i} className="flex items-start gap-3 text-sm leading-relaxed">
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          <li
+            key={i}
+            className="flex items-start gap-3 text-sm leading-relaxed"
+          >
+            <CheckCircle2
+              className="mt-0.5 size-4 shrink-0 text-primary"
+              aria-hidden
+            />
             {i}
           </li>
         ))}

@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { LOCALE_COOKIE_NAME, type Locale } from "@/lib/locale";
 
@@ -22,7 +29,13 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
  * que les Server Components (dont le Provider next-intl) repartent avec les
  * nouveaux messages.
  */
-export function LocaleProvider({ initialLocale, children }: { initialLocale: Locale; children: ReactNode }) {
+export function LocaleProvider({
+  initialLocale,
+  children,
+}: {
+  initialLocale: Locale;
+  children: ReactNode;
+}) {
   const router = useRouter();
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
@@ -37,11 +50,14 @@ export function LocaleProvider({ initialLocale, children }: { initialLocale: Loc
   );
 
   const value = useMemo(() => ({ locale, setLocale }), [locale, setLocale]);
-  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+  return (
+    <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
+  );
 }
 
 export function useLocale(): LocaleContextValue {
   const ctx = useContext(LocaleContext);
-  if (!ctx) throw new Error("useLocale() doit être utilisé sous <LocaleProvider>.");
+  if (!ctx)
+    throw new Error("useLocale() doit être utilisé sous <LocaleProvider>.");
   return ctx;
 }

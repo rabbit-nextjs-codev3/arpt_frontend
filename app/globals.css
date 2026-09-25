@@ -6,9 +6,34 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.loader {
+  width: 50px;
+  padding: 8px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #25b09b;
+  --_m: conic-gradient(#0000 10%, #000), linear-gradient(#000 0 0) content-box;
+  -webkit-mask: var(--_m);
+  mask: var(--_m);
+  -webkit-mask-composite: source-out;
+  mask-composite: subtract;
+  animation: loader-spin 1s infinite linear;
+}
+
+@keyframes loader-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
 /* Hide the modal's scrollbar while preserving access on short screens and zoom. */
-.auth-dialog { scrollbar-width: none; }
-.auth-dialog::-webkit-scrollbar { display: none; }
+.auth-dialog {
+  scrollbar-width: none;
+}
+
+.auth-dialog::-webkit-scrollbar {
+  display: none;
+}
 
 /*
  * ARPT — Système de design institutionnel.
@@ -86,7 +111,7 @@
 
   /* Rythme */
   --radius: 0.5rem;
-  --section-y: 5.5rem;
+  --section-y: 2.5rem;
   --content-max: 76rem;
 
   /* Couleurs institutionnelles */
@@ -154,9 +179,12 @@
     var(--surface) 100%
   );
 
-  --elevation-1: 0 1px 2px color-mix(in oklab, var(--primary-deep) 8%, transparent);
-  --elevation-2: 0 4px 16px -6px color-mix(in oklab, var(--primary-deep) 18%, transparent);
-  --elevation-3: 0 18px 44px -18px color-mix(in oklab, var(--primary-deep) 32%, transparent);
+  --elevation-1: 0 1px 2px
+    color-mix(in oklab, var(--primary-deep) 8%, transparent);
+  --elevation-2: 0 4px 16px -6px
+    color-mix(in oklab, var(--primary-deep) 18%, transparent);
+  --elevation-3: 0 18px 44px -18px
+    color-mix(in oklab, var(--primary-deep) 32%, transparent);
 
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -212,9 +240,10 @@
     font-weight: 600;
     text-wrap: balance;
   }
-  html {
-    @apply font-sans; }
 
+  html {
+    @apply font-sans;
+  }
 }
 
 @utility bg-institution {
@@ -241,6 +270,7 @@
     transform var(--transition-base),
     box-shadow var(--transition-base),
     border-color var(--transition-base);
+
   &:hover {
     transform: translateY(-3px);
     box-shadow: var(--elevation-3);
@@ -250,10 +280,14 @@
 
 /* Mark required controls without duplicating stars already present in translations. */
 label[data-auto-required]:not([data-has-star]):is(
-  :has(+ input:required), :has(+ textarea:required), :has(+ select:required),
-  :has(+ [aria-required="true"]), :has(+ div input:required),
-  :has(+ div textarea:required), :has(+ div [aria-required="true"])
-)::after {
+    :has(+ input:required),
+    :has(+ textarea:required),
+    :has(+ select:required),
+    :has(+ [aria-required="true"]),
+    :has(+ div input:required),
+    :has(+ div textarea:required),
+    :has(+ div [aria-required="true"])
+  )::after {
   content: "*";
   margin-inline-start: 0.25rem;
   color: var(--destructive);

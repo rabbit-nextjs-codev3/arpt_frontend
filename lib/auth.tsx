@@ -1,10 +1,33 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { api, apiFetch, ApiError, API_BASE_URL, expireSession, getValidAccessToken, SESSION_EXPIRED_EVENT } from "@/lib/api";
-import { ACCESS_KEY, REFRESH_KEY, clearSession, isSessionInactive, recordActivity, storeTokenPair, tokenExpiresSoon } from "@/lib/session";
+import {
+  api,
+  apiFetch,
+  ApiError,
+  API_BASE_URL,
+  expireSession,
+  getValidAccessToken,
+  SESSION_EXPIRED_EVENT,
+} from "@/lib/api";
+import {
+  ACCESS_KEY,
+  REFRESH_KEY,
+  clearSession,
+  isSessionInactive,
+  recordActivity,
+  storeTokenPair,
+  tokenExpiresSoon,
+} from "@/lib/session";
 
 export interface AuthUser {
   id: number;
@@ -15,7 +38,11 @@ export interface AuthUser {
   isStaff: boolean;
   isSuperuser: boolean;
   emailVerified: boolean;
-  role: { id: number; name: string; permissions: Array<string | { id: number; name: string; action: string }> } | null;
+  role: {
+    id: number;
+    name: string;
+    permissions: Array<string | { id: number; name: string; action: string }>;
+  } | null;
 }
 
 interface LoginResponse {
@@ -27,8 +54,17 @@ interface LoginResponse {
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string, context?: "admin" | "public") => Promise<AuthUser>;
-  register: (fullname: string, email: string, password: string, password2: string) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    context?: "admin" | "public",
+  ) => Promise<AuthUser>;
+  register: (
+    fullname: string,
+    email: string,
+    password: string,
+    password2: string,
+  ) => Promise<void>;
   // Contrairement à register() : ne connecte jamais automatiquement — le
   // compte créé reste bloqué jusqu'à validation d'un admin, voir le backend
   // AuthService.registerEnterprise. `body` porte déjà tous les champs
@@ -47,38 +83,63 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!localStorage.getItem(ACCESS_KEY) && !localStorage.getItem(REFRESH_KEY)) {
+    if (
+      !localStorage.getItem(ACCESS_KEY) &&
+      !localStorage.getItem(REFRESH_KEY)
+    ) {
       queueMicrotask(() => setLoading(false));
       return;
     }
     apiFetch<AuthUser>("/auth/me")
       .then(setUser)
-      .catch((error) => { if (error instanceof ApiError && error.status === 401) expireSession(); })
+      .catch((error) => {
+        if (error instanceof ApiError && error.status === 401) expireSession();
+      })
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     function onActivity() {
       if (!localStorage.getItem(REFRESH_KEY)) return;
-      if (!recordActivity()) { expireSession(); return; }
+      if (!recordActivity()) {
+        expireSession();
+        return;
+      }
       const access = localStorage.getItem(ACCESS_KEY);
-      if (!access || tokenExpiresSoon(access)) void getValidAccessToken().catch(() => {});
+      if (!access || tokenExpiresSoon(access))
+        void getValidAccessToken().catch(() => {});
     }
     function restoreUser() {
-      if (localStorage.getItem(REFRESH_KEY)) void apiFetch<AuthUser>("/auth/me").then(setUser).catch(() => {});
+      if (localStorage.getItem(REFRESH_KEY))
+        void apiFetch<AuthUser>("/auth/me")
+          .then(setUser)
+          .catch(() => {});
     }
-    function onVisibility() { if (window.document.visibilityState === "visible") { onActivity(); restoreUser(); } }
+    function onVisibility() {
+      if (window.document.visibilityState === "visible") {
+        onActivity();
+        restoreUser();
+      }
+    }
     function onStorage(event: StorageEvent) {
       if (event.key === REFRESH_KEY && !event.newValue) setUser(null);
-      if (event.key === ACCESS_KEY && event.newValue) void apiFetch<AuthUser>("/auth/me").then(setUser).catch(() => {});
+      if (event.key === ACCESS_KEY && event.newValue)
+        void apiFetch<AuthUser>("/auth/me")
+          .then(setUser)
+          .catch(() => {});
     }
-    for (const name of ["pointerdown", "keydown", "scroll", "touchstart"]) window.addEventListener(name, onActivity, { passive: true });
+    for (const name of ["pointerdown", "keydown", "scroll", "touchstart"])
+      window.addEventListener(name, onActivity, { passive: true });
     window.document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("storage", onStorage);
     window.addEventListener("online", restoreUser);
-    const timer = window.setInterval(() => { if (isSessionInactive() && localStorage.getItem(REFRESH_KEY)) expireSession(); }, 60_000);
+    const timer = window.setInterval(() => {
+      if (isSessionInactive() && localStorage.getItem(REFRESH_KEY))
+        expireSession();
+    }, 60_000);
     return () => {
-      for (const name of ["pointerdown", "keydown", "scroll", "touchstart"]) window.removeEventListener(name, onActivity);
+      for (const name of ["pointerdown", "keydown", "scroll", "touchstart"])
+        window.removeEventListener(name, onActivity);
       window.document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("online", restoreUser);
@@ -99,34 +160,69 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
       });
     }
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () =>
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, [t]);
 
-  const login = useCallback(async (email: string, password: string, context: "admin" | "public" = "public") => {
-    const res = await api.post<LoginResponse>("/auth/login", { email, password, context });
-    storeTokenPair(res.accessToken, res.refreshToken);
-    setUser(res.user);
-    return res.user;
-  }, []);
+  const login = useCallback(
+    async (
+      email: string,
+      password: string,
+      context: "admin" | "public" = "public",
+    ) => {
+      const res = await api.post<LoginResponse>("/auth/login", {
+        email,
+        password,
+        context,
+      });
+      storeTokenPair(res.accessToken, res.refreshToken);
+      setUser(res.user);
+      return res.user;
+    },
+    [],
+  );
 
-  const register = useCallback(async (fullname: string, email: string, password: string, password2: string) => {
-    const res = await api.post<LoginResponse>("/auth/register", { fullname, email, password, password2 });
-    storeTokenPair(res.accessToken, res.refreshToken);
-    setUser(res.user);
-  }, []);
+  const register = useCallback(
+    async (
+      fullname: string,
+      email: string,
+      password: string,
+      password2: string,
+    ) => {
+      const res = await api.post<LoginResponse>("/auth/register", {
+        fullname,
+        email,
+        password,
+        password2,
+      });
+      storeTokenPair(res.accessToken, res.refreshToken);
+      setUser(res.user);
+    },
+    [],
+  );
 
   const registerEnterprise = useCallback(async (body: FormData) => {
-    return apiFetch<{ detail: string }>("/auth/register/enterprise", { method: "POST", body });
+    return apiFetch<{ detail: string }>("/auth/register/enterprise", {
+      method: "POST",
+      body,
+    });
   }, []);
 
   const logout = useCallback(async () => {
-    try { await getValidAccessToken(); } catch { /* A local logout still succeeds offline. */ }
+    try {
+      await getValidAccessToken();
+    } catch {
+      /* A local logout still succeeds offline. */
+    }
     const accessToken = localStorage.getItem(ACCESS_KEY);
     const refreshToken = localStorage.getItem(REFRESH_KEY);
     if (accessToken && refreshToken) {
       await fetch(API_BASE_URL + "/auth/logout", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + accessToken,
+        },
         body: JSON.stringify({ refreshToken }),
       }).catch(() => {});
     }
@@ -135,19 +231,37 @@ export function AuthStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const hasPermission = useCallback(
-    (action: string) => Boolean(user?.isSuperuser || user?.role?.permissions.some((permission) => typeof permission === "string" ? permission === action : permission.action === action)),
+    (action: string) =>
+      Boolean(
+        user?.isSuperuser ||
+        user?.role?.permissions.some((permission) =>
+          typeof permission === "string"
+            ? permission === action
+            : permission.action === action,
+        ),
+      ),
     [user],
   );
 
   const refreshUser = useCallback(async () => {
-    if (!localStorage.getItem(ACCESS_KEY) && !localStorage.getItem(REFRESH_KEY)) return;
+    if (!localStorage.getItem(ACCESS_KEY) && !localStorage.getItem(REFRESH_KEY))
+      return;
     const fresh = await apiFetch<AuthUser>("/auth/me");
     setUser(fresh);
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, registerEnterprise, logout, hasPermission, refreshUser }}
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        registerEnterprise,
+        logout,
+        hasPermission,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
